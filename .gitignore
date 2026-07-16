@@ -1,0 +1,91 @@
+# DCIM Core Platform — public repository safety baseline
+# Runtime and secret material must never be committed.
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*.token
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.csr
+secrets/
+private/
+credentials/
+
+# Production/integration inventories and captures
+inventory/
+inventories/
+source-inventory/
+runtime/
+state/
+captures/
+packet-captures/
+dumps/
+backups/
+exports/
+recordings/
+*.pcap
+*.pcapng
+*.har
+*.dump
+*.sql.gz
+*.tar.gz
+*.zip
+
+# Local data and volumes
+data/
+volumes/
+*.db
+*.sqlite
+*.sqlite3
+*.wal
+*.pid
+*.log
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+coverage/
+.npm/
+.pnpm-store/
+
+# IDE and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Tool state
+.codex/local/
+.codex/state/
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Local compose overrides
+compose.override.yaml
+docker-compose.override.yml
