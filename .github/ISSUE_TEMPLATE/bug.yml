@@ -1,0 +1,39 @@
+name: Bug report
+description: Report reproducible behavior using synthetic data
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste live payloads, logs, endpoints, identifiers, screenshots, credentials, or secrets. Reproduce with synthetic fixtures.
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Synthetic reproduction
+      description: Exact commands and fixture paths.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Public-safe environment information
+      description: Commit SHA, OS version, and generic component versions only.
+  - type: checkboxes
+    id: data_review
+    attributes:
+      label: Data review
+      options:
+        - label: I verified that this report contains synthetic/public-safe information only.
+          required: true

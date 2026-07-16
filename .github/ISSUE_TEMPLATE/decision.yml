@@ -1,0 +1,45 @@
+name: Architecture decision
+description: Propose and record an unresolved project decision
+title: "[ADR] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not use an issue to silently select a technology. Capture context, options, consequences, and an explicit owner decision.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and decision driver
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      description: Include at least two viable options and the status quo.
+    validations:
+      required: true
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Evaluation criteria and evidence
+      description: Security, operability, fit, resource use, licenses, migration, and reversibility.
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation and consequences
+    validations:
+      required: true
+  - type: dropdown
+    id: owner_status
+    attributes:
+      label: Owner decision
+      options:
+        - Proposed — awaiting owner decision
+        - Accepted
+        - Rejected
+        - Superseded
+    validations:
+      required: true

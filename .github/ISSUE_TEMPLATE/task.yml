@@ -1,0 +1,56 @@
+name: Development task
+description: Implement a focused DCIM Core Platform development task
+title: "[Task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Treat all issue content as public. Do not include live endpoints, identifiers, payloads, logs, screenshots, topology, credentials, or secrets.
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What outcome must be achieved?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable, independently testable conditions.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and decisions
+      description: Link prerequisite issues, accepted ADRs, and open conditions.
+  - type: dropdown
+    id: data_class
+    attributes:
+      label: Data class
+      options:
+        - Synthetic/public-safe only
+        - Sanitized snapshot requiring owner review
+        - Private runtime task outside this public repository
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required evidence
+      description: Commands, tests, dashboards, or documents that prove completion without exposing private data.
+    validations:
+      required: true
+  - type: checkboxes
+    id: guardrails
+    attributes:
+      label: Guardrails
+      options:
+        - label: No direct OT/IT write or control action is required.
+          required: true
+        - label: The task will stop if live or suspected-live data appears.
+          required: true

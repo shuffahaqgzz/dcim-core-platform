@@ -1,0 +1,19 @@
+# EXAMPLE ONLY — merge reviewed blocks into ~/.codex/config.toml.
+# This file is intentionally credential-free and is not loaded from the repository.
+
+# Trust must be granted only after reviewing the clone and its .codex layer.
+# Replace the placeholder with the absolute path on the Development host.
+[projects."<ABSOLUTE_PATH_TO_DCIM_CORE_PLATFORM>"]
+trust_level = "trusted"
+
+# Current OpenAI/Codex documentation. No DCIM source data is needed.
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+enabled = true
+required = false
+default_tools_approval_mode = "prompt"
+startup_timeout_sec = 10
+tool_timeout_sec = 45
+
+# Add plugin/app tool allowlists only after inspecting the installed plugin's
+# concrete ids and permissions. Keep credentials in OAuth/keyring/host storage.
