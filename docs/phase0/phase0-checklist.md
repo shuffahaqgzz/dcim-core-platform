@@ -19,7 +19,7 @@
 ## Evidence dan owner boundary
 
 - [x] Semua local gates final lulus dan evidence index terisi.
-- [ ] Remote CI/gitleaks lulus.
+- [x] Remote CI dan full-history gitleaks lulus pada draft PR #2.
 - [ ] Owner menyetujui proposed ADR crosswalk/numbering melalui PR review.
 - [ ] Owner review dan approval sebelum merge.
 
