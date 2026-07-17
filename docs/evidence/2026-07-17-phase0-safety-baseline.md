@@ -1,7 +1,7 @@
 # Evidence — Phase 0 Safety Baseline
 
 - UTC: `2026-07-17T05:42:08Z`
-- Verified commit: `11a38b6388fb58813b14f70437a7dda3155b68ca`
+- Verified implementation/settings commit: `54783927749fb1825c2c3dad4b7bba273ac3e2a5`
 - Branch: `chore/phase-0-safety-baseline`
 - Issue: tidak diberikan; owner task berada di luar commit scope
 - Pull request: `#2` — `https://github.com/shuffahaqgzz/dcim-core-platform/pull/2`
@@ -23,7 +23,7 @@ Fixture sepenuhnya repository-authored synthetic data. Reserved documentation do
 | Unit/negative/workflow tests | PASS; 37 tests |
 | JSON/contract validation | PASS; 12 JSON files dan 6 event fixtures |
 | Synthetic fixture inventory | PASS; 9 mandatory classes |
-| Public-safety scanner | PASS; 119 exact-tree files |
+| Public-safety scanner | PASS; 120 exact-tree files |
 | Markdown local links | PASS; 33 links |
 | `git check-ignore -v` private/Hermes paths | PASS pada working-tree verification |
 

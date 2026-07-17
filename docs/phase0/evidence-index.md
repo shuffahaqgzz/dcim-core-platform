@@ -8,7 +8,7 @@ Evidence harus public-safe, reproducible, dan tidak berisi raw scanner finding/v
 | Unit tests | `make test` | PASS, 37 tests |
 | Contract/JSON | `make validate-json` | PASS, 12 JSON files / 6 event fixtures |
 | Fixture inventory | `make validate-fixtures` | PASS, 9 mandatory fixture classes |
-| Public safety | `make public-safety` | PASS pada exact commit tree `11a38b6`, 119 files; 3 owner-WIP untracked files tidak masuk PR |
+| Public safety | `make public-safety` | PASS pada exact implementation/settings commit `5478392`, 120 files; 3 owner-WIP untracked files tidak masuk PR |
 | Markdown local links | `make markdown-links` | PASS, 33 local links |
 | Aggregate preflight | `make preflight` | PASS local dan remote PR #2 |
 | Secret history | `.github/workflows/security-scan.yml` full-history gitleaks | PASS, remote PR #2 |
