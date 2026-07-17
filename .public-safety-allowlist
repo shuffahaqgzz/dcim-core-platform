@@ -1,0 +1,4 @@
+# Format: ALLOWLISTABLE_RULE|EXACT_PATH|REASON
+# Tambahkan hanya false positive yang telah direview; jangan allowlist secret atau live data.
+# Belum ada emitted rule yang aman untuk dikecualikan. Rule kritis dan wildcard path selalu ditolak.
+# Future example (comment only): low-risk-rule|docs/example.md|False positive yang memiliki review dan expiry.

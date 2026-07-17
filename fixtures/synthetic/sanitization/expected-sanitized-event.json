@@ -1,0 +1,12 @@
+{
+  "camera_name": "GENERIC-CAMERA-F5DCB0B31D82",
+  "credential_ref": "<REMOVED>",
+  "event_timestamp": "2026-10-14T00:00:00Z",
+  "hostname": "host-b50684e42471.example.com",
+  "ip_address": "203.0.113.211",
+  "location": "GENERIC-LOCATION-E17C468B15EB",
+  "raw_message": "REGENERATED-MESSAGE-AD6EC6944C8A",
+  "serial_number": "SYNTHETIC-SERIAL-C197A65C8590",
+  "url": "https://host-b50684e42471.example.com/synthetic",
+  "username": "SYNTHETIC-USER-4F70E7BBF50A"
+}
