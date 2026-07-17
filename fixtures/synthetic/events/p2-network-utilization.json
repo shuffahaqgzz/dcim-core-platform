@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "22222222-2222-4222-8222-222222222222",
+  "occurred_at": "2026-07-16T00:05:00Z",
+  "observed_at": "2026-07-16T00:05:10Z",
+  "source": {
+    "system": "synthetic-lab",
+    "instance": "switch-001.example.invalid",
+    "connector": "snmpv3-fixture",
+    "transport": "fixture",
+    "native_event_id": "SYNTHETIC-SAMPLE-0002"
+  },
+  "event_type": "network.interface.utilization",
+  "priority": "P2",
+  "correlation_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "payload": {
+    "interface_alias": "synthetic-uplink-01",
+    "utilization_percent": 73.4,
+    "sample_window_seconds": 60
+  },
+  "enrichment": {
+    "validation_status": "accepted",
+    "lineage": [
+      {
+        "step": "fixture-load",
+        "at": "2026-07-16T00:05:10Z",
+        "result": "ok"
+      },
+      {
+        "step": "schema-validate",
+        "at": "2026-07-16T00:05:10Z",
+        "result": "accepted"
+      }
+    ],
+    "asset_identity": "ExampleVendor:SYNTHETIC-0002",
+    "ci_identity": "synthetic-lab:device-002",
+    "quality_flags": []
+  }
+}

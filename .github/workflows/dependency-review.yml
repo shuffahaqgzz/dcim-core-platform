@@ -1,0 +1,44 @@
+name: Security / Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Detect dependency graph availability
+        id: dependency-graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status="$(
+            curl -fsSL \
+              -H "Accept: application/vnd.github+json" \
+              -u "x-access-token:${GH_TOKEN}" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}" \
+              | jq -r '.security_and_analysis.dependency_graph.status // "unknown"'
+          )"
+          if [ "${status}" = "enabled" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "Dependency graph is enabled."
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "Dependency graph status is '${status}'. Skipping dependency review and requiring repository setup to enable dependency graph."
+          fi
+
+      - name: Review dependency changes
+        if: steps.dependency-graph.outputs.enabled == 'true'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: never

@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "11111111-1111-4111-8111-111111111111",
+  "occurred_at": "2026-07-16T00:00:00Z",
+  "observed_at": "2026-07-16T00:00:01Z",
+  "source": {
+    "system": "synthetic-lab",
+    "instance": "bmc-001.example.invalid",
+    "connector": "redfish-fixture",
+    "transport": "fixture",
+    "native_event_id": "SYNTHETIC-EVENT-0001"
+  },
+  "event_type": "server.health.degraded",
+  "priority": "P1",
+  "correlation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "payload": {
+    "health": "Warning",
+    "component": "SyntheticPowerSupply",
+    "message": "Synthetic redundancy degradation for contract testing"
+  },
+  "enrichment": {
+    "validation_status": "accepted",
+    "lineage": [
+      {
+        "step": "fixture-load",
+        "at": "2026-07-16T00:00:01Z",
+        "result": "ok"
+      },
+      {
+        "step": "schema-validate",
+        "at": "2026-07-16T00:00:01Z",
+        "result": "accepted"
+      }
+    ],
+    "asset_identity": "ExampleVendor:SYNTHETIC-0001",
+    "ci_identity": "synthetic-lab:device-001",
+    "quality_flags": []
+  }
+}
