@@ -20,16 +20,16 @@ Fixture sepenuhnya repository-authored synthetic data. Reserved documentation do
 |---|---|
 | `make preflight` pada clean archive | PASS; aggregate wall time sekitar 0.9 detik |
 | Python compile | PASS |
-| Unit/negative/workflow tests | PASS; 36 tests |
+| Unit/negative/workflow tests | PASS; 37 tests |
 | JSON/contract validation | PASS; 12 JSON files dan 6 event fixtures |
 | Synthetic fixture inventory | PASS; 9 mandatory classes |
 | Public-safety scanner | PASS; 119 exact-tree files |
 | Markdown local links | PASS; 33 links |
 | `git check-ignore -v` private/Hermes paths | PASS pada working-tree verification |
 
-Remote draft PR checks pada initial published head juga PASS: CI preflight, public-safety scanner, dan full-history gitleaks. Dependency workflow selesai `success`, tetapi actual dependency-review step `skipped` karena dependency graph belum tersedia; kondisi ini tetap conditional, bukan evidence dependency review.
+Remote draft PR checks PASS: CI preflight, public-safety scanner, full-history gitleaks, dan official pinned dependency-review action. Latest verified dependency-review job menjalankan action secara langsung; tidak ada conditional skip.
 
-Repository setting verification: visibility public, default branch `main`, private vulnerability reporting enabled, secret scanning enabled, dan secret-scanning push protection enabled. Classic branch protection tidak ada. Ruleset `main-development-gate` tersedia tetapi enforcement masih disabled.
+Repository setting verification pada `2026-07-17T06:20:12Z`: visibility public; default branch `main`; private vulnerability reporting, secret scanning, push protection, Dependabot alerts, dan Dependabot security updates enabled. Ruleset `main-development-gate` active dan menargetkan `main`, tanpa bypass, dengan PR-only/squash-only, conversation resolution, linear history, deletion/force-push protection, strict up-to-date policy, serta required checks `preflight`, `dependency-review`, dan `public-safety`.
 
 Tidak ada third-party Python dependency, package install, container image, atau new Action source ditambahkan. Existing trusted Actions tetap pinned ke full commit SHA. License OD-06 tetap OPEN.
 
@@ -40,7 +40,6 @@ Independent read-only reviews menemukan scanner, sanitizer, evidence-scope, dan 
 ## Limitations
 
 - Local `gitleaks` tidak tersedia; remote full-history gitleaks PASS pada PR #2.
-- `main` belum protected dan repository ruleset masih disabled; owner action required.
-- Dependency review masih conditional karena dependency-review step skipped saat dependency graph unavailable.
+- PR tetap draft dan owner review atas ADR crosswalk, read-only policy, serta open decisions masih required sebelum merge.
 - Source authorization, effective read-only identity, network separation, retention values, dan owner policy approval tetap future/private conditions.
 - Evidence ini bukan `DEV-APPROVED`, Staging entry, atau Production authorization.

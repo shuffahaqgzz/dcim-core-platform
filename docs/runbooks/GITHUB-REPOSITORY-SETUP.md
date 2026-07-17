@@ -49,7 +49,7 @@ Enable:
 After the bootstrap PR has run once, select these required checks by their exact job names:
 
 - `preflight`;
-- `gitleaks`;
+- `public-safety` (job ini mencakup project-file scan dan full-history gitleaks);
 - `dependency-review`.
 
 ### Solo-Development review setting

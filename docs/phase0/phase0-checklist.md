@@ -5,7 +5,7 @@
 - [x] Repository inventory dan bounded history review dibuat.
 - [x] Charter, scope, limitations, roadmap, dan data boundary terdokumentasi.
 - [x] License tetap open decision; tidak ada `LICENSE` ditambahkan.
-- [ ] Owner memverifikasi branch protection/required checks.
+- [x] Owner mengaktifkan dan memverifikasi `main-development-gate` ruleset serta required checks.
 
 ## Safety dan architecture
 
