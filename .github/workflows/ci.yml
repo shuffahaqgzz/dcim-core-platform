@@ -27,5 +27,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run public-safe bootstrap gates
-        run: make preflight
+      - name: Compile-check Python
+        run: make compile
+
+      - name: Run synthetic-only Phase 0 gates
+        run: make phase0-check
