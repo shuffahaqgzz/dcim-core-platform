@@ -36,6 +36,12 @@ class WorkflowSafetyTests(unittest.TestCase):
         self.assertIn("make phase0-check", text)
         self.assertNotIn("ssh ", text.lower())
 
+    def test_dependency_review_is_fail_closed(self) -> None:
+        text = (WORKFLOWS / "dependency-review.yml").read_text(encoding="utf-8")
+        self.assertIn("actions/dependency-review-action@", text)
+        self.assertNotIn("if: steps.dependency-graph", text)
+        self.assertNotIn("Skipping dependency review", text)
+
 
 if __name__ == "__main__":
     unittest.main()
