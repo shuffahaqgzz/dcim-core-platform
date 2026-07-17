@@ -8,7 +8,7 @@ Evidence harus public-safe, reproducible, dan tidak berisi raw scanner finding/v
 | Unit tests | `make test` | PASS, 36 tests |
 | Contract/JSON | `make validate-json` | PASS, 12 JSON files / 6 event fixtures |
 | Fixture inventory | `make validate-fixtures` | PASS, 9 mandatory fixture classes |
-| Public safety | `make public-safety` | PASS pada working tree, 122 project files; mencakup 3 owner-WIP untracked files yang tidak masuk PR; exact commit-tree run pending |
+| Public safety | `make public-safety` | PASS pada exact commit tree `11a38b6`, 119 files; 3 owner-WIP untracked files tidak masuk PR |
 | Markdown local links | `make markdown-links` | PASS, 33 local links |
 | Aggregate preflight | `make preflight` | PASS, 2026-07-17 |
 | Secret history | `.github/workflows/security-scan.yml` full-history gitleaks | Pending remote CI |
@@ -16,3 +16,5 @@ Evidence harus public-safe, reproducible, dan tidak berisi raw scanner finding/v
 | Migration/recovery | No persistent data/application deployment pada Phase 0 | Not applicable |
 
 Repository inventory: [preflight report](repository-preflight-report.md). Threat evidence: [Phase 0 threat model](../security/threat-model-phase0.md).
+
+Detailed reproducible record: [Phase 0 safety baseline evidence](../evidence/2026-07-17-phase0-safety-baseline.md).
