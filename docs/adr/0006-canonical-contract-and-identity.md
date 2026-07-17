@@ -1,4 +1,4 @@
-# ADR-0006: Canonical Event Contract and Stable Identity
+# ADR-0006: Canonical Event Contract dan Stable Identity
 
 - Status: Accepted
 - Date: 2026-07-16
@@ -6,17 +6,33 @@
 
 ## Context
 
-Multiple sources represent the same equipment with inconsistent names and mutable addresses. Without a canonical envelope and stable identity, correlation, lineage, replay, and CMDB context become unreliable.
+Banyak source merepresentasikan equipment yang sama dengan inconsistent name dan mutable address. Tanpa canonical envelope dan stable identity, correlation, lineage, replay, serta CMDB context menjadi tidak reliable.
 
 ## Decision
 
-Use JSON Schema for external/API event contracts. An internal Avro contract is permitted only with a versioned mapping. Events include unique ID, UTC event/observation timestamps, source, event type, priority, correlation ID, payload, enrichment, validation, and lineage.
+Gunakan JSON Schema untuk external/API event contract. Internal Avro contract hanya diizinkan dengan versioned mapping. Event mencakup unique ID, UTC event/observation timestamp, source, event type, priority, correlation ID, payload, enrichment, validation, dan lineage.
 
-Asset identity uses native UUID or manufacturer plus serial. CI identity uses source system plus native device ID/UUID. Hostname, FQDN, and IP are time-bounded aliases with source confidence and collision handling; IP is never a primary identity.
+Asset identity memakai native UUID atau manufacturer plus serial. CI identity memakai source system plus native device ID/UUID. Hostname, FQDN, dan IP merupakan time-bounded alias dengan source confidence dan collision handling; IP tidak pernah menjadi primary identity.
 
 ## Consequences
 
-- Producers and consumers must pass contract and compatibility tests.
-- Invalid events receive an explicit DLQ/quarantine reason and disposition.
-- Alias history and identity collisions need dedicated tests and operator visibility.
-- Persisted contract changes require migration and rollback planning.
+- Producer dan consumer wajib lulus contract/compatibility tests.
+- Invalid event menerima explicit DLQ/quarantine reason dan disposition.
+- Alias history dan identity collision memerlukan dedicated tests serta operator visibility.
+- Persisted contract change memerlukan migration dan rollback planning.
+
+## Alternatives
+
+Hostname/FQDN/IP sebagai primary identity ditolak karena mutable/collision-prone. Vendor-specific contract tanpa canonical mapping ditolak.
+
+## Security Impact
+
+Stable identity memperbaiki audit/correlation tetapi identifier asli tetap Restricted. Public fixture wajib synthetic dan alias history tidak boleh mengungkap topology.
+
+## Operational Impact
+
+Producer/consumer, Asset Repository, CMDB, dan API wajib konsisten pada identity/collision/lineage semantics serta versioned migration.
+
+## Revalidation Trigger
+
+Contract/schema/persistence change, new source identity model, collision evidence, atau migration incompatibility.

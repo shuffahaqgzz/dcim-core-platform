@@ -1,0 +1,7 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "SYNTHETIC-INVALID-ID",
+  "event_type": "synthetic.invalid",
+  "expected_disposition": "quarantine",
+  "expected_reason": "missing required envelope fields"
+}

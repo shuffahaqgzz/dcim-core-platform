@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "55555555-5555-4555-8555-555555555555",
+  "occurred_at": "2026-07-16T00:20:00Z",
+  "observed_at": "2026-07-16T00:20:04Z",
+  "source": {"system": "synthetic-lab", "instance": "nvr-001.example.invalid", "connector": "isapi-fixture", "transport": "rest", "native_event_id": "SYNTHETIC-NVR-0001"},
+  "event_type": "nvr.camera.health",
+  "priority": "P2",
+  "correlation_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  "payload": {"camera_name": "GENERIC-CAMERA-01", "status": "degraded", "metadata_only": true},
+  "enrichment": {"validation_status": "accepted", "lineage": [{"step": "fixture-load", "at": "2026-07-16T00:20:04Z", "result": "accepted"}], "asset_identity": "ExampleVendor:SYNTHETIC-NVR-0001", "ci_identity": "synthetic-lab:nvr-001", "quality_flags": []}
+}

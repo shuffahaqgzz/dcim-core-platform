@@ -1,58 +1,60 @@
 # DCIM Core Platform
 
-Public development repository for the **DCIM Core Platform**. The current milestone is **Dev Platform Bootstrap v0.1**: prove compact deployability for the major platform components and one integrated P1/P2 vertical slice. This repository does **not** claim Production readiness, high availability, SLA compliance, or safe control of OT/IT equipment.
+Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset/CMDB context, analytics, advisory workflow, SIEM/SOAR boundary, dan NOC-oriented Dashboard/API.
 
-## Current decision
+## Status saat ini
 
-- Gate: **CONDITIONAL GO**; maturity: **prototype/alpha**.
-- Operator model: solo Development, controlled handover, multi-team Staging, governed Production.
-- Development target: Ubuntu Server 24.04 VM, 32 vCPU, 64 GB RAM, 500 GB SSD, 24 GB VRAM, 1 Gbps.
-- Orchestration: Docker Compose profiles for Development; Kubernetes is deferred.
-- State and messaging: PostgreSQL, Redis, single-broker Kafka KRaft in Development.
-- Observability and UX: Prometheus/Grafana plus a NOC-oriented Web Dashboard/API.
-- Automation: notification, ticket draft, approval simulation, dry-run, or mock action only.
-- Hermes: read-only, non-blocking shadow mode after the data-pipeline gate.
+- Phase: **Phase 0 — Repository Safety, Governance, dan Dev Entry Readiness**.
+- Maturity: **Prototype/Alpha**; bukan Production-ready.
+- Owner: `shuffahaqgzz`.
+- Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
+- Next milestone setelah owner menerima Phase 0: **Phase 1 compact infrastructure foundation**. Jangan menjalankan Phase 1 tanpa instruksi baru.
 
-The sanitized authoritative development summary is in [`docs/baseline/DEVELOPMENT-BASELINE.md`](docs/baseline/DEVELOPMENT-BASELINE.md). Open conditions are tracked in [`docs/governance/CONDITIONS-REGISTER.md`](docs/governance/CONDITIONS-REGISTER.md).
-The executable 10-day plan is in [`docs/plan/DEV-BOOTSTRAP-V0.1.md`](docs/plan/DEV-BOOTSTRAP-V0.1.md), and owner-only GitHub settings are in [`docs/runbooks/GITHUB-REPOSITORY-SETUP.md`](docs/runbooks/GITHUB-REPOSITORY-SETUP.md).
+## Public code, private runtime
 
-## Public-code / private-runtime boundary
+Repository hanya menerima generic code/schema/template, synthetic fixture, dan reviewed public-safe documentation/evidence. Credential, endpoint, source identity, topology, raw payload/log/capture/dump, certificate, screenshot Production, authorization record, serta runtime data wajib private dan di luar Git.
 
-Allowed here: generic source code, generic schemas, synthetic fixtures, sanitized examples and public-safe evidence.
+**Security warning:** jangan membuka issue/PR atau mengirim prompt yang memuat secret atau operational evidence. Phase 0 dilarang mengakses source Production. Connector aktif, deployment application stack, self-hosted runner, Hermes integration, dan direct device/OT action tidak tersedia.
 
-Never commit: live endpoints, IP addresses, hostnames, serial numbers, rack/site topology, credentials, SNMP community strings, raw payloads, packet captures, logs, database dumps, certificates, keys, tokens, camera/NVR details, unredacted screenshots, or prompts containing operational evidence. See [`DATA-HANDLING.md`](DATA-HANDLING.md).
+## Local Phase 0 validation
 
-## Quick start
+Requires Python 3.12-compatible standard library dan GNU Make; tidak ada package install atau network call.
 
 ```bash
-git clone https://github.com/shuffahaqgzz/dcim-core-platform.git
-cd dcim-core-platform
-./scripts/bootstrap-dev.sh
-make preflight
+make phase0-check
 ```
 
-`bootstrap-dev.sh` prepares only a local, public-safe workspace. It does not connect to office/Production systems and does not install platform services.
+Gate individual: `make compile`, `make test`, `make validate-json`, `make validate-fixtures`, `make public-safety`, dan `make markdown-links`.
 
-## Repository map
+## Repository layout
 
 ```text
-.agents/skills/       repository-scoped Codex skills
-.codex/               Codex project config and subagents
-.github/              pull-request templates and CI guardrails
-connectors/           read-only connector implementations
-contracts/            API and event contract notes
-schemas/              JSON Schemas
-fixtures/synthetic/   public-safe fixtures only
-services/             platform service boundaries
-platform/             infrastructure and Compose implementation
-web/                  NOC-oriented UI
-scripts/              local/CI verification tools
-tests/                safety and contract tests
-docs/                 baseline, ADRs, task plan, evidence and runbooks
+.github/              PR/issue templates dan synthetic-only CI
+connectors/           future read-only connector boundaries
+contracts/, schemas/  versioned data contracts
+fixtures/synthetic/   public-safe fictional fixtures
+scripts/, tests/      Phase 0 automation dan verification
+platform/, deploy/    future compact Development foundation
+services/, web/       component boundaries
+docs/adr/             architecture decisions
+docs/architecture/    runtime/data-flow design
+docs/security/        policy, threat model, dan stop controls
+docs/phase0/          preflight, gate, evidence, dan handover
 ```
 
-## Contribution and license status
+## Governance dan security index
 
-Development is currently owner-led. Every change goes through a focused branch, evidence-producing checks, and a pull request. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`AGENTS.md`](AGENTS.md).
+- [Project Charter](PROJECT-CHARTER.md)
+- [Development Scope](SCOPE-DEV.md)
+- [Known Limitations](KNOWN-LIMITATIONS.md)
+- [Roadmap](ROADMAP.md)
+- [Development Baseline](docs/baseline/DEVELOPMENT-BASELINE.md)
+- [Data Handling](DATA-HANDLING.md) dan [Security Policy](SECURITY.md)
+- [ADR directory](docs/adr/) dan [Open Decisions](docs/governance/OPEN-DECISIONS.md)
+- [Runtime Plane Separation](docs/architecture/runtime-plane-separation.md)
+- [Read-Only Connector Policy](docs/security/read-only-connector-policy.md)
+- [Phase 0 Threat Model](docs/security/threat-model-phase0.md)
+- [Phase 0 Checklist](docs/phase0/phase0-checklist.md), [Dev Entry Gate](docs/phase0/dev-entry-gate.md), dan [Evidence Index](docs/phase0/evidence-index.md)
+- [Staging Handover Contract](docs/phase0/staging-handover-contract.md)
 
-No open-source license has been selected yet. The repository is publicly visible, but reuse and external contribution terms remain undefined until the owner closes the license decision. See [`docs/governance/LICENSE-DECISION.md`](docs/governance/LICENSE-DECISION.md).
+No open-source license telah dipilih. Public visibility tidak memberikan reuse rights; OD-06 tetap OPEN.

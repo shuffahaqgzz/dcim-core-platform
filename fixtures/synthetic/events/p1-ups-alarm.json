@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "33333333-3333-4333-8333-333333333333",
+  "occurred_at": "2026-07-16T00:10:00Z",
+  "observed_at": "2026-07-16T00:10:02Z",
+  "source": {"system": "synthetic-lab", "instance": "ups-001.example.invalid", "connector": "snmpv3-fixture", "transport": "snmpv3", "native_event_id": "SYNTHETIC-UPS-0001"},
+  "event_type": "ups.battery.alarm",
+  "priority": "P1",
+  "correlation_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  "payload": {"metric": "battery_charge_percent", "value": 18, "unit": "percent", "ip_address": "192.0.2.31"},
+  "enrichment": {"validation_status": "accepted", "lineage": [{"step": "fixture-load", "at": "2026-07-16T00:10:02Z", "result": "accepted"}], "asset_identity": "ExampleVendor:SYNTHETIC-UPS-0001", "ci_identity": "synthetic-lab:ups-001", "quality_flags": []}
+}

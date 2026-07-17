@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "66666666-6666-4666-8666-666666666666",
+  "occurred_at": "2026-07-16T00:25:00Z",
+  "observed_at": "2026-07-16T00:25:01Z",
+  "source": {"system": "synthetic-lab", "instance": "server-001.example.invalid", "connector": "metrics-fixture", "transport": "fixture", "native_event_id": "SYNTHETIC-METRIC-0001"},
+  "event_type": "server.capacity.sample",
+  "priority": "P2",
+  "correlation_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  "payload": {"cpu_used_percent": 42.5, "memory_used_percent": 61.0, "sample_window_seconds": 60},
+  "enrichment": {"validation_status": "accepted", "lineage": [{"step": "fixture-load", "at": "2026-07-16T00:25:01Z", "result": "accepted"}], "asset_identity": "ExampleVendor:SYNTHETIC-SERVER-0001", "ci_identity": "synthetic-lab:server-001", "quality_flags": []}
+}

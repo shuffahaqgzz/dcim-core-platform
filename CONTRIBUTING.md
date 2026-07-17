@@ -1,25 +1,29 @@
-# Contributing
+# Kontribusi
 
-The project is in owner-led prototype/alpha Development. External contribution terms remain limited until a license is selected.
+Project berada pada Prototype/Alpha Development yang dipimpin owner. Ketentuan kontribusi eksternal tetap terbatas sampai license dipilih.
 
-## Before starting
+Branch memakai `feat/<scope>`, `fix/<scope>`, `docs/<scope>`, `chore/<scope>`, atau `adr/<decision>`. Commit memakai Conventional Commits dengan imperative subject. Jangan force-push atau merge langsung ke `main` tanpa approval owner.
 
-1. Read `AGENTS.md`, `DATA-HANDLING.md`, the development baseline, and relevant ADRs.
-2. Create or link a GitHub issue with explicit acceptance criteria.
-3. Confirm that the task does not require live office/Production data.
-4. For an unresolved architectural choice, submit an ADR before implementation.
+## Sebelum mulai
 
-## Local verification
+1. Baca `AGENTS.md`, `DATA-HANDLING.md`, Development baseline, dan ADR terkait.
+2. Buat atau tautkan GitHub issue dengan acceptance criteria eksplisit.
+3. Pastikan task tidak memerlukan live office/Production data.
+4. Untuk unresolved architecture choice, ajukan ADR sebelum implementasi.
+
+## Verifikasi lokal
 
 ```bash
 ./scripts/bootstrap-dev.sh
 make preflight
 ```
 
-Component-specific test commands must be documented in the nearest README and in the pull request.
+Perintah test component-specific wajib didokumentasikan pada README terdekat dan pull request.
 
-## Pull requests
+## Pull request
 
-Keep one coherent concern per pull request. Include scope/out-of-scope, linked issue or ADR, commands and results, data-handling declaration, migration/recovery impact, and known limitations.
+Pertahankan satu concern koheren per pull request. Sertakan scope/out-of-scope, linked issue/ADR, command/result, data-handling declaration, migration/recovery impact, dan known limitations.
 
-The owner may mark a Development result `DEV-APPROVED` only after required evidence exists. That status is not Staging or Production approval.
+Fixture wajib sepenuhnya synthetic. Setiap perubahan behavior atau decision memperbarui dokumentasi. Jalankan unit/contract/integration test yang relevan, secret/public-safety scan, dependency/license review, serta `make preflight`. Pertimbangkan compatibility, migration, dan rollback.
+
+Owner hanya boleh memberi `DEV-APPROVED` setelah required evidence tersedia. Status tersebut bukan Staging atau Production approval.

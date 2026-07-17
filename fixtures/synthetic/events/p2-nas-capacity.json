@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "44444444-4444-4444-8444-444444444444",
+  "occurred_at": "2026-07-16T00:15:00Z",
+  "observed_at": "2026-07-16T00:15:03Z",
+  "source": {"system": "synthetic-lab", "instance": "nas-001.example.invalid", "connector": "snmpv3-fixture", "transport": "snmpv3", "native_event_id": "SYNTHETIC-NAS-0001"},
+  "event_type": "storage.capacity.utilization",
+  "priority": "P2",
+  "correlation_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  "payload": {"pool": "synthetic-pool-01", "used_percent": 71.2, "capacity_gib": 4096},
+  "enrichment": {"validation_status": "accepted", "lineage": [{"step": "fixture-load", "at": "2026-07-16T00:15:03Z", "result": "accepted"}], "asset_identity": "ExampleVendor:SYNTHETIC-NAS-0001", "ci_identity": "synthetic-lab:nas-001", "quality_flags": []}
+}

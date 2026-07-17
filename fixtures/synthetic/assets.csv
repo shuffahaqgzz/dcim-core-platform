@@ -1,0 +1,3 @@
+asset_id,manufacturer,serial_number,hostname,ip_address,location
+SYNTHETIC-ASSET-0001,ExampleVendor,SYNTHETIC-SERIAL-0001,server-001.example.com,198.51.100.41,GENERIC-LOCATION-01
+SYNTHETIC-ASSET-0002,ExampleVendor,SYNTHETIC-SERIAL-0002,nas-001.example.com,203.0.113.42,GENERIC-LOCATION-02

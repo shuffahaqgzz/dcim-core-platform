@@ -1,4 +1,4 @@
-# ADR-0004: Pinned Read-only Integration Plane
+# ADR-0004: Pinned Read-Only Integration Plane
 
 - Status: Accepted
 - Date: 2026-07-16
@@ -6,17 +6,33 @@
 
 ## Context
 
-Some Development validation may eventually require office/Production telemetry. Mutable Development code or broad credentials would create unacceptable source and data risk.
+Sebagian Development validation mungkin kelak memerlukan office/Production telemetry. Mutable Development code atau broad credential menciptakan source/data risk yang tidak dapat diterima.
 
 ## Decision
 
-Any connected integration is a separately promoted DEV-INTEGRATION-RO plane using pinned artifacts, dedicated read-only identities, restricted routes and egress, private runtime storage, polling ceilings, source-impact metrics, audit metadata, and an immediate kill switch. CI and agent sessions do not connect to live sources.
+Setiap connected integration merupakan DEV-INTEGRATION-RO plane yang dipromosikan terpisah dengan pinned artifact, dedicated read-only identity, restricted route/egress, private runtime storage, polling ceiling, source-impact metric, audit metadata, dan immediate kill switch. CI dan agent session tidak terhubung ke live source.
 
-Each connector exposes only allowlisted read methods and includes negative tests proving prohibited operations are unavailable.
+Setiap connector hanya mengekspos allowlisted read method dan memiliki negative tests yang membuktikan prohibited operation tidak tersedia.
 
 ## Consequences
 
-- Source authorization and environment separation are prerequisites, not later hardening.
-- Integration feedback is slower because promotion is explicit.
-- Private operational runbooks/evidence are required outside this repo.
-- A write-capable path is a separate governed exception and is not part of this milestone.
+- Source authorization dan environment separation merupakan prerequisite, bukan later hardening.
+- Integration feedback lebih lambat karena promotion eksplisit.
+- Private operational runbook/evidence diperlukan di luar repository.
+- Write-capable path merupakan governed exception terpisah dan bukan bagian milestone ini.
+
+## Alternatives
+
+Mutable code pada connected plane, shared credential/network, dan live-source CI ditolak. Simulator/synthetic tetap default sebelum authorization gate.
+
+## Security Impact
+
+Least privilege, exact read allowlist, egress restriction, negative write tests, audit, dan kill switch merupakan entry prerequisites, bukan hardening tambahan.
+
+## Operational Impact
+
+Setiap source memerlukan owner, polling/rate ceiling, maintenance window, expiry, short retention, incident contact, dan disable drill.
+
+## Revalidation Trigger
+
+Source/protocol/firmware/RBAC/network change, authorization expiry, privilege drift, atau source-impact incident.

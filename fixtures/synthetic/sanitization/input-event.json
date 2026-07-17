@@ -1,0 +1,12 @@
+{
+  "hostname": "source-device.example.com",
+  "ip_address": "192.0.2.77",
+  "serial_number": "SYNTHETIC-SERIAL-INPUT",
+  "location": "GENERIC-LOCATION-INPUT",
+  "camera_name": "GENERIC-CAMERA-INPUT",
+  "username": "SYNTHETIC-USER-INPUT",
+  "event_timestamp": "2026-01-01T00:00:00Z",
+  "raw_message": "Synthetic input for sanitizer contract",
+  "url": "https://source-device.example.com/health",
+  "credential_ref": "<REMOVED>"
+}

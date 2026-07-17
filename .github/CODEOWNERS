@@ -1,1 +1,18 @@
+# Default / security / governance
 * @shuffahaqgzz
+/.github/ @shuffahaqgzz
+/docs/security/ @shuffahaqgzz
+/docs/adr/ @shuffahaqgzz
+
+# Future team boundaries; owner remains sole approver during Development.
+/platform/ @shuffahaqgzz
+/deploy/ @shuffahaqgzz
+/connectors/ @shuffahaqgzz
+/contracts/ @shuffahaqgzz
+/services/asset-repository/ @shuffahaqgzz
+/services/cmdb/ @shuffahaqgzz
+/services/analytics/ @shuffahaqgzz
+/services/workflow/ @shuffahaqgzz
+/services/siem-soar/ @shuffahaqgzz
+/services/api/ @shuffahaqgzz
+/web/ @shuffahaqgzz
