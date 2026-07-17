@@ -1,0 +1,28 @@
+name: Feature request
+description: Usulan capability dengan context public-safe dan synthetic saja
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Jangan sertakan secret, endpoint, identifier, topology, raw payload/log, atau screenshot Production.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah
+      description: Jelaskan kebutuhan dengan contoh synthetic.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome dan acceptance criteria
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Public safety
+      options:
+        - label: Issue ini tidak memuat data sensitive atau Production.
+          required: true

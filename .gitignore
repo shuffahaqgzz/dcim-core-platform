@@ -20,23 +20,28 @@
 secrets/
 private/
 credentials/
+certs/
 
 # Production/integration inventories and captures
 inventory/
 inventories/
 source-inventory/
 runtime/
+runtime-data/
 state/
 captures/
 packet-captures/
 dumps/
 backups/
+evidence/private/
+screenshots/private/
 exports/
 recordings/
 *.pcap
 *.pcapng
 *.har
 *.dump
+*.sql
 *.sql.gz
 *.tar.gz
 *.zip
@@ -82,6 +87,10 @@ Thumbs.db
 # Tool state
 .codex/local/
 .codex/state/
+.hermes/
+hermes-state/
+hermes-memory/
+hermes-sessions/
 .terraform/
 *.tfstate
 *.tfstate.*

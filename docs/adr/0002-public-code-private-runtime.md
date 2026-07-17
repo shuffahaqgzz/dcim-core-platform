@@ -6,17 +6,33 @@
 
 ## Context
 
-The repository is public while DCIM sources and operational context can expose credentials, identities, topology, security posture, and sensitive telemetry.
+Repository bersifat public, sementara DCIM source dan operational context dapat mengungkap credential, identity, topology, security posture, serta sensitive telemetry.
 
 ## Decision
 
-Keep generic code, schemas, synthetic fixtures, templates, and sanitized evidence in Git. Keep live endpoints, identities, topology, credentials, raw payloads/logs/captures/dumps, certificates, screenshots, operational prompts, source authorizations, and runtime state outside Git and outside public automation.
+Simpan generic code, schema, synthetic fixture, template, dan sanitized evidence di Git. Live endpoint, identity, topology, credential, raw payload/log/capture/dump, certificate, screenshot, operational prompt, source authorization, serta runtime state wajib di luar Git dan public automation.
 
-CI uses synthetic data and GitHub-hosted runners only. Runtime environment files and volumes are created outside the repository.
+CI hanya memakai synthetic data dan GitHub-hosted runner. Runtime environment file dan volume dibuat di luar repository.
 
 ## Consequences
 
-- Public-safety scanning and manual review are mandatory.
-- Live defects must be reproduced with synthetic/sanitized cases before public discussion.
-- Connected integration and its evidence need a private governed store.
-- Accidental publication is an incident requiring credential rotation and history cleanup.
+- Public-safety scan dan manual review wajib.
+- Live defect wajib direproduksi dengan synthetic/sanitized case sebelum public discussion.
+- Connected integration dan evidence-nya memerlukan private governed store.
+- Accidental publication merupakan incident yang memerlukan credential rotation dan history cleanup.
+
+## Alternatives
+
+Private repository penuh ditolak oleh fixed owner decision. Menaruh sanitized-looking runtime material di public Git tanpa provenance juga ditolak.
+
+## Security Impact
+
+Mengurangi blast radius public disclosure, tetapi tetap bergantung pada automated scan, review, dan private governance yang benar.
+
+## Operational Impact
+
+Runtime/evidence memerlukan private storage, retention, access control, dan incident process terpisah.
+
+## Revalidation Trigger
+
+Perubahan repository visibility, artifact/evidence channel, data classification, atau accidental exposure.
