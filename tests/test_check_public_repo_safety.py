@@ -77,6 +77,58 @@ class RepositorySafetyTests(unittest.TestCase):
         findings = self.scan("config.txt", f"{key}={value}\n".encode())
         self.assertTrue(any(item.rule == "credential-assignment" for item in findings))
 
+    def test_quoted_nested_json_credentials_are_rejected_and_redacted(self) -> None:
+        first_key = "pass" + "word"
+        second_key = "client" + "_secret"
+        first_value = "synthetic-review-value-one"
+        second_value = "synthetic-review-value-two"
+        payload = json.dumps({first_key: first_value, "nested": {second_key: second_value}})
+
+        findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
+        structured = [item for item in findings if item.rule == "structured-credential-field"]
+
+        self.assertEqual(2, len(structured))
+        rendered = json.dumps([repo_safety.asdict(item) for item in structured])
+        self.assertNotIn(first_value, rendered)
+        self.assertNotIn(second_value, rendered)
+
+    def test_quoted_json_credential_placeholder_is_allowed(self) -> None:
+        key = "pass" + "word"
+        payload = json.dumps({key: "<SET_LOCALLY>"})
+        findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
+        self.assertFalse(any(item.rule == "structured-credential-field" for item in findings))
+
+    def test_malformed_structured_data_fails_closed(self) -> None:
+        findings = self.scan("fixtures/synthetic/probe.json", b'{"nested":')
+        self.assertTrue(any(item.rule == "structured-data-parse-error" for item in findings))
+
+    def test_credential_container_with_nonplaceholder_leaf_is_rejected(self) -> None:
+        key = "authoriz" + "ation"
+        value = "synthetic-review-nonplaceholder"
+        payload = json.dumps({key: {"scheme": "Bearer", "value": value}})
+        findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
+        structured = [item for item in findings if item.rule == "structured-credential-field"]
+        self.assertEqual(1, len(structured))
+        self.assertNotIn(value, json.dumps([repo_safety.asdict(item) for item in structured]))
+
+    def test_safe_counter_and_policy_fields_do_not_match_credentials(self) -> None:
+        payload = json.dumps({"token_count": 3, "password_policy": "strong"})
+        findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
+        self.assertFalse(any(item.rule == "structured-credential-field" for item in findings))
+
+    def test_common_key_material_fields_are_rejected_and_redacted(self) -> None:
+        keys = ("private_key", "secret_key", "access_key", "signing_key")
+        values = {key: f"synthetic-review-{key}" for key in keys}
+        findings = self.scan(
+            "fixtures/synthetic/probe.json", json.dumps(values).encode()
+        )
+        structured = [item for item in findings if item.rule == "structured-credential-field"]
+
+        self.assertEqual(len(keys), len(structured))
+        rendered = json.dumps([repo_safety.asdict(item) for item in structured])
+        for value in values.values():
+            self.assertNotIn(value, rendered)
+
     def test_fixture_non_documentation_fqdn_rejected(self) -> None:
         hostname = "device" + ".company.com"
         findings = self.scan("fixtures/synthetic/example.json", f'{{"hostname":"{hostname}"}}'.encode())

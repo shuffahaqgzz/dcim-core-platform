@@ -72,6 +72,82 @@ class SanitizerTests(unittest.TestCase):
         networks = [ipaddress.ip_network(item) for item in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
         self.assertTrue(any(address in network for network in networks))
 
+    def test_non_string_sensitive_identifier_fails_closed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "sensitive identifier must be a string"):
+            sanitize_demo.sanitize({"serial_number": 123456789}, self.salt)
+
+    def test_sensitive_object_key_fails_closed(self) -> None:
+        sensitive_key = "office-node" + ".internal"
+        with self.assertRaisesRegex(ValueError, "object key contains sensitive network identity"):
+            sanitize_demo.sanitize({sensitive_key: "alarm"}, self.salt)
+
+    def test_dynamic_topology_object_key_fails_closed(self) -> None:
+        sensitive_key = "core-" + "switch-review-9001"
+        with self.assertRaisesRegex(ValueError, "object key is not approved"):
+            sanitize_demo.sanitize({sensitive_key: "alarm"}, self.salt)
+
+    def test_unmarked_dynamic_object_key_fails_closed(self) -> None:
+        sensitive_key = "ci-" + "review-9001"
+        with self.assertRaisesRegex(ValueError, "object key is not approved"):
+            sanitize_demo.sanitize({sensitive_key: "alarm"}, self.salt)
+
+    def test_fqdn_shaped_event_type_fails_closed(self) -> None:
+        sensitive_event_type = "server" + ".review-domain.com"
+        with self.assertRaisesRegex(ValueError, "event_type is not approved"):
+            sanitize_demo.sanitize({"event_type": sensitive_event_type}, self.salt)
+
+    def test_fqdn_shaped_schema_version_fails_closed(self) -> None:
+        sensitive_version = "release" + ".review-domain.com"
+        with self.assertRaisesRegex(ValueError, "schema_version is not approved"):
+            sanitize_demo.sanitize({"schema_version": sensitive_version}, self.salt)
+
+    def test_safe_count_and_confidence_fields_remain_legitimate(self) -> None:
+        source = {"token_count": 3, "identity_confidence": 0.9}
+        self.assertEqual(source, sanitize_demo.sanitize(source, self.salt))
+
+    def test_credential_container_is_removed_before_recursion(self) -> None:
+        key = "authoriz" + "ation"
+        source = {key: {"value": "synthetic-review-value", "enabled": True}}
+        output = sanitize_demo.sanitize(source, self.salt)
+        self.assertEqual("<REMOVED>", output[key])
+        self.assertEqual([], sanitize_demo.residual_findings(output))
+
+    def test_sensitive_identifier_container_fails_closed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "sensitive identifier must be a string"):
+            sanitize_demo.sanitize({"serial_number": {"value": 9001}}, self.salt)
+
+    def test_residual_check_rejects_unsanitized_credential_container(self) -> None:
+        key = "authoriz" + "ation"
+        findings = sanitize_demo.residual_findings({key: {"value": "synthetic-review"}})
+        self.assertIn("credential-like field remains", findings)
+
+    def test_preserved_fields_receive_residual_validation(self) -> None:
+        private_address = "10." + "1.2.3"
+        private_host = "device" + ".corp"
+        output = sanitize_demo.sanitize(
+            {
+                "event_type": "server.health.degraded",
+                "status": f"degraded at {private_host} from {private_address}",
+            },
+            self.salt,
+        )
+        findings = sanitize_demo.residual_findings(output)
+        self.assertIn("non-documentation IP remains", findings)
+        self.assertIn("non-documentation FQDN remains", findings)
+
+    def test_cli_does_not_write_output_when_preserved_field_is_sensitive(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "input.json"
+            output_path = Path(directory) / "output.json"
+            private_address = "10." + "1.2.3"
+            input_path.write_text(json.dumps({"status": private_address}), encoding="utf-8")
+            with redirect_stderr(io.StringIO()):
+                result = sanitize_demo.main(
+                    [str(input_path), str(output_path), "--salt", self.salt]
+                )
+            self.assertEqual(1, result)
+            self.assertFalse(output_path.exists())
+
     def test_invalid_json_fails_without_modifying_input(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "input.json"
@@ -109,6 +185,22 @@ class SanitizerTests(unittest.TestCase):
         source = json.loads((fixture_root / "input-event.json").read_text(encoding="utf-8"))
         expected = json.loads((fixture_root / "expected-sanitized-event.json").read_text(encoding="utf-8"))
         self.assertEqual(expected, sanitize_demo.sanitize(source, "phase0-fixture-salt-v1"))
+
+    def test_invalid_fixture_keys_are_approved_for_sanitization(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "synthetic"
+            / "invalid"
+            / "invalid-event.json"
+        )
+        source = json.loads(fixture.read_text(encoding="utf-8"))
+
+        output = sanitize_demo.sanitize(source, self.salt)
+
+        self.assertNotEqual(source["expected_disposition"], output["expected_disposition"])
+        self.assertNotEqual(source["expected_reason"], output["expected_reason"])
+        self.assertEqual([], sanitize_demo.residual_findings(output))
 
 
 if __name__ == "__main__":

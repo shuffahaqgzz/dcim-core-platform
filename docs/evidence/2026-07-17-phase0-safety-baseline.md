@@ -1,5 +1,7 @@
 # Evidence — Phase 0 Safety Baseline
 
+> Historical record, superseded for approval by corrective issue [#3](https://github.com/shuffahaqgzz/dcim-core-platform/issues/3). Independent review found scanner/sanitizer gaps, stale SHA binding, and an incorrect full-history interpretation. Preserve results below as historical evidence; do not use them to close C-02 or grant `DEV-APPROVED`.
+
 - UTC: `2026-07-17T05:42:08Z`
 - Verified implementation/settings commit: `54783927749fb1825c2c3dad4b7bba273ac3e2a5`
 - Branch: `chore/phase-0-safety-baseline`
@@ -27,7 +29,7 @@ Fixture sepenuhnya repository-authored synthetic data. Reserved documentation do
 | Markdown local links | PASS; 33 links |
 | `git check-ignore -v` private/Hermes paths | PASS pada working-tree verification |
 
-Remote draft PR checks PASS: CI preflight, public-safety scanner, full-history gitleaks, dan official pinned dependency-review action. Latest verified dependency-review job menjalankan action secara langsung; tidak ada conditional skip.
+Remote draft PR checks PASS: CI preflight, public-safety scanner, PR-event-range gitleaks, dan official pinned dependency-review action. `fetch-depth: 0` menyediakan history, tetapi pinned action membatasi `pull_request` scan ke PR revision range; actual full-history proof memerlukan separate `workflow_dispatch` terhadap `main`.
 
 Repository setting verification pada `2026-07-17T06:20:12Z`: visibility public; default branch `main`; private vulnerability reporting, secret scanning, push protection, Dependabot alerts, dan Dependabot security updates enabled. Ruleset `main-development-gate` active dan menargetkan `main`, tanpa bypass, dengan PR-only/squash-only, conversation resolution, linear history, deletion/force-push protection, strict up-to-date policy, serta required checks `preflight`, `dependency-review`, dan `public-safety`.
 
@@ -39,7 +41,7 @@ Independent read-only reviews menemukan scanner, sanitizer, evidence-scope, dan 
 
 ## Limitations
 
-- Local `gitleaks` tidak tersedia; remote full-history gitleaks PASS pada PR #2.
-- PR tetap draft dan owner review atas ADR crosswalk, read-only policy, serta open decisions masih required sebelum merge.
+- Local `gitleaks` tidak tersedia; PR #2 hanya membuktikan PR-event revision-range scan.
+- PR #2 kemudian merged sebagai `11fc8c6657e937f4b76ebe10bb35b29e1eb354b0` tanpa recorded GitHub review. Corrective owner decision dan independent review tetap required.
 - Source authorization, effective read-only identity, network separation, retention values, dan owner policy approval tetap future/private conditions.
 - Evidence ini bukan `DEV-APPROVED`, Staging entry, atau Production authorization.

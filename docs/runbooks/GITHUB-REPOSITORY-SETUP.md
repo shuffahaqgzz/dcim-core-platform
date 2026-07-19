@@ -49,8 +49,10 @@ Enable:
 After the bootstrap PR has run once, select these required checks by their exact job names:
 
 - `preflight`;
-- `public-safety` (job ini mencakup project-file scan dan full-history gitleaks);
+- `public-safety` (pada PR, job ini mencakup project-file scan dan PR revision-range gitleaks);
 - `dependency-review`.
+
+Full-history proof merupakan gate terpisah: jalankan `security-scan.yml` melalui `workflow_dispatch` pada `main`, lalu rekam run URL, event, target SHA, dan conclusion. `fetch-depth: 0` saja tidak membuktikan PR event memindai seluruh history.
 
 ### Solo-Development review setting
 
