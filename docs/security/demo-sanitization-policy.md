@@ -16,3 +16,7 @@ Synthetic data adalah pilihan utama. Sanitized snapshot hanya future exception d
 | vendor credential reference | removed |
 
 Salt diberikan saat eksekusi, tidak di-hardcode, tidak di-log, dan tidak dipakai ulang antar release bila linkability tidak dibutuhkan. Correlation harus konsisten dalam satu dataset. Output mendapat automated scan dan manual review; hasil yang masih memuat direct/quasi identifier, small-population topology, atau unique operational pattern wajib ditolak.
+
+Sanitizer wajib fail closed: sensitive identifier non-string ditolak, object key diperiksa sebagai possible identity/topology, dan preserved semantic field tetap menjalani residual IP/FQDN/credential validation. Failure tidak boleh menghasilkan partial output. Automated PASS tidak menggantikan manual second-person review untuk future sanitized snapshot.
+
+`event_type`, `schema_version`, dan object field yang dipreservasi wajib berada pada explicit Phase 0 allowlist yang berasal dari reviewed synthetic contract/fixtures. Field atau event type baru memerlukan synthetic fixture, contract/mapping review, dan sanitizer test sebelum sanitized output dapat diterbitkan; unknown/dynamic object key ditolak.

@@ -18,9 +18,11 @@
 
 ## Evidence dan owner boundary
 
-- [x] Semua local gates final lulus dan evidence index terisi.
-- [x] Remote CI dan full-history gitleaks lulus pada draft PR #2.
-- [ ] Owner menyetujui proposed ADR crosswalk/numbering melalui PR review.
-- [ ] Owner review dan approval sebelum merge.
+- [x] Historical local gates PR #2 lulus; corrective adversarial review kemudian menemukan gap.
+- [x] Remote PR #2 checks lulus untuk PR event range; hasil ini bukan full-history proof.
+- [ ] Corrective local/remote gates lulus pada exact corrective PR head.
+- [x] Actual full-history `workflow_dispatch` terhadap current `main` lulus pada run `29699171363`, target `11fc8c6`.
+- [ ] Owner menyetujui ADR crosswalk/numbering dan read-only policy pada exact corrective PR head.
+- [ ] Independent read-only re-review PASS sebelum corrective merge.
 
 Checklist ini tidak menutup condition register; hanya owner berwenang mengubah status condition.

@@ -19,6 +19,7 @@ from uuid import UUID
 IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 IPV6_RE = re.compile(r"(?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:])")
 FQDN_RE = re.compile(r"(?i)\b(?=[a-z0-9.-]*[a-z])[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+\b")
+INTERNAL_FQDN_RE = re.compile(r"(?i)\b[a-z0-9][a-z0-9.-]*\.(?:local|lan|corp|internal|office|prod)\b")
 HOST_KEYS = {"hostname", "host", "fqdn", "device_name", "instance", "source_instance", "device", "node", "target"}
 IP_KEYS = {"ip", "ip_address", "address", "target_ip"}
 SERIAL_KEYS = {"serial", "serial_number", "asset_tag"}
@@ -31,6 +32,112 @@ URL_KEYS = {"url", "uri", "endpoint", "base_url"}
 CREDENTIAL_KEYS = {"credential", "credential_ref", "credential_reference", "password", "token", "secret", "community", "api_key"}
 PRESERVE_KEYS = {"event_type", "schema_version", "priority", "connector", "transport", "metric", "status", "validation_status", "step", "result", "unit"}
 UUID_KEYS = {"event_id", "correlation_id"}
+PRESERVED_DOTTED_IDENTIFIERS = {"event_type", "schema_version"}
+APPROVED_EVENT_TYPES = {
+    "network.interface.utilization",
+    "nvr.camera.health",
+    "server.capacity.sample",
+    "server.health.degraded",
+    "storage.capacity.utilization",
+    "synthetic.invalid",
+    "ups.battery.alarm",
+}
+APPROVED_OBJECT_KEYS = {
+    "account",
+    "asset_identity",
+    "at",
+    "building",
+    "camera_name",
+    "capacity_gib",
+    "ci_identity",
+    "component",
+    "compressed_ipv6",
+    "connector",
+    "correlation_id",
+    "cpu_used_percent",
+    "credential_ref",
+    "description",
+    "detail",
+    "device_name",
+    "enrichment",
+    "event_id",
+    "event_timestamp",
+    "event_type",
+    "expected_disposition",
+    "expected_reason",
+    "fqdn",
+    "hardware_serial_code",
+    "health",
+    "host",
+    "hostname",
+    "identity_confidence",
+    "instance",
+    "interface_alias",
+    "ip_address",
+    "lineage",
+    "location",
+    "memory_used_percent",
+    "message",
+    "metadata_only",
+    "metric",
+    "native_event_id",
+    "nested",
+    "network_note",
+    "node",
+    "note",
+    "nvr_name",
+    "observed_at",
+    "occurred_at",
+    "origin",
+    "payload",
+    "pool",
+    "priority",
+    "quality_flags",
+    "rack",
+    "raw_message",
+    "result",
+    "room",
+    "sample_window_seconds",
+    "schema_version",
+    "serial_number",
+    "site",
+    "source",
+    "source_instance",
+    "status",
+    "step",
+    "system",
+    "target",
+    "target_ip",
+    "timestamp",
+    "token_count",
+    "transport",
+    "unit",
+    "unknown_nested",
+    "updated_at",
+    "uri",
+    "url",
+    "used_percent",
+    "user",
+    "username",
+    "utilization_percent",
+    "validation_status",
+    "value",
+    "vendor_auth_token_value",
+}
+APPROVED_OBJECT_KEYS |= (
+    HOST_KEYS
+    | IP_KEYS
+    | SERIAL_KEYS
+    | LOCATION_KEYS
+    | CAMERA_KEYS
+    | ACCOUNT_KEYS
+    | TIMESTAMP_KEYS
+    | MESSAGE_KEYS
+    | URL_KEYS
+    | CREDENTIAL_KEYS
+    | PRESERVE_KEYS
+    | UUID_KEYS
+)
 DOC_NETWORKS = tuple(ipaddress.ip_network(item) for item in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24", "2001:db8::/32"))
 
 
@@ -93,12 +200,131 @@ def normalized_key(key: str) -> str:
     return re.sub(r"[^a-z0-9]", "", key.lower())
 
 
+def credential_like_key(key: str) -> bool:
+    normalized = normalized_key(key)
+    exact = {
+        "apikey",
+        "accesskey",
+        "auth",
+        "authorization",
+        "community",
+        "communitystring",
+        "credential",
+        "credentials",
+        "credentialref",
+        "credentialreference",
+        "password",
+        "privatekey",
+        "passwd",
+        "pwd",
+        "secret",
+        "secretkey",
+        "signingkey",
+        "token",
+    }
+    suffixes = (
+        "accesstoken",
+        "accesskey",
+        "apikey",
+        "authtoken",
+        "authorization",
+        "clientsecret",
+        "communitystring",
+        "credentialref",
+        "credentialreference",
+        "idtoken",
+        "password",
+        "passwordvalue",
+        "privatekey",
+        "refreshtoken",
+        "secretvalue",
+        "secretkey",
+        "signingkey",
+        "tokenvalue",
+    )
+    return normalized in exact or normalized.endswith(suffixes)
+
+
+def sensitive_string_key(key: str) -> bool:
+    lowered = key.lower()
+    normalized = normalized_key(key)
+    return (
+        lowered in UUID_KEYS
+        or lowered in HOST_KEYS
+        or lowered in IP_KEYS
+        or lowered in SERIAL_KEYS
+        or lowered in LOCATION_KEYS
+        or lowered in CAMERA_KEYS
+        or lowered in ACCOUNT_KEYS
+        or lowered in TIMESTAMP_KEYS
+        or lowered in MESSAGE_KEYS
+        or lowered in URL_KEYS
+        or lowered in {"system", "native_event_id", "interface_alias", "pool", "component"}
+        or normalized.endswith(
+            (
+                "identity",
+                "nativeid",
+                "deviceid",
+                "sourceid",
+                "assetid",
+                "hostname",
+                "fqdn",
+                "sourceinstance",
+                "devicename",
+                "serial",
+                "serialcode",
+                "serialnumber",
+                "assettag",
+            )
+        )
+    )
+
+
+def network_identity_findings(value: str, *, allow_dotted_identifier: bool = False) -> list[str]:
+    findings: list[str] = []
+    for pattern in (IP_RE, IPV6_RE):
+        for candidate in pattern.findall(value):
+            try:
+                address = ipaddress.ip_address(candidate)
+            except ValueError:
+                continue
+            if not any(address in network for network in DOC_NETWORKS):
+                findings.append("non-documentation IP remains")
+    if INTERNAL_FQDN_RE.search(value):
+        findings.append("non-documentation FQDN remains")
+    elif not allow_dotted_identifier:
+        for hostname in FQDN_RE.findall(value):
+            if not hostname.lower().endswith((".example.com", ".example.net", ".example.org", ".example.invalid")):
+                findings.append("non-documentation FQDN remains")
+    return findings
+
+
+def validate_object_key(key: object) -> str:
+    if not isinstance(key, str):
+        raise ValueError("object key must be a string")
+    if network_identity_findings(key):
+        raise ValueError("object key contains sensitive network identity")
+    if key not in APPROVED_OBJECT_KEYS and not credential_like_key(key):
+        raise ValueError("object key is not approved for sanitized output")
+    return key
+
+
+def validate_preserved_value(key: str, value: str) -> None:
+    lowered = key.lower()
+    if lowered == "event_type" and value not in APPROVED_EVENT_TYPES:
+        raise ValueError("event_type is not approved for sanitized output")
+    if lowered == "schema_version" and value != "0.1.0":
+        raise ValueError("schema_version is not approved for sanitized output")
+
+
 def sanitize_scalar(key: str, value: Any, salt: str) -> Any:
     lowered = key.lower()
     normalized = normalized_key(key)
-    if lowered in CREDENTIAL_KEYS or any(marker in normalized for marker in ("credential", "password", "passwd", "token", "secret", "community", "apikey", "authorization")) or normalized.endswith("auth"):
+    if lowered in CREDENTIAL_KEYS or credential_like_key(key):
         return "<REMOVED>"
     if not isinstance(value, str):
+        if sensitive_string_key(key):
+            raise ValueError("sensitive identifier must be a string")
         return value
     if lowered in UUID_KEYS:
         return pseudonymous_uuid(salt, value)
@@ -123,42 +349,58 @@ def sanitize_scalar(key: str, value: Any, salt: str) -> Any:
     if lowered in URL_KEYS:
         return sanitize_url(salt, value)
     if lowered in PRESERVE_KEYS:
+        validate_preserved_value(lowered, value)
         return value
     return sanitize_embedded(salt, value)
 
 
 def residual_findings(value: Any, key: str = "") -> list[str]:
     findings: list[str] = []
+    if key and credential_like_key(key) and value != "<REMOVED>":
+        findings.append("credential-like field remains")
+    if key and sensitive_string_key(key) and not isinstance(value, str):
+        findings.append("sensitive identifier has an unsafe non-string type")
     if isinstance(value, dict):
         for name, item in value.items():
+            findings.extend(network_identity_findings(str(name)))
             findings.extend(residual_findings(item, str(name)))
         return findings
     if isinstance(value, list):
         for item in value:
             findings.extend(residual_findings(item, key))
         return findings
-    if not isinstance(value, str) or key.lower() in PRESERVE_KEYS:
+    if not isinstance(value, str):
         return findings
     normalized = normalized_key(key)
-    if any(marker in normalized for marker in ("credential", "password", "passwd", "token", "secret", "community", "apikey", "authorization")) and value != "<REMOVED>":
+    if credential_like_key(key) and value != "<REMOVED>":
         findings.append("credential-like field remains")
-    for pattern in (IP_RE, IPV6_RE):
-        for candidate in pattern.findall(value):
-            try:
-                address = ipaddress.ip_address(candidate)
-            except ValueError:
-                continue
-            if not any(address in network for network in DOC_NETWORKS):
-                findings.append("non-documentation IP remains")
-    for hostname in FQDN_RE.findall(value):
-        if not hostname.lower().endswith((".example.com", ".example.net", ".example.org", ".example.invalid")):
-            findings.append("non-documentation FQDN remains")
+    allow_dotted_identifier = False
+    if key.lower() in PRESERVED_DOTTED_IDENTIFIERS:
+        try:
+            validate_preserved_value(key, value)
+        except ValueError:
+            findings.append("preserved semantic field is not approved")
+        else:
+            allow_dotted_identifier = True
+    findings.extend(
+        network_identity_findings(
+            value,
+            allow_dotted_identifier=allow_dotted_identifier,
+        )
+    )
     return findings
 
 
 def sanitize(value: Any, salt: str, key: str = "") -> Any:
+    if key and credential_like_key(key):
+        return "<REMOVED>"
+    if key and sensitive_string_key(key) and not isinstance(value, str):
+        raise ValueError("sensitive identifier must be a string")
     if isinstance(value, dict):
-        return {name: sanitize(item, salt, str(name)) for name, item in value.items()}
+        return {
+            validate_object_key(name): sanitize(item, salt, str(name))
+            for name, item in value.items()
+        }
     if isinstance(value, list):
         return [sanitize(item, salt, key) for item in value]
     return sanitize_scalar(key, value, salt)

@@ -7,8 +7,8 @@
 - [ ] Read-only connector policy approved oleh owner.
 - [x] Runtime plane separation documented.
 - [x] Demo sanitization policy implemented.
-- [x] Sanitizer tests pass pada final evidence run.
-- [x] Public safety scanner tests pass pada final evidence run.
+- [ ] Corrective sanitizer adversarial tests pass pada exact corrective PR head.
+- [ ] Corrective public-safety scanner adversarial tests pass pada exact corrective PR head.
 - [x] CI runs only synthetic tests.
 - [x] No self-hosted runner pada tracked workflow.
 - [x] Threat model complete.
@@ -16,6 +16,8 @@
 - [x] License decision explicitly open.
 - [x] Hermes integration remains disabled.
 - [x] Stop conditions documented.
-- [ ] Owner review required before merge.
+- [x] Actual full-history secret scan pada current `main` direkam terpisah dari PR-range scan.
+- [ ] Owner decision untuk ADR crosswalk dan read-only policy direkam pada exact corrective PR head.
+- [ ] Independent read-only re-review PASS sebelum corrective merge.
 
-Gate status: `CONDITIONAL`. Local evidence lulus; remote CI, policy approval, branch settings, dan owner review masih pending. Condition register tetap authoritative.
+Gate status: `NO-GO` untuk approval sampai corrective gates, exact-SHA evidence, owner decision, dan independent review lengkap. C-02 tetap `IN PROGRESS`; condition register tetap authoritative.

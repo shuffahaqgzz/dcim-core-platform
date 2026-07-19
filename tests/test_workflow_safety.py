@@ -26,10 +26,35 @@ class WorkflowSafetyTests(unittest.TestCase):
             for ref in refs:
                 self.assertRegex(ref, r"^[0-9a-f]{40}$", path)
 
+    def test_checkout_never_persists_git_credentials(self) -> None:
+        checkout_re = re.compile(
+            r"uses:\s*actions/checkout@[0-9a-f]{40}[^\n]*\n"
+            r"\s+with:\n"
+            r"(?:(?!\n\s+-\s).)*?"
+            r"persist-credentials:\s*false",
+            re.DOTALL,
+        )
+        for path, text in self.texts():
+            checkouts = len(re.findall(r"uses:\s*actions/checkout@", text))
+            self.assertEqual(checkouts, len(checkout_re.findall(text)), path)
+
     def test_default_permissions_are_read_only(self) -> None:
         for path, text in self.texts():
             self.assertNotIn("write-all", text, path)
-            self.assertRegex(text, r"permissions:\n(?:\s+[a-z-]+:\s+read\n)+", path)
+            blocks = re.findall(
+                r"^permissions:\n((?:\s{2}[a-z-]+:\s+\S+\n)+)",
+                text,
+                re.MULTILINE,
+            )
+            self.assertTrue(blocks, path)
+            values = [
+                value
+                for block in blocks
+                for value in re.findall(r"^\s+[a-z-]+:\s+(\S+)$", block, re.MULTILINE)
+            ]
+            self.assertTrue(values, path)
+            self.assertTrue(all(value == "read" for value in values), path)
+            self.assertNotRegex(text, r"^\s+[a-z-]+:\s+write\s*$", path)
 
     def test_ci_uses_phase0_synthetic_gate(self) -> None:
         text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
@@ -41,6 +66,12 @@ class WorkflowSafetyTests(unittest.TestCase):
         self.assertIn("actions/dependency-review-action@", text)
         self.assertNotIn("if: steps.dependency-graph", text)
         self.assertNotIn("Skipping dependency review", text)
+
+    def test_gitleaks_scope_is_not_misrepresented(self) -> None:
+        text = (WORKFLOWS / "security-scan.yml").read_text(encoding="utf-8")
+        self.assertNotIn("Scan full history for secrets", text)
+        self.assertIn("Scan secrets with event-appropriate history scope", text)
+        self.assertIn("workflow_dispatch:", text)
 
 
 if __name__ == "__main__":

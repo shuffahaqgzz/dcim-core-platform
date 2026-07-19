@@ -44,6 +44,7 @@ ANGLE_PLACEHOLDERS = {"<SET_LOCALLY>", "<REMOVED>", "<REDACTED>", "<MASKED>", "<
 # Reserved for future low-risk, fingerprint-bound rules. Sensitive rules are never allowlistable.
 ALLOWLISTABLE_RULES: set[str] = set()
 APPROVED_PUBLIC_DOMAINS = ("github.com", "openai.com", "json-schema.org")
+STRUCTURED_SUFFIXES = {".json", ".jsonl"}
 
 
 @dataclass(frozen=True)
@@ -119,6 +120,106 @@ def _line(text: str, position: int) -> int:
     return text.count("\n", 0, position) + 1
 
 
+def normalized_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def credential_like_key(value: str) -> bool:
+    normalized = normalized_key(value)
+    exact = {
+        "apikey",
+        "accesskey",
+        "auth",
+        "authorization",
+        "community",
+        "communitystring",
+        "credential",
+        "credentials",
+        "credentialref",
+        "credentialreference",
+        "password",
+        "privatekey",
+        "passwd",
+        "pwd",
+        "secret",
+        "secretkey",
+        "signingkey",
+        "token",
+    }
+    suffixes = (
+        "accesstoken",
+        "accesskey",
+        "apikey",
+        "authtoken",
+        "authorization",
+        "clientsecret",
+        "communitystring",
+        "credentialref",
+        "credentialreference",
+        "idtoken",
+        "password",
+        "passwordvalue",
+        "privatekey",
+        "refreshtoken",
+        "secretvalue",
+        "secretkey",
+        "signingkey",
+        "tokenvalue",
+    )
+    return normalized in exact or normalized.endswith(suffixes)
+
+
+def structured_credential_findings(text: str, rel: str) -> list[Finding]:
+    if Path(rel).suffix.lower() not in STRUCTURED_SUFFIXES:
+        return []
+    try:
+        if rel.lower().endswith(".jsonl"):
+            values = [json.loads(line) for line in text.splitlines() if line.strip()]
+        else:
+            values = [json.loads(text)]
+    except json.JSONDecodeError:
+        return [
+            Finding(
+                "structured-data-parse-error",
+                rel,
+                None,
+                "structured data could not be parsed for credential inspection",
+            )
+        ]
+
+    findings: list[Finding] = []
+
+    def contains_nonplaceholder_scalar(value: object) -> bool:
+        if isinstance(value, dict):
+            return any(contains_nonplaceholder_scalar(item) for item in value.values())
+        if isinstance(value, list):
+            return any(contains_nonplaceholder_scalar(item) for item in value)
+        rendered = "" if value is None else str(value)
+        return not is_placeholder(rendered)
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for name, item in value.items():
+                if credential_like_key(str(name)) and contains_nonplaceholder_scalar(item):
+                    position = text.find(json.dumps(str(name)))
+                    findings.append(
+                        Finding(
+                            "structured-credential-field",
+                            rel,
+                            _line(text, max(position, 0)),
+                            f"structured credential field #{len(findings) + 1} contains a non-placeholder value",
+                        )
+                    )
+                visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    for value in values:
+        visit(value)
+    return findings
+
+
 def text_findings(text: str, rel: str) -> list[Finding]:
     findings: list[Finding] = []
     for rule, label, pattern in HIGH_CONFIDENCE_PATTERNS:
@@ -183,6 +284,7 @@ def text_findings(text: str, rel: str) -> list[Finding]:
                     visit(item)
 
         visit(fixture)
+    findings.extend(structured_credential_findings(text, rel))
     return findings
 
 

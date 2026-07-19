@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 import sys
 
+from check_public_repo_safety import scan_paths
+
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "fixtures" / "synthetic"
 REQUIRED = (
@@ -24,6 +26,28 @@ REQUIRED = (
 DOC_NETWORKS = tuple(ipaddress.ip_network(item) for item in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"))
 
 
+def validate_asset_row(row: dict[str, str]) -> list[str]:
+    errors: list[str] = []
+    if not row.get("asset_id", "").startswith("SYNTHETIC-"):
+        errors.append("asset_id lacks explicit synthetic marker")
+    if not row.get("manufacturer", "").lower().startswith(("example", "synthetic")):
+        errors.append("manufacturer lacks explicit public-safe marker")
+    if not row.get("serial_number", "").startswith("SYNTHETIC-"):
+        errors.append("serial_number lacks explicit synthetic marker")
+    if not row.get("hostname", "").endswith((".example.com", ".example.invalid")):
+        errors.append("hostname is not a documentation domain")
+    if not row.get("location", "").startswith("GENERIC-"):
+        errors.append("location lacks explicit generic marker")
+    try:
+        address = ipaddress.ip_address(row.get("ip_address", ""))
+    except ValueError:
+        errors.append("ip_address is invalid")
+    else:
+        if not any(address in network for network in DOC_NETWORKS):
+            errors.append("ip_address is not a documentation address")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     for relative in REQUIRED:
@@ -34,6 +58,11 @@ def main() -> int:
             json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid JSON {path.relative_to(ROOT)}: {exc}")
+    fixture_paths = sorted(path for path in FIXTURES.rglob("*") if path.is_file())
+    for finding in scan_paths(fixture_paths, ROOT):
+        errors.append(
+            f"public-safety violation {finding.path} [{finding.rule}]; value=<redacted>"
+        )
     assets = FIXTURES / "assets.csv"
     if assets.exists():
         with assets.open(encoding="utf-8", newline="") as handle:
@@ -41,16 +70,9 @@ def main() -> int:
         required_columns = {"asset_id", "manufacturer", "serial_number", "hostname", "ip_address", "location"}
         if not rows or not required_columns.issubset(rows[0]):
             errors.append("assets.csv lacks required columns or rows")
-        for row in rows:
-            if "SYNTHETIC" not in row["serial_number"] or not row["hostname"].endswith(".example.com"):
-                errors.append("assets.csv contains non-synthetic identity")
-            try:
-                address = ipaddress.ip_address(row["ip_address"])
-            except ValueError:
-                errors.append("assets.csv contains invalid IP")
-            else:
-                if not any(address in network for network in DOC_NETWORKS):
-                    errors.append("assets.csv contains non-documentation IP")
+        for row_number, row in enumerate(rows, 2):
+            for error in validate_asset_row(row):
+                errors.append(f"assets.csv row {row_number}: {error}")
     invalid = FIXTURES / "invalid" / "invalid-event.json"
     if invalid.exists():
         data = json.loads(invalid.read_text(encoding="utf-8"))
