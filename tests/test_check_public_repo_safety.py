@@ -98,6 +98,21 @@ class RepositorySafetyTests(unittest.TestCase):
         findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
         self.assertFalse(any(item.rule == "structured-credential-field" for item in findings))
 
+    def test_duplicate_json_credential_keys_cannot_hide_value(self) -> None:
+        key = "pass" + "word"
+        value = "synthetic-review-nonplaceholder"
+        payload = f'{{"{key}":"{value}","{key}":"<REMOVED>"}}'
+
+        findings = self.scan("fixtures/synthetic/probe.json", payload.encode())
+        structured = [
+            item for item in findings if item.rule == "structured-credential-field"
+        ]
+
+        self.assertEqual(1, len(structured))
+        self.assertNotIn(
+            value, json.dumps([repo_safety.asdict(item) for item in structured])
+        )
+
     def test_malformed_structured_data_fails_closed(self) -> None:
         findings = self.scan("fixtures/synthetic/probe.json", b'{"nested":')
         self.assertTrue(any(item.rule == "structured-data-parse-error" for item in findings))
@@ -133,6 +148,29 @@ class RepositorySafetyTests(unittest.TestCase):
         hostname = "device" + ".company.com"
         findings = self.scan("fixtures/synthetic/example.json", f'{{"hostname":"{hostname}"}}'.encode())
         self.assertTrue(any(item.rule == "fixture-fqdn" for item in findings))
+
+    def test_fixture_location_and_manufacturer_require_public_markers(self) -> None:
+        payload = json.dumps(
+            {"location": "Building 1", "manufacturer": "Vendor"}
+        ).encode()
+
+        findings = self.scan("fixtures/synthetic/example.json", payload)
+
+        self.assertEqual(
+            2, len([item for item in findings if item.rule == "fixture-identifier"])
+        )
+
+    def test_duplicate_fixture_keys_fail_closed_before_provenance_collapse(self) -> None:
+        payload = (
+            '{"location":"Building 1","location":"GENERIC-LAB",'
+            '"manufacturer":"Vendor","manufacturer":"ExampleVendor"}'
+        ).encode()
+
+        findings = self.scan("fixtures/synthetic/example.json", payload)
+
+        self.assertTrue(
+            any(item.rule == "duplicate-object-key" for item in findings)
+        )
 
     def test_sensitive_findings_are_never_allowlistable(self) -> None:
         finding = repo_safety.Finding("internal-fqdn", "docs/example.md", 1, "test")

@@ -47,6 +47,10 @@ APPROVED_PUBLIC_DOMAINS = ("github.com", "openai.com", "json-schema.org")
 STRUCTURED_SUFFIXES = {".json", ".jsonl"}
 
 
+class JSONObject(list[tuple[str, object]]):
+    """JSON object retaining every member, including duplicate names."""
+
+
 @dataclass(frozen=True)
 class Finding:
     rule: str
@@ -174,9 +178,13 @@ def structured_credential_findings(text: str, rel: str) -> list[Finding]:
         return []
     try:
         if rel.lower().endswith(".jsonl"):
-            values = [json.loads(line) for line in text.splitlines() if line.strip()]
+            values = [
+                json.loads(line, object_pairs_hook=JSONObject)
+                for line in text.splitlines()
+                if line.strip()
+            ]
         else:
-            values = [json.loads(text)]
+            values = [json.loads(text, object_pairs_hook=JSONObject)]
     except json.JSONDecodeError:
         return [
             Finding(
@@ -190,16 +198,28 @@ def structured_credential_findings(text: str, rel: str) -> list[Finding]:
     findings: list[Finding] = []
 
     def contains_nonplaceholder_scalar(value: object) -> bool:
-        if isinstance(value, dict):
-            return any(contains_nonplaceholder_scalar(item) for item in value.values())
+        if isinstance(value, JSONObject):
+            return any(contains_nonplaceholder_scalar(item) for _name, item in value)
         if isinstance(value, list):
             return any(contains_nonplaceholder_scalar(item) for item in value)
         rendered = "" if value is None else str(value)
         return not is_placeholder(rendered)
 
     def visit(value: object) -> None:
-        if isinstance(value, dict):
-            for name, item in value.items():
+        if isinstance(value, JSONObject):
+            seen_names: set[str] = set()
+            for name, item in value:
+                if name in seen_names:
+                    position = text.find(json.dumps(str(name)))
+                    findings.append(
+                        Finding(
+                            "duplicate-object-key",
+                            rel,
+                            _line(text, max(position, 0)),
+                            "structured object contains a duplicate member name",
+                        )
+                    )
+                seen_names.add(name)
                 if credential_like_key(str(name)) and contains_nonplaceholder_scalar(item):
                     position = text.find(json.dumps(str(name)))
                     findings.append(
@@ -278,6 +298,12 @@ def text_findings(text: str, rel: str) -> list[Finding]:
                     if isinstance(item, str) and any(marker in normalized_name for marker in ("serial", "assettag", "nativeid", "deviceid", "sourceid", "ciidentity")):
                         if not any(marker in item.lower() for marker in ("synthetic", "example", "generic")):
                             findings.append(Finding("fixture-identifier", rel, _line(text, max(text.find(item), 0)), "fixture identity lacks explicit synthetic marker"))
+                    if isinstance(item, str) and normalized_name in {"location", "site", "building", "room", "rack"}:
+                        if not item.lower().startswith("generic"):
+                            findings.append(Finding("fixture-identifier", rel, _line(text, max(text.find(item), 0)), "fixture location lacks explicit generic marker"))
+                    if isinstance(item, str) and normalized_name == "manufacturer":
+                        if not item.lower().startswith(("example", "synthetic")):
+                            findings.append(Finding("fixture-identifier", rel, _line(text, max(text.find(item), 0)), "fixture manufacturer lacks explicit public-safe marker"))
                     visit(item)
             elif isinstance(value, list):
                 for item in value:

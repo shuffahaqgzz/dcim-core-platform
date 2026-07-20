@@ -8,6 +8,7 @@ from contextlib import redirect_stderr
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "sanitize_demo_data.py"
 SPEC = importlib.util.spec_from_file_location("sanitize_demo", SCRIPT)
@@ -36,10 +37,14 @@ class SanitizerTests(unittest.TestCase):
             "serial_number": "REAL-SERIAL-123",
             "url": f"https://{hostname}/health",
             "location": "Private Site Rack 9",
-            "nested": {"camera_name": "Lobby Camera", "raw_message": f"{hostname} at {address} failed"},
-            "unknown_nested": {"origin": hostname, "note": "Confidential project phrase", "network_note": "contact " + "device" + ".company.com", "compressed_ipv6": "fd00" + "::" + "1234"},
-            "vendor_auth_token_value": "synthetic-sensitive-value",
-            "hardware_serial_code": "REAL-NESTED-SERIAL",
+            "payload": {
+                "camera_name": "Lobby Camera",
+                "raw_message": f"{hostname} at {address} failed",
+                "description": "Confidential project phrase",
+                "detail": "contact " + "device" + ".company.com",
+                "message": "fd00" + "::" + "1234",
+                "serial_number": "REAL-NESTED-SERIAL",
+            },
             "credential_ref": "vault://vendor/live",
         }
 
@@ -50,7 +55,7 @@ class SanitizerTests(unittest.TestCase):
         address = "10." + "22.33.44"
         public_host = "device" + ".company.com"
         ipv6 = "fd00" + "::" + "1234"
-        for original in (hostname, address, public_host, ipv6, "Confidential project phrase", "synthetic-sensitive-value", "REAL-SERIAL-123", "REAL-NESTED-SERIAL", "REAL-OFFICE-EVENT-991", "office-source.company.com", "SECRET-SITE-UPLINK", "PRIVATE-NAS-POOL", "Private Site Rack 9", "Lobby Camera"):
+        for original in (hostname, address, public_host, ipv6, "Confidential project phrase", "REAL-SERIAL-123", "REAL-NESTED-SERIAL", "REAL-OFFICE-EVENT-991", "office-source.company.com", "SECRET-SITE-UPLINK", "PRIVATE-NAS-POOL", "Private Site Rack 9", "Lobby Camera"):
             self.assertNotIn(original, rendered)
         self.assertEqual("<REMOVED>", output["credential_ref"])
         self.assertIn(str(output["hostname"]), str(output["url"]))
@@ -75,6 +80,10 @@ class SanitizerTests(unittest.TestCase):
     def test_non_string_sensitive_identifier_fails_closed(self) -> None:
         with self.assertRaisesRegex(ValueError, "sensitive identifier must be a string"):
             sanitize_demo.sanitize({"serial_number": 123456789}, self.salt)
+        with self.assertRaisesRegex(
+            ValueError, "preserved semantic field must be a string"
+        ):
+            sanitize_demo.sanitize({"priority": 1}, self.salt)
 
     def test_sensitive_object_key_fails_closed(self) -> None:
         sensitive_key = "office-node" + ".internal"
@@ -101,9 +110,35 @@ class SanitizerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "schema_version is not approved"):
             sanitize_demo.sanitize({"schema_version": sensitive_version}, self.salt)
 
-    def test_safe_count_and_confidence_fields_remain_legitimate(self) -> None:
-        source = {"token_count": 3, "identity_confidence": 0.9}
+    def test_unapproved_preserved_semantic_values_fail_closed(self) -> None:
+        cases = {
+            "priority": "P9",
+            "transport": "telnet",
+            "validation_status": "approved",
+            "connector": "unreviewed-fixture",
+            "status": "unknown",
+        }
+        for key, value in cases.items():
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(ValueError, f"{key} is not approved"):
+                    sanitize_demo.sanitize({key: value}, self.salt)
+
+    def test_reviewed_numeric_and_boolean_fields_remain_legitimate(self) -> None:
+        source = {"sample_window_seconds": 30, "metadata_only": True}
         self.assertEqual(source, sanitize_demo.sanitize(source, self.salt))
+
+    def test_test_only_object_fields_are_not_publication_allowlisted(self) -> None:
+        for key in (
+            "compressed_ipv6",
+            "hardware_serial_code",
+            "network_note",
+            "token_count",
+            "unknown_nested",
+            "vendor_auth_token_value",
+        ):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(ValueError, "object key is not approved"):
+                    sanitize_demo.sanitize({key: "synthetic-probe"}, self.salt)
 
     def test_credential_container_is_removed_before_recursion(self) -> None:
         key = "authoriz" + "ation"
@@ -124,16 +159,20 @@ class SanitizerTests(unittest.TestCase):
     def test_preserved_fields_receive_residual_validation(self) -> None:
         private_address = "10." + "1.2.3"
         private_host = "device" + ".corp"
-        output = sanitize_demo.sanitize(
-            {
-                "event_type": "server.health.degraded",
-                "status": f"degraded at {private_host} from {private_address}",
-            },
-            self.salt,
-        )
+        output = {
+            "event_type": "server.health.degraded",
+            "status": f"degraded at {private_host} from {private_address}",
+        }
         findings = sanitize_demo.residual_findings(output)
         self.assertIn("non-documentation IP remains", findings)
         self.assertIn("non-documentation FQDN remains", findings)
+
+    def test_preserved_field_with_credential_assignment_fails_closed(self) -> None:
+        credential = "to" + "ken=synthetic-nonplaceholder-value"
+        source = {"status": credential}
+
+        with self.assertRaisesRegex(ValueError, "credential material"):
+            sanitize_demo.sanitize(source, self.salt)
 
     def test_cli_does_not_write_output_when_preserved_field_is_sensitive(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -147,6 +186,36 @@ class SanitizerTests(unittest.TestCase):
                 )
             self.assertEqual(1, result)
             self.assertFalse(output_path.exists())
+
+    def test_cli_preserves_existing_output_when_atomic_replace_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "input.json"
+            output_path = Path(directory) / "output.json"
+            input_path.write_text(
+                json.dumps({"status": "degraded"}), encoding="utf-8"
+            )
+            output_path.write_text("previous-safe-output\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    sanitize_demo.Path,
+                    "replace",
+                    side_effect=OSError("synthetic replace failure"),
+                ),
+                redirect_stderr(io.StringIO()),
+            ):
+                result = sanitize_demo.main(
+                    [str(input_path), str(output_path), "--salt", self.salt]
+                )
+
+            self.assertEqual(1, result)
+            self.assertEqual(
+                "previous-safe-output\n", output_path.read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                ["input.json", "output.json"],
+                sorted(path.name for path in Path(directory).iterdir()),
+            )
 
     def test_invalid_json_fails_without_modifying_input(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
