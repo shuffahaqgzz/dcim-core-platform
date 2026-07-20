@@ -5,6 +5,7 @@
 - Owner: shuffahaqgzz
 - Decision source: owner acceptance in the issue #10 blocker-resolution task
 - Issues: #10, parent #9
+- Clarified by: [ADR-0014](0014-official-release-binary-source-provenance.md)
 
 ## Context
 
@@ -39,10 +40,12 @@ subject to every build, test, evidence, and license constraint in this ADR.
 ## Decision
 
 Permit project-built **derived hardened images** for failing Phase 1 components
-under the constraints below. A derived hardened image rebuilds the exact
-selected upstream release source with only evidence-backed security remediation
-needed to remove blocking findings. It is not an architecture, feature, API,
-schema, or configuration redesign.
+under the constraints below. A derived hardened image uses the exact selected
+upstream release inputs with only evidence-backed security remediation needed to
+remove blocking findings. ADR-0014 accepts immutable official PostgreSQL and
+Kafka release binaries plus checksum-verified source provenance; Grafana OSS and
+PostgreSQL exporter remain full source builds. A derivative is not an
+architecture, feature, API, schema, or configuration redesign.
 
 ### Scope
 
@@ -60,7 +63,8 @@ schema, or configuration redesign.
 
 Each derived image must:
 
-1. start from the exact upstream release tag and immutable source commit;
+1. start from the exact upstream release tag and immutable source commit, using
+   the component-specific source-to-binary contract clarified by ADR-0014;
 2. use digest-pinned base images and build-tool images;
 3. keep a minimal, reviewable patch/dependency delta tied to public vulnerability
    identifiers and fixed versions;

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "recipes_sha256": "02b3cf5841a2d6806f535d98bb835dfb6f124c0783729c555b606a690fdf33ee",
+  "decision": {
+    "owner": "shuffahaqgzz",
+    "date": "2026-07-20",
+    "issue": "#10",
+    "scope": "synthetic dcim-build local Development only",
+    "publication": false,
+    "distribution": false,
+    "od_06": "OPEN"
+  },
+  "dispositions": [
+    {
+      "component": "postgresql",
+      "category": "reciprocal",
+      "reviewed_count": 1,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql",
+      "category": "restricted",
+      "reviewed_count": 25,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql",
+      "category": "unknown",
+      "reviewed_count": 8,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "reciprocal",
+      "reviewed_count": 2,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "restricted",
+      "reviewed_count": 457,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "unknown",
+      "reviewed_count": 266,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "reciprocal",
+      "reviewed_count": 3,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "restricted",
+      "reviewed_count": 369,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "unknown",
+      "reviewed_count": 247,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql-exporter",
+      "category": "unknown",
+      "reviewed_count": 1,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "prometheus",
+      "category": "unknown",
+      "reviewed_count": 1,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "reciprocal",
+      "reviewed_count": 2,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "restricted",
+      "reviewed_count": 457,
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "unknown",
+      "reviewed_count": 266,
+      "disposition": "accepted-local-development-only"
+    }
+  ],
+  "revalidation_triggers": [
+    "license-inventory-change",
+    "recipe-change",
+    "publication-or-distribution-request",
+    "od-06-status-change",
+    "staging-production-or-handover-request"
+  ]
+}

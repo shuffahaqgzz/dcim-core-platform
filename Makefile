@@ -7,6 +7,7 @@ FOUNDATION_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/runtime.env
 FOUNDATION_IMAGE_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/images.env
 FOUNDATION_IMAGE_LOCK := $(DCIM_RUNTIME_ROOT)/dev-build/derived-images-lock.json
 FOUNDATION_IMAGE_RECIPES := deploy/compose/derived-images/recipes.json
+FOUNDATION_LICENSE_DISPOSITIONS := deploy/compose/derived-images/license-dispositions.json
 FOUNDATION_PROFILES := --profile data --profile observability --profile smoke
 FOUNDATION_SERVICES := postgres kafka postgres-exporter kafka-jmx-exporter prometheus grafana
 FOUNDATION_COMPOSE_CMD := DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' docker compose --env-file '$(FOUNDATION_ENV)' --env-file '$(FOUNDATION_IMAGE_ENV)' -f '$(FOUNDATION_COMPOSE)' $(FOUNDATION_PROFILES)
@@ -43,10 +44,10 @@ foundation-artifacts:
 	$(PYTHON) scripts/foundation_artifacts.py --runtime-root '$(DCIM_RUNTIME_ROOT)'
 
 foundation-images-qualify:
-	$(PYTHON) scripts/foundation_images.py --manifest '$(FOUNDATION_IMAGE_RECIPES)' --runtime-root '$(DCIM_RUNTIME_ROOT)'
+	$(PYTHON) scripts/foundation_images.py --manifest '$(FOUNDATION_IMAGE_RECIPES)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)' --runtime-root '$(DCIM_RUNTIME_ROOT)'
 
 foundation-policy: foundation-images-qualify
-	@$(FOUNDATION_COMPOSE_CMD) config --format json | $(PYTHON) scripts/foundation_policy.py --input - --derived-lock '$(FOUNDATION_IMAGE_LOCK)'
+	@$(FOUNDATION_COMPOSE_CMD) config --format json | $(PYTHON) scripts/foundation_policy.py --input - --derived-lock '$(FOUNDATION_IMAGE_LOCK)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
 
 foundation-up: foundation-artifacts foundation-supply-chain foundation-policy
 	$(FOUNDATION_COMPOSE_CMD) up -d --wait --wait-timeout 180 $(FOUNDATION_SERVICES)
@@ -70,7 +71,7 @@ foundation-recovery: foundation-up
 	DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' $(PYTHON) scripts/foundation_smoke.py recovery
 
 foundation-supply-chain: foundation-images-qualify
-	$(PYTHON) scripts/foundation_supply_chain.py --runtime-root '$(DCIM_RUNTIME_ROOT)' --derived-lock '$(FOUNDATION_IMAGE_LOCK)'
+	$(PYTHON) scripts/foundation_supply_chain.py --runtime-root '$(DCIM_RUNTIME_ROOT)' --derived-lock '$(FOUNDATION_IMAGE_LOCK)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
 
 compile:
 	$(PYTHON) -m compileall -q scripts tests

@@ -17,9 +17,21 @@ import urllib.request
 from urllib.parse import urlsplit
 
 try:
-    from scripts.foundation_supply_chain import blocking_counts, validate_license_report, validate_sbom
+    from scripts.foundation_supply_chain import (
+        blocking_counts,
+        review_license_categories,
+        validate_license_disposition_manifest,
+        validate_license_report,
+        validate_sbom,
+    )
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
-    from foundation_supply_chain import blocking_counts, validate_license_report, validate_sbom
+    from foundation_supply_chain import (
+        blocking_counts,
+        review_license_categories,
+        validate_license_disposition_manifest,
+        validate_license_report,
+        validate_sbom,
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +48,12 @@ ENVIRONMENT_KEYS = {
     "kafka": "DCIM_KAFKA_IMAGE",
     "grafana": "DCIM_GRAFANA_IMAGE",
     "postgres-exporter": "DCIM_POSTGRES_EXPORTER_IMAGE",
+}
+LICENSE_COMPONENTS = {
+    "postgres": "postgresql",
+    "kafka": "apache-kafka",
+    "grafana": "grafana-oss",
+    "postgres-exporter": "postgresql-exporter",
 }
 
 
@@ -306,7 +324,12 @@ def scanner_command(
 
 
 def scan_image(
-    component: str, image: str, scanner: str, evidence: Path, cache: Path,
+    component: str,
+    image: str,
+    scanner: str,
+    evidence: Path,
+    cache: Path,
+    license_dispositions: dict[str, object],
 ) -> tuple[dict[str, int], dict[str, object]]:
     archive = evidence / f"{component}.tar"
     run(["docker", "save", "--output", str(archive), image], timeout=900)
@@ -335,12 +358,16 @@ def scan_image(
     license_categories = validate_license_report(
         json.loads((evidence / license_report).read_text(encoding="utf-8"))
     )
+    reviewed_license_categories = review_license_categories(
+        license_dispositions, LICENSE_COMPONENTS[component], license_categories,
+    )
     sbom_components = validate_sbom(
         json.loads((evidence / sbom).read_text(encoding="utf-8"))
     )
     metadata = {
         "license_categories": license_categories,
-        "license_review": "ADR-0013 local Development only; publication prohibited; OD-06 open",
+        "license_disposition": reviewed_license_categories,
+        "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
         "sbom_components": sbom_components,
         "sha256": {
             "vulnerability": sha256_file(evidence / vulnerability),
@@ -351,7 +378,11 @@ def scan_image(
     return counts, metadata
 
 
-def qualify(manifest: dict[str, object], runtime_root: Path) -> list[dict[str, object]]:
+def qualify(
+    manifest: dict[str, object],
+    runtime_root: Path,
+    license_dispositions: dict[str, object],
+) -> list[dict[str, object]]:
     root = external_root(runtime_root) / "dev-build"
     input_root = root / "derived-images/inputs"
     context_root = root / "derived-images/contexts"
@@ -382,7 +413,9 @@ def qualify(manifest: dict[str, object], runtime_root: Path) -> list[dict[str, o
                 raise RuntimeError(f"{component}: required OCI label mismatch: {key}")
         final_tag = f"{recipe['output_repository']}:{recipe['output_tag']}"
         run(["docker", "image", "tag", second_id, final_tag])
-        counts, evidence_metadata = scan_image(component, final_tag, scanner, evidence, cache)
+        counts, evidence_metadata = scan_image(
+            component, final_tag, scanner, evidence, cache, license_dispositions,
+        )
         if any(counts.values()):
             raise RuntimeError(f"{component}: vulnerability gate failed: {counts}")
         records.append({
@@ -406,7 +439,12 @@ def qualify(manifest: dict[str, object], runtime_root: Path) -> list[dict[str, o
     return records
 
 
-def write_lock(records: list[dict[str, object]], manifest_path: Path, runtime_root: Path) -> None:
+def write_lock(
+    records: list[dict[str, object]],
+    manifest_path: Path,
+    license_dispositions_path: Path,
+    runtime_root: Path,
+) -> None:
     root = external_root(runtime_root) / "dev-build"
     environment = runtime_environment(records)
     environment_path = root / "images.env"
@@ -416,9 +454,10 @@ def write_lock(records: list[dict[str, object]], manifest_path: Path, runtime_ro
     )
     environment_path.chmod(0o600)
     lock = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "manifest_sha256": sha256_file(manifest_path),
+        "license_dispositions_sha256": sha256_file(license_dispositions_path),
         "publication": False,
         "images": records,
     }
@@ -427,7 +466,12 @@ def write_lock(records: list[dict[str, object]], manifest_path: Path, runtime_ro
     lock_path.chmod(0o600)
 
 
-def reusable_records(manifest_path: Path, runtime_root: Path) -> list[dict[str, object]] | None:
+def reusable_records(
+    manifest_path: Path,
+    license_dispositions_path: Path,
+    license_dispositions: dict[str, object],
+    runtime_root: Path,
+) -> list[dict[str, object]] | None:
     root = external_root(runtime_root) / "dev-build"
     lock_path = root / "derived-images-lock.json"
     environment_path = root / "images.env"
@@ -440,10 +484,14 @@ def reusable_records(manifest_path: Path, runtime_root: Path) -> list[dict[str, 
         recipes = {str(recipe["component"]): recipe for recipe in manifest["recipes"]}
         lock_upgraded = False
         if (
-            lock.get("schema_version") != 1 or lock.get("publication") is not False
+            lock.get("schema_version") not in (1, 2) or lock.get("publication") is not False
             or lock.get("manifest_sha256") != sha256_file(manifest_path)
             or not isinstance(records, list)
         ):
+            return None
+        if lock.get("schema_version") == 1:
+            lock_upgraded = True
+        elif lock.get("license_dispositions_sha256") != sha256_file(license_dispositions_path):
             return None
         expected_environment = runtime_environment(records)
         actual_environment = dict(
@@ -510,6 +558,9 @@ def reusable_records(manifest_path: Path, runtime_root: Path) -> list[dict[str, 
             actual_license_categories = validate_license_report(
                 json.loads(report_paths["license"].read_text(encoding="utf-8"))
             )
+            reviewed_license_categories = review_license_categories(
+                license_dispositions, LICENSE_COMPONENTS[component], actual_license_categories,
+            )
             actual_sbom_components = validate_sbom(
                 json.loads(report_paths["sbom"].read_text(encoding="utf-8"))
             )
@@ -517,22 +568,28 @@ def reusable_records(manifest_path: Path, runtime_root: Path) -> list[dict[str, 
             if not isinstance(evidence_metadata, dict):
                 evidence_metadata = {
                     "license_categories": actual_license_categories,
-                    "license_review": "ADR-0013 local Development only; publication prohibited; OD-06 open",
+                    "license_disposition": reviewed_license_categories,
+                    "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
                     "sbom_components": actual_sbom_components,
                     "sha256": {name: sha256_file(path) for name, path in report_paths.items()},
                 }
                 record["evidence"] = evidence_metadata
                 lock_upgraded = True
+            elif evidence_metadata.get("license_disposition") is None:
+                evidence_metadata["license_disposition"] = reviewed_license_categories
+                evidence_metadata["license_review"] = "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN"
+                lock_upgraded = True
             expected_hashes = evidence_metadata.get("sha256")
             if (
                 not isinstance(expected_hashes, dict)
                 or evidence_metadata.get("license_categories") != actual_license_categories
+                or evidence_metadata.get("license_disposition") != reviewed_license_categories
                 or evidence_metadata.get("sbom_components") != actual_sbom_components
                 or expected_hashes != {name: sha256_file(path) for name, path in report_paths.items()}
             ):
                 return None
         if lock_upgraded:
-            write_lock(records, manifest_path, runtime_root)
+            write_lock(records, manifest_path, license_dispositions_path, runtime_root)
         return records
     except (OSError, KeyError, TypeError, ValueError, RuntimeError, json.JSONDecodeError):
         return None
@@ -541,6 +598,7 @@ def reusable_records(manifest_path: Path, runtime_root: Path) -> list[dict[str, 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument("--license-dispositions", required=True, type=Path)
     parser.add_argument("--runtime-root", required=True, type=Path)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--force", action="store_true")
@@ -550,6 +608,13 @@ def main() -> int:
         manifest = json.loads(
             arguments.manifest.read_text(encoding="utf-8"),
             object_pairs_hook=unique_object,
+        )
+        license_dispositions = json.loads(
+            arguments.license_dispositions.read_text(encoding="utf-8"),
+            object_pairs_hook=unique_object,
+        )
+        validate_license_disposition_manifest(
+            license_dispositions, sha256_file(arguments.manifest),
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"foundation-images: invalid input: {error}", file=sys.stderr)
@@ -563,10 +628,18 @@ def main() -> int:
         print("foundation-images: manifest PASS")
         return 0
     try:
-        records = None if arguments.force else reusable_records(arguments.manifest, arguments.runtime_root)
+        records = None if arguments.force else reusable_records(
+            arguments.manifest,
+            arguments.license_dispositions,
+            license_dispositions,
+            arguments.runtime_root,
+        )
         if records is None:
-            records = qualify(manifest, arguments.runtime_root)
-            write_lock(records, arguments.manifest, arguments.runtime_root)
+            records = qualify(manifest, arguments.runtime_root, license_dispositions)
+            write_lock(
+                records, arguments.manifest, arguments.license_dispositions,
+                arguments.runtime_root,
+            )
         else:
             print("foundation-images: reusing qualified immutable image lock")
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:

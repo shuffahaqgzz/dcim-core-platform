@@ -176,11 +176,13 @@ forks and bundled vendor distributions are excluded.
 
 Accepted ADR-0013 permits a narrow Development-only exception when a selected
 official image fails the vulnerability gate: the project may reproducibly build
-a clearly identified derived hardened image from the exact upstream release
-source. The derivative must preserve the service version and every runtime
-contract, use immutable build inputs, carry only evidence-backed security
-remediation, and pass the unchanged vulnerability and lifecycle gates. It may
-not be published to a public or shared registry while OD-06 or applicable
+a clearly identified derived hardened image from exact upstream release inputs.
+ADR-0014 accepts immutable official PostgreSQL and Kafka release binaries plus
+checksum-verified source provenance; Grafana OSS and PostgreSQL exporter remain
+full source builds. Each derivative must preserve the service version and every
+runtime contract, use immutable build inputs, carry only evidence-backed
+security remediation, and pass the unchanged vulnerability and lifecycle gates.
+It may not be published to a public or shared registry while OD-06 or applicable
 upstream redistribution/source obligations remain unresolved. A clean official
 upstream image remains the preferred replacement.
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -100,7 +101,11 @@ def network_names(service: dict[str, object]) -> set[str]:
     return set(networks if isinstance(networks, dict) else networks)
 
 
-def validate_model(model: dict[str, object], derived_lock: dict[str, object]) -> list[str]:
+def validate_model(
+    model: dict[str, object],
+    derived_lock: dict[str, object],
+    license_dispositions_sha256: str,
+) -> list[str]:
     errors: list[str] = []
     try:
         inventory = json.loads(IMAGE_INVENTORY.read_text(encoding="utf-8"))
@@ -108,8 +113,10 @@ def validate_model(model: dict[str, object], derived_lock: dict[str, object]) ->
     except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
         return [f"image inventory invalid: {error}"]
     try:
-        if derived_lock.get("schema_version") != 1 or derived_lock.get("publication") is not False:
+        if derived_lock.get("schema_version") != 2 or derived_lock.get("publication") is not False:
             raise ValueError("schema/publication policy mismatch")
+        if derived_lock.get("license_dispositions_sha256") != license_dispositions_sha256:
+            raise ValueError("license disposition digest mismatch")
         derived_images = {
             item["component"]: item["image_id"] for item in derived_lock["images"]
         }
@@ -282,15 +289,19 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
     parser.add_argument("--derived-lock", required=True, type=Path)
+    parser.add_argument("--license-dispositions", required=True, type=Path)
     arguments = parser.parse_args()
     try:
         raw = sys.stdin.read() if arguments.input == "-" else Path(arguments.input).read_text(encoding="utf-8")
         model = json.loads(raw)
         derived_lock = json.loads(arguments.derived_lock.read_text(encoding="utf-8"))
+        license_dispositions_sha256 = hashlib.sha256(
+            arguments.license_dispositions.read_bytes()
+        ).hexdigest()
     except (OSError, json.JSONDecodeError) as error:
         print(f"foundation-policy: invalid input: {error}", file=sys.stderr)
         return 2
-    errors = validate_model(model, derived_lock)
+    errors = validate_model(model, derived_lock, license_dispositions_sha256)
     if errors:
         for error in errors:
             print(f"foundation-policy: {error}", file=sys.stderr)

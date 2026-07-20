@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -28,10 +29,14 @@ class FoundationPolicyTests(unittest.TestCase):
         )
         self.assertEqual(0, bootstrap.returncode, bootstrap.stderr)
         image_id = "sha256:" + "a" * 64
+        self.license_dispositions = Path(self.temporary.name) / "license-dispositions.json"
+        self.license_dispositions.write_text("{}\n", encoding="utf-8")
+        disposition_sha256 = hashlib.sha256(self.license_dispositions.read_bytes()).hexdigest()
         self.image_lock = self.runtime_root / "dev-build/derived-images-lock.json"
         self.image_lock.write_text(json.dumps({
-            "schema_version": 1,
+            "schema_version": 2,
             "publication": False,
+            "license_dispositions_sha256": disposition_sha256,
             "images": [
                 {"component": component, "image_id": image_id}
                 for component in ("postgres", "kafka", "grafana", "postgres-exporter")
@@ -69,6 +74,7 @@ class FoundationPolicyTests(unittest.TestCase):
             [
                 "python3", str(POLICY), "--input", str(model_path),
                 "--derived-lock", str(self.image_lock),
+                "--license-dispositions", str(self.license_dispositions),
             ],
             cwd=ROOT, capture_output=True, text=True, check=False,
         )
@@ -77,6 +83,14 @@ class FoundationPolicyTests(unittest.TestCase):
         result = self.validate(self.normalized_model())
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("policy: PASS", result.stdout)
+
+    def test_license_disposition_digest_mismatch_fails_closed(self) -> None:
+        lock = json.loads(self.image_lock.read_text(encoding="utf-8"))
+        lock["license_dispositions_sha256"] = "f" * 64
+        self.image_lock.write_text(json.dumps(lock), encoding="utf-8")
+        result = self.validate(self.normalized_model())
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("license disposition digest", result.stderr)
 
     def test_unpinned_image_fails_closed(self) -> None:
         model = self.normalized_model()

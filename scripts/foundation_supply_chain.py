@@ -16,6 +16,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "deploy/compose/images.json"
+RECIPES = ROOT / "deploy/compose/derived-images/recipes.json"
 SCANNER = "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
 DERIVED_COMPONENTS = {
     "PostgreSQL": "postgres",
@@ -23,7 +24,45 @@ DERIVED_COMPONENTS = {
     "Grafana OSS": "grafana",
     "PostgreSQL exporter": "postgres-exporter",
 }
+REVIEW_REQUIRED_LICENSE_CATEGORIES = {"reciprocal", "restricted", "unknown"}
+REQUIRED_LICENSE_COMPONENTS = {
+    "postgresql",
+    "apache-kafka",
+    "grafana-oss",
+    "postgresql-exporter",
+    "prometheus",
+    "jmx-exporter-java-runtime",
+}
+REVALIDATION_TRIGGERS = {
+    "license-inventory-change",
+    "recipe-change",
+    "publication-or-distribution-request",
+    "od-06-status-change",
+    "staging-production-or-handover-request",
+}
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
+
+
+class DuplicateKeyError(ValueError):
+    """Raised when JSON contains duplicate object members."""
+
+
+def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateKeyError(f"duplicate JSON member: {key}")
+        result[key] = value
+    return result
+
+
+def load_json(path: Path) -> dict[str, object]:
+    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
+    if not isinstance(value, dict):
+        raise ValueError(f"{path.name} must contain a JSON object")
+    return value
 
 
 def blocking_counts(report: dict[str, object]) -> tuple[int, int, int]:
@@ -103,6 +142,109 @@ def validate_license_report(report: dict[str, object]) -> dict[str, int]:
     return categories
 
 
+def review_license_categories(
+    manifest: dict[str, object], component: str, detected: dict[str, int],
+) -> dict[str, int]:
+    entries = manifest.get("dispositions")
+    if not isinstance(entries, list):
+        raise ValueError("license dispositions must be an array")
+    reviewed: dict[str, int] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("component") != component:
+            continue
+        category = entry.get("category")
+        count = entry.get("reviewed_count")
+        if category in reviewed:
+            raise ValueError(f"{component}: duplicate license disposition for {category}")
+        if category not in REVIEW_REQUIRED_LICENSE_CATEGORIES:
+            raise ValueError(f"{component}: invalid license disposition category")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+            raise ValueError(f"{component}: reviewed license count must be positive")
+        if entry.get("disposition") != "accepted-local-development-only":
+            raise ValueError(f"{component}: invalid license disposition")
+        reviewed[str(category)] = count
+    required = {
+        category: count for category, count in detected.items()
+        if category in REVIEW_REQUIRED_LICENSE_CATEGORIES and count
+    }
+    if reviewed != required:
+        raise ValueError(f"{component}: new or changed license findings require owner review")
+    return reviewed
+
+
+def validate_license_disposition_manifest(
+    manifest: dict[str, object], expected_recipes_sha256: str,
+) -> None:
+    top_fields = {
+        "schema_version", "recipes_sha256", "decision", "dispositions",
+        "revalidation_triggers",
+    }
+    if set(manifest) != top_fields:
+        raise ValueError("license disposition manifest fields mismatch")
+    if manifest.get("schema_version") != 1:
+        raise ValueError("license disposition schema_version must be 1")
+    recipes_sha256 = manifest.get("recipes_sha256")
+    if (
+        not isinstance(recipes_sha256, str) or not SHA256.fullmatch(recipes_sha256)
+        or recipes_sha256 != expected_recipes_sha256
+    ):
+        raise ValueError("license disposition recipe digest mismatch")
+
+    decision = manifest.get("decision")
+    decision_fields = {
+        "owner", "date", "issue", "scope", "publication", "distribution", "od_06",
+    }
+    if not isinstance(decision, dict) or set(decision) != decision_fields:
+        raise ValueError("license disposition decision fields mismatch")
+    if not isinstance(decision.get("owner"), str) or not decision["owner"].strip():
+        raise ValueError("license disposition owner required")
+    if not isinstance(decision.get("date"), str) or not ISO_DATE.fullmatch(decision["date"]):
+        raise ValueError("license disposition decision date must be YYYY-MM-DD")
+    if decision.get("issue") != "#10":
+        raise ValueError("license disposition must reference issue #10")
+    if decision.get("scope") != "synthetic dcim-build local Development only":
+        raise ValueError("license disposition scope mismatch")
+    if decision.get("publication") is not False or decision.get("distribution") is not False:
+        raise ValueError("license disposition publication and distribution must be disabled")
+    if decision.get("od_06") != "OPEN":
+        raise ValueError("license disposition must keep OD-06 OPEN")
+
+    entries = manifest.get("dispositions")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("license dispositions must be a nonempty array")
+    entry_fields = {"component", "category", "reviewed_count", "disposition"}
+    keys: set[tuple[object, object]] = set()
+    components: set[object] = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != entry_fields:
+            raise ValueError("license disposition entry fields mismatch")
+        component = entry.get("component")
+        category = entry.get("category")
+        if component not in REQUIRED_LICENSE_COMPONENTS:
+            raise ValueError("license disposition component is not allowed")
+        if category not in REVIEW_REQUIRED_LICENSE_CATEGORIES:
+            raise ValueError("license disposition category is not review-required")
+        key = (component, category)
+        if key in keys:
+            raise ValueError("duplicate component/category license disposition")
+        keys.add(key)
+        components.add(component)
+        count = entry.get("reviewed_count")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+            raise ValueError("license disposition reviewed_count must be positive")
+        if entry.get("disposition") != "accepted-local-development-only":
+            raise ValueError("license disposition value mismatch")
+    if components != REQUIRED_LICENSE_COMPONENTS:
+        raise ValueError("license disposition component allowlist mismatch")
+
+    triggers = manifest.get("revalidation_triggers")
+    if (
+        not isinstance(triggers, list) or any(not isinstance(item, str) for item in triggers)
+        or len(triggers) != len(set(triggers)) or set(triggers) != REVALIDATION_TRIGGERS
+    ):
+        raise ValueError("license disposition revalidation triggers mismatch")
+
+
 def validate_sbom(report: dict[str, object]) -> int:
     components = report.get("components")
     if report.get("bomFormat") != "CycloneDX" or not isinstance(components, list) or not components:
@@ -111,7 +253,7 @@ def validate_sbom(report: dict[str, object]) -> int:
 
 
 def effective_images(inventory: dict[str, object], lock: dict[str, object]) -> list[dict[str, object]]:
-    if lock.get("schema_version") != 1 or lock.get("publication") is not False:
+    if lock.get("schema_version") != 2 or lock.get("publication") is not False:
         raise ValueError("derived image lock schema/publication policy mismatch")
     try:
         derived = {item["component"]: item["image_id"] for item in lock["images"]}
@@ -177,7 +319,11 @@ def database_snapshot(evidence: Path, cache: Path) -> dict[str, object]:
     }
 
 
-def scan(runtime_root: Path, derived_lock_path: Path) -> tuple[list[dict[str, object]], bool]:
+def scan(
+    runtime_root: Path,
+    derived_lock_path: Path,
+    license_dispositions_path: Path,
+) -> tuple[list[dict[str, object]], bool]:
     root = external_root(runtime_root)
     evidence = root / "dev-build/evidence/supply-chain"
     cache = root / "dev-build/cache/trivy"
@@ -185,8 +331,14 @@ def scan(runtime_root: Path, derived_lock_path: Path) -> tuple[list[dict[str, ob
     cache.mkdir(parents=True, exist_ok=True, mode=0o700)
     evidence.chmod(0o700)
     cache.chmod(0o700)
-    inventory = json.loads(INVENTORY.read_text(encoding="utf-8"))
-    derived_lock = json.loads(derived_lock_path.read_text(encoding="utf-8"))
+    inventory = load_json(INVENTORY)
+    derived_lock = load_json(derived_lock_path)
+    license_dispositions = load_json(license_dispositions_path)
+    validate_license_disposition_manifest(
+        license_dispositions, sha256_file(RECIPES),
+    )
+    if derived_lock.get("license_dispositions_sha256") != sha256_file(license_dispositions_path):
+        raise ValueError("derived image lock license disposition digest mismatch")
     if not isinstance(inventory.get("license_review"), str) or "OD-06" not in inventory["license_review"]:
         raise ValueError("explicit OD-06 license review disposition required")
     db_snapshot = database_snapshot(evidence, cache)
@@ -229,6 +381,9 @@ def scan(runtime_root: Path, derived_lock_path: Path) -> tuple[list[dict[str, ob
         license_categories = validate_license_report(
             json.loads((evidence / license_file).read_text(encoding="utf-8"))
         )
+        reviewed_license_categories = review_license_categories(
+            license_dispositions, name, license_categories,
+        )
         sbom_components = validate_sbom(
             json.loads((evidence / sbom_file).read_text(encoding="utf-8"))
         )
@@ -241,7 +396,8 @@ def scan(runtime_root: Path, derived_lock_path: Path) -> tuple[list[dict[str, ob
                 "fixable_high": fixable_high,
                 "unfixable_high_without_disposition": unfixable_high,
                 "license_categories": license_categories,
-                "license_review": "ADR-0013 local Development only; publication prohibited; OD-06 open",
+                "license_disposition": reviewed_license_categories,
+                "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
                 "sbom_components": sbom_components,
                 "evidence_sha256": {
                     "vulnerability": sha256_file(evidence / vulnerability_file),
@@ -270,9 +426,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runtime-root", required=True, type=Path)
     parser.add_argument("--derived-lock", required=True, type=Path)
+    parser.add_argument("--license-dispositions", required=True, type=Path)
     arguments = parser.parse_args()
     try:
-        summaries, blocked = scan(arguments.runtime_root, arguments.derived_lock)
+        summaries, blocked = scan(
+            arguments.runtime_root,
+            arguments.derived_lock,
+            arguments.license_dispositions,
+        )
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as error:
         print(f"foundation-supply-chain: {error}", file=sys.stderr)
         return 2
