@@ -20,6 +20,34 @@ ALLOWED_BIND_TARGETS = {
     "/var/lib/grafana/dashboards": ROOT / "deploy/compose/dev-build/config/grafana/dashboards",
 }
 RUNTIME_ARTIFACT_TARGET = "/opt/jmx-exporter/jmx_prometheus_standalone-1.6.0.jar"
+EXPECTED_USERS = {
+    "postgres": "999:999", "postgres-smoke": "999:999",
+    "kafka": "1000:1000", "kafka-smoke": "1000:1000",
+    "postgres-exporter": "65534:65534", "kafka-jmx-exporter": "65534:65534",
+    "prometheus": "65534:65534", "observability-smoke": "65534:65534",
+    "grafana": "472:472",
+}
+EXPECTED_SECRETS = {
+    "postgres": {
+        ("postgres-superuser-password", "/run/secrets/postgres-superuser-password"),
+        ("postgres-monitor-password", "/run/secrets/postgres-monitor-password"),
+        ("postgres-smoke-password", "/run/secrets/postgres-smoke-password"),
+    },
+    "postgres-exporter": {
+        ("postgres-monitor-password", "/run/secrets/postgres-monitor-password"),
+    },
+    "postgres-smoke": {
+        ("postgres-smoke-password", "/run/secrets/postgres-smoke-password"),
+    },
+    "grafana": {
+        ("grafana-admin-user", "/run/secrets/grafana-admin-user"),
+        ("grafana-admin-password", "/run/secrets/grafana-admin-password"),
+    },
+}
+SECRET_NAMES = {
+    "postgres-superuser-password", "postgres-monitor-password", "postgres-smoke-password",
+    "grafana-admin-user", "grafana-admin-password",
+}
 IMAGE_INVENTORY = ROOT / "deploy/compose/images.json"
 ALLOWED_SERVICES = {
     "postgres", "kafka", "prometheus", "grafana", "postgres-exporter",
@@ -131,6 +159,8 @@ def validate_model(model: dict[str, object], derived_lock: dict[str, object]) ->
             errors.append(f"{name}: device or added capability prohibited")
         if value.get("group_add"):
             errors.append(f"{name}: supplemental groups prohibited")
+        if value.get("use_api_socket") or value.get("configs") or value.get("volumes_from"):
+            errors.append(f"{name}: alternate host mount channel prohibited")
         if any(value.get(field) for field in ("userns_mode", "uts", "cgroup", "cgroup_parent")):
             errors.append(f"{name}: host-adjacent namespace or cgroup setting prohibited")
         if set(value.get("cap_drop", [])) != {"ALL"}:
@@ -142,8 +172,14 @@ def validate_model(model: dict[str, object], derived_lock: dict[str, object]) ->
         for entry in value.get("tmpfs", []) or []:
             if not str(entry).startswith("/"):
                 errors.append(f"{name}: invalid tmpfs mount target")
-        if not value.get("user") or str(value.get("user")).split(":", 1)[0] == "0":
-            errors.append(f"{name}: non-root user required")
+        if str(value.get("user")) != EXPECTED_USERS.get(name):
+            errors.append(f"{name}: exact reviewed UID:GID required")
+        service_secrets = {
+            (str(item.get("source")), str(item.get("target")))
+            for item in (value.get("secrets", []) or []) if isinstance(item, dict)
+        }
+        if service_secrets != EXPECTED_SECRETS.get(name, set()):
+            errors.append(f"{name}: service secret allowlist mismatch")
         if not value.get("healthcheck"):
             errors.append(f"{name}: health check required")
         limits = value.get("deploy", {}).get("resources", {}).get("limits", {})
@@ -225,6 +261,20 @@ def validate_model(model: dict[str, object], derived_lock: dict[str, object]) ->
     volume_names = {value.get("name", name) for name, value in model.get("volumes", {}).items()}
     if volume_names != STATEFUL_VOLUMES:
         errors.append("persistent volume allowlist mismatch")
+    if model.get("configs"):
+        errors.append("top-level configs prohibited")
+    secrets = model.get("secrets", {})
+    if set(secrets) != SECRET_NAMES:
+        errors.append("top-level secret allowlist mismatch")
+    for name, secret in secrets.items():
+        source = Path(str(secret.get("file", ""))).resolve() if isinstance(secret, dict) else Path()
+        if (
+            not isinstance(secret, dict)
+            or secret.get("name") != f"dcim-build_{name}"
+            or not source.as_posix().endswith(f"/dev-build/secrets/{name}")
+            or ROOT in source.parents
+        ):
+            errors.append(f"{name}: top-level secret source prohibited")
     return errors
 
 

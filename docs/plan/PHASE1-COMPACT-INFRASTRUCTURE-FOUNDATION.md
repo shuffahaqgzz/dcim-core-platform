@@ -75,7 +75,7 @@ flowchart LR
 
   subgraph OB[internal observability network]
     PR[Prometheus]
-    G[Grafana on 127.0.0.1]
+    G[Grafana internal bridge only]
   end
 
   S[one-shot smoke suite] --- DB
@@ -114,8 +114,9 @@ will activate the three Phase 1 profiles explicitly.
   exceptions. They must set `net.ipv4.ip_forward=0`, drop all capabilities, and
   expose only their metrics endpoints.
 - No long-running general-purpose proxy bridges the networks.
-- PostgreSQL, Kafka, and Prometheus publish no host ports.
-- Grafana is the only published endpoint and binds to `127.0.0.1`.
+- PostgreSQL, Kafka, Prometheus, and Grafana publish no host ports.
+- Grafana access follows ADR-0012: resolve its current internal bridge address
+  through the bounded Development helper. No loopback proxy is introduced.
 - Grafana uses local generated credentials; anonymous access and signup are
   disabled. HTTP is accepted only while the endpoint remains loopback-only.
 - Kafka uses `PLAINTEXT` only on the internal synthetic `data` network. It has no
@@ -336,7 +337,7 @@ fail closed on:
 - any service without an explicit Capability Profile;
 - privileged mode, host namespace, device, Docker socket, added capability, or
   broad host mount;
-- a published endpoint other than Grafana on `127.0.0.1`;
+- any published endpoint;
 - a non-internal network;
 - shared or cross-plane volumes and bind-mounted mutable state;
 - missing health checks, resource limits, or log rotation;

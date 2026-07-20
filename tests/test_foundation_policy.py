@@ -126,6 +126,24 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertIn("exact no-new-privileges", result.stderr)
         self.assertIn("not allowlisted", result.stderr)
 
+    def test_api_socket_and_secret_mount_bypasses_fail_closed(self) -> None:
+        model = self.normalized_model()
+        service = model["services"]["prometheus"]
+        service["use_api_socket"] = True
+        service["configs"] = [{"source": "control", "target": "/run/control"}]
+        service["user"] = "65534:999"
+        model["secrets"]["control"] = {
+            "name": "dcim-build_control", "file": "/var/run/docker.sock",
+        }
+        service["secrets"] = [{"source": "control", "target": "/run/control"}]
+        result = self.validate(model)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("alternate host mount", result.stderr)
+        self.assertIn("exact reviewed UID:GID", result.stderr)
+        self.assertIn("service secret allowlist", result.stderr)
+        self.assertIn("top-level secret allowlist", result.stderr)
+        self.assertIn("top-level secret source", result.stderr)
+
     def test_literal_secret_environment_fails_closed(self) -> None:
         model = self.normalized_model()
         model["services"]["grafana"]["environment"]["GF_SECURITY_ADMIN_PASSWORD"] = "not-public"
