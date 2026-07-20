@@ -1,11 +1,11 @@
 # Conditional-GO Register
 
-Last baseline review: 2026-07-16
+Last baseline review: 2026-07-20
 
 | ID | Priority | Condition | Development evidence required | Status |
 |---|---:|---|---|---|
 | C-01 | P1 | Written authorization and classification for every office/Production source | Private approval reference, owner, purpose, protocol, allowed reads, retention, and expiry | OPEN |
-| C-02 | P1 | Public-repository safety baseline before substantive implementation | `.gitignore`, `.env.example`, security/data policies, CI scans, synthetic fixture policy, history review | IN PROGRESS |
+| C-02 | P1 | Public-repository safety baseline before substantive implementation | `.gitignore`, `.env.example`, security/data policies, CI scans, synthetic fixture policy, history review | CLOSED |
 | C-03 | P1 | Mutable DEV-BUILD separated from pinned DEV-INTEGRATION-RO | Separate projects/networks/volumes/env files; artifact promotion and rollback proof | OPEN |
 | C-04 | P1 | Dedicated read-only credentials and negative write tests | Private credential-control record plus public synthetic tests proving prohibited methods unavailable | OPEN |
 | C-05 | P1 | Demo uses synthetic or approved sanitized data only | Fixture provenance and sanitization/evidence checklist | OPEN |
@@ -32,3 +32,21 @@ Stop and escalate on any of the following:
 - Only the owner or named future authority changes a condition to `CLOSED`.
 - Public evidence links may be recorded here; private authorization references remain outside Git.
 - `COMPENSATING CONTROL` requires owner acceptance, expiry, and a follow-up closure date.
+
+## Owner dispositions
+
+### C-02
+
+- Disposition: `CLOSED`
+- Date: 2026-07-20
+- Owner: `shuffahaqgzz`
+- Basis: PR #2, #4, #6; current-main [full-history scan run 29716219940](https://github.com/shuffahaqgzz/dcim-core-platform/actions/runs/29716219940) against `4ea16f287864e2c44044fcb12c0c1e2fd450b85c`; Phase 0 preflight PASS; exact-head security and governance reviews PASS.
+- Scope: public repository safety and Development entry.
+- Boundary: does not authorize Production connection, connector activation, Staging entry, or Production approval.
+
+### C-05
+
+- Disposition: remains `OPEN`
+- Reason: synthetic fixtures, provenance validation, and sanitizer controls pass, but no executable DEV-DEMO path has been deployed or accepted.
+- Phase 0 treatment: not blocking repository-safety completion.
+- Closure trigger: executable demo path uses synthetic or separately approved sanitized data and passes provenance, sanitization, and public-safety gates.

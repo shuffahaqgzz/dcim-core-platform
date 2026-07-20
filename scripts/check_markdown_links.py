@@ -10,6 +10,34 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+OPENING_FENCE_RE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>[^\r\n]*)")
+
+
+def without_fenced_code(text: str) -> str:
+    """Return Markdown content that can contain navigable document links."""
+    visible: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+
+    for line in text.splitlines(keepends=True):
+        if fence_character is None:
+            opening = OPENING_FENCE_RE.match(line)
+            if opening and not (opening.group("marker").startswith("`") and "`" in opening.group("info")):
+                marker = opening.group("marker")
+                fence_character = marker[0]
+                fence_length = len(marker)
+                continue
+            visible.append(line)
+            continue
+
+        stripped = line.lstrip(" ")
+        indentation = len(line) - len(stripped)
+        run_length = len(stripped) - len(stripped.lstrip(fence_character))
+        if indentation <= 3 and run_length >= fence_length and not stripped[run_length:].strip():
+            fence_character = None
+            fence_length = 0
+
+    return "".join(visible)
 
 
 def main() -> int:
@@ -21,7 +49,7 @@ def main() -> int:
         if path.is_symlink() or not path.is_file():
             errors.append(f"{path.relative_to(ROOT)}: symlink or missing Markdown file")
             continue
-        text = path.read_text(encoding="utf-8")
+        text = without_fenced_code(path.read_text(encoding="utf-8"))
         for target in LINK_RE.findall(text):
             clean = target.strip().split()[0].strip("<>")
             if clean.startswith(("http://", "https://", "mailto:", "#")):
