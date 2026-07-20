@@ -118,7 +118,8 @@ will activate the three Phase 1 profiles explicitly.
 - Grafana access follows ADR-0012: resolve its current internal bridge address
   through the bounded Development helper. No loopback proxy is introduced.
 - Grafana uses local generated credentials; anonymous access and signup are
-  disabled. HTTP is accepted only while the endpoint remains loopback-only.
+  disabled. HTTP is accepted only on the isolated internal bridge with no
+  published host route.
 - Kafka uses `PLAINTEXT` only on the internal synthetic `data` network. It has no
   published listener, automatic topic creation, or Production security claim.
   Broker and topic message size are bounded to 1 MiB. The only Phase 1 topic is

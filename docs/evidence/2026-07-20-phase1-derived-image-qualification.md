@@ -1,7 +1,8 @@
-# Phase 1 Derived Image Qualification — GO for Development
+# Phase 1 Derived Image Qualification — Technical PASS, Governance HOLD
 
 Verified UTC: 2026-07-20T11:51:49Z  
 Implementation commit: `9d68483c32214397421900825140f8576c91f6c3`  
+Security follow-up commit: `513b1ac845f81c46066fc4739f70b809adadd548`  
 Issues: #10, parent #9; owner-approved exception: ADR-0013
 
 Scope: synthetic `dcim-build` Development foundation only. This record does not
@@ -79,16 +80,22 @@ material from `foundation-bootstrap`; image provenance comes from the immutable
 public recipe manifest. No sanitized or connected-source artifact was used.
 
 Owner status: ADR-0013 Accepted. Read-only Standards, Spec, and Security reviews
-completed; hard findings for stale scan reuse, database identity, license/SBOM
-validation, policy bypasses, evidence fields, health checks, and stale docs were
-reconciled before this record. This is not `DEV-APPROVED` or merge approval.
+completed. Hard findings for stale scan reuse, database identity, malformed
+license/SBOM output, policy bypasses, evidence fields, health checks, and stale
+docs were reconciled. Explicit owner license disposition and source-to-binary
+contract clarification remain open. This is not `DEV-APPROVED`, issue closure,
+or merge approval.
 
 ## Disposition
 
-Image blockers from the original official set are resolved for the local Phase
-1 Development foundation. Gate policy was not weakened and architecture was not
-changed. OD-06, official repin cadence, source-signature coverage, issue/PR
-review, and all Production conditions remain open or separately governed.
+Vulnerability blockers from the original official set are technically resolved
+for the local Phase 1 Development foundation. Gate policy was not weakened and
+architecture was not changed. Issue #10 remains on governance HOLD until owner
+records a component/category-specific local-use license disposition and confirms
+whether immutable official release binaries plus verified source provenance
+satisfy ADR-0013, or requires full source rebuilds. OD-06, official repin cadence,
+source-signature coverage, issue/PR review, and all Production conditions remain
+open or separately governed.
 
 PostgreSQL and Kafka derivatives consume immutable official release image
 digests while their public source archives are checksum-verified for provenance;
