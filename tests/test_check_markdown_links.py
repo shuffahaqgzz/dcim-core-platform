@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -28,12 +29,16 @@ class MarkdownLinkCheckerTests(unittest.TestCase):
 """,
                 encoding="utf-8",
             )
-            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            environment = os.environ.copy()
+            for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+                environment.pop(name, None)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=environment)
 
             result = subprocess.run(
                 [sys.executable, str(scripts / SCRIPT.name)],
                 cwd=root,
                 capture_output=True,
+                env=environment,
                 text=True,
             )
 

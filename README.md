@@ -4,11 +4,12 @@ Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset
 
 ## Status saat ini
 
-- Phase: **Phase 0 — Repository Safety, Governance, dan Dev Entry Readiness**.
+- Phase: **Phase 0 COMPLETE / DEV-APPROVED — Repository Safety, Governance, dan Dev Entry Readiness**.
+- Overall Development: **CONDITIONAL GO**; open conditions tetap authoritative.
 - Maturity: **Prototype/Alpha**; bukan Production-ready.
 - Owner: `shuffahaqgzz`.
 - Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
-- Next milestone setelah owner menerima Phase 0: **Phase 1 compact infrastructure foundation**. Jangan menjalankan Phase 1 tanpa instruksi baru.
+- Next eligible milestone: **Phase 1 compact infrastructure foundation**. Phase 1 belum diotorisasi dan memerlukan instruksi serta tracked issue baru.
 
 ## Public code, private runtime
 
