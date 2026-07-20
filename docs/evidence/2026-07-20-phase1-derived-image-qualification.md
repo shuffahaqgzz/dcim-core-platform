@@ -1,8 +1,10 @@
 # Phase 1 Derived Image Qualification — PASS, Governance Decisions Recorded
 
-Verified UTC: 2026-07-20T14:45:18Z  
+Verified UTC: 2026-07-20T15:06:57Z  
 Implementation commit: `9d68483c32214397421900825140f8576c91f6c3`  
 Security follow-up commit: `513b1ac845f81c46066fc4739f70b809adadd548`  
+Governance implementation commit: `e7c459b8b52a80cb39e0d23d07110d9dad2c68bf`  
+Review hardening commit: `d3655d12420829987a9d3043c153955714964db8`  
 Issues: #10, parent #9; owner-approved exception: ADR-0013; source-to-binary
 clarification: ADR-0014
 
@@ -86,7 +88,7 @@ make preflight DCIM_RUNTIME_ROOT=${DCIM_RUNTIME_ROOT}
 Clean second builds used BuildKit `--no-cache`; both OCI exports used timestamp
 rewrite. The external lock binds both build IDs and public input provenance.
 Fresh six-image supply-chain scan took approximately 130 seconds by command
-wall clock. Final recovery test reported `88.5s`; earlier fast smoke reported
+wall clock. Final recovery test reported `88.2s`; earlier fast smoke reported
 `94.4s`. Final preflight passed 75 unit/contract tests, public-safety, JSON,
 fixture, Markdown, qualification, fresh supply-chain, policy, health, and
 recovery gates.
