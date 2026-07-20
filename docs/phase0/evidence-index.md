@@ -5,12 +5,12 @@ Evidence harus public-safe, reproducible, dan tidak berisi raw scanner finding/v
 | Gate | Command/evidence | Result |
 |---|---|---|
 | Python compile | `make compile` | PASS closure candidate |
-| Unit/adversarial tests | `make test` | PASS closure candidate, 69 tests |
+| Unit/adversarial tests | `make test` | PASS closure candidate, 71 tests |
 | Contract/JSON | `make validate-json` | PASS closure candidate, 12 JSON files / 6 event fixtures |
 | Fixture inventory/provenance | `make validate-fixtures` | PASS closure candidate, 9 mandatory fixtures |
 | Public safety | `make public-safety` | PASS closure candidate, 124 files; violations selalu redacted |
-| Markdown local links | `make markdown-links` | PASS closure candidate, 36 links |
-| Aggregate preflight | `make preflight` | PASS closure candidate; remote closure-PR exact-head result required sebelum merge |
+| Markdown local links | `make markdown-links` | PASS closure candidate, 37 links |
+| Aggregate preflight | `/usr/bin/time -f wall_seconds=%e make preflight` | PASS closure candidate in 0.95 seconds wall time; remote closure-PR exact-head result required sebelum merge |
 | PR secret scan | `.github/workflows/security-scan.yml` pada `pull_request` | Revision range PR; bukan full-history claim |
 | Secret history | workflow `workflow_dispatch` pada `main` dengan full checkout | PASS: [run 29716219940](https://github.com/shuffahaqgzz/dcim-core-platform/actions/runs/29716219940), target `4ea16f287864e2c44044fcb12c0c1e2fd450b85c` |
 | Dependency/license | dependency-review workflow + OD-06 | No new runtime dependency; OD-06 tetap OPEN |
