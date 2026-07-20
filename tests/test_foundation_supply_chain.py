@@ -138,6 +138,24 @@ class FoundationSupplyChainTests(unittest.TestCase):
             "bomFormat": "CycloneDX", "components": [{"name": "synthetic"}],
         }))
 
+    def test_license_fingerprint_detects_package_version_change(self) -> None:
+        report = {
+            "Results": [{"Licenses": [{
+                "Name": "Synthetic-1.0",
+                "Category": "restricted",
+                "PkgName": "synthetic-package",
+                "PkgVersion": "1.0.0",
+                "PkgIdentifier": "pkg:generic/synthetic-package@1.0.0",
+                "FilePath": "/synthetic/package",
+            }]}],
+        }
+        changed = copy.deepcopy(report)
+        changed["Results"][0]["Licenses"][0]["PkgVersion"] = "2.0.0"
+        self.assertNotEqual(
+            foundation_supply_chain.license_category_fingerprints(report),
+            foundation_supply_chain.license_category_fingerprints(changed),
+        )
+
     def test_missing_results_cannot_pass(self) -> None:
         with self.assertRaisesRegex(ValueError, "Results"):
             foundation_supply_chain.blocking_counts({})

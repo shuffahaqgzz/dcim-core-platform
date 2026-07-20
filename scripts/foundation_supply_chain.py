@@ -135,18 +135,26 @@ def license_items(report: dict[str, object]) -> list[dict[str, object]]:
 
 def license_category_fingerprints(report: dict[str, object]) -> dict[str, str]:
     licenses = license_items(report)
-    grouped: dict[str, list[tuple[str, str, str, str]]] = {}
+    grouped: dict[str, list[tuple[str, ...]]] = {}
     if not licenses:
-        grouped["unknown"] = [("unknown", "", "", "")]
+        grouped["unknown"] = [("unknown", "", "", "", "", "", "", "", "")]
     for item in licenses:
         category = str(item.get("Category", "unknown")).lower()
         if category not in REVIEW_REQUIRED_LICENSE_CATEGORIES:
             continue
+        layer = item.get("Layer")
+        layer_digest = str(layer.get("Digest", "")) if isinstance(layer, dict) else ""
+        layer_diff_id = str(layer.get("DiffID", "")) if isinstance(layer, dict) else ""
         grouped.setdefault(category, []).append((
             category,
             str(item.get("Name", "")),
             str(item.get("PkgName", "")),
+            str(item.get("PkgVersion", "")),
+            str(item.get("PkgIdentifier", "")),
+            str(item.get("PkgID", "")),
             str(item.get("FilePath", "")),
+            layer_digest,
+            layer_diff_id,
         ))
     return {
         category: hashlib.sha256(
