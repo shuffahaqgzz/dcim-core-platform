@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "target_platform": "linux/amd64",
+  "publication": false,
+  "scanner": {
+    "image": "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+    "amd64_manifest": "sha256:c6e969c5662a546ad5de4a73c2a6b7a7c627f86d916903e175aa623af5b97ada"
+  },
+  "recipes": [
+    {
+      "component": "postgres",
+      "source": {
+        "repository": "https://github.com/docker-library/postgres",
+        "tag": "17.10-alpine3.24",
+        "commit": "4f9ced003ba58a854656ba150d146243d27ae3ac",
+        "archive_sha256": "41e1bd1b040c3c57921360430e894431c307a9888df592efb9ab7d7b9823b8ef"
+      },
+      "inputs": [
+        {
+          "filename": "postgres-image-4f9ced0.tar.gz",
+          "url": "https://codeload.github.com/docker-library/postgres/tar.gz/4f9ced003ba58a854656ba150d146243d27ae3ac",
+          "sha256": "41e1bd1b040c3c57921360430e894431c307a9888df592efb9ab7d7b9823b8ef",
+          "context": false
+        },
+        {
+          "filename": "gosu-6456aaa.tar.gz",
+          "url": "https://codeload.github.com/tianon/gosu/tar.gz/6456aaa0f3c854d199d0f037f068eb97515b7513",
+          "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b",
+          "context": true
+        }
+      ],
+      "base_images": [
+        {
+          "image": "postgres:17.10-alpine3.24@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+          "amd64_manifest": "sha256:af194ccf3e2d7fe367012c7b88ce8b816c5c889b18a5b316799a1f0d7eac746a"
+        }
+      ],
+      "build_tools": [
+        {
+          "image": "golang:1.26.5-alpine3.24@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2",
+          "amd64_manifest": "sha256:111d79159b2326f7e80c4a4706e1ba166acb0e2611df853955f3621828cd49e8"
+        }
+      ],
+      "dockerfile": "postgres/Dockerfile",
+      "output_repository": "dcim-development/postgres",
+      "output_tag": "17.10-r1",
+      "source_date_epoch": 1783526917,
+      "patches": [
+        {"finding": "CVE-2025-68121", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2025-61726", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2025-61729", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-25679", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-27145", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-32280", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-32281", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-32283", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-33811", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-33814", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-39820", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-39822", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-39836", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-42499", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"},
+        {"finding": "CVE-2026-42504", "artifact": "gosu Go stdlib", "from_version": "1.24.6", "to_version": "1.26.5", "sha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b"}
+      ],
+      "publish": false
+    },
+    {
+      "component": "kafka",
+      "source": {
+        "repository": "https://github.com/apache/kafka",
+        "tag": "4.3.1",
+        "commit": "26b251a451ce941d3d7a55e6487bcb7f16b5ad48",
+        "archive_sha256": "4b5a65a52cbfdabe217856b6b4eb7cad7067f250524a38592ff27ee315824ea2"
+      },
+      "inputs": [
+        {"filename": "kafka-26b251a.tar.gz", "url": "https://codeload.github.com/apache/kafka/tar.gz/26b251a451ce941d3d7a55e6487bcb7f16b5ad48", "sha256": "4b5a65a52cbfdabe217856b6b4eb7cad7067f250524a38592ff27ee315824ea2", "context": false},
+        {"filename": "jackson-databind-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.4/jackson-databind-2.21.4.jar", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9", "context": true},
+        {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true}
+      ],
+      "base_images": [
+        {"image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837", "amd64_manifest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26"},
+        {"image": "eclipse-temurin:21.0.11_10-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64", "amd64_manifest": "sha256:c978ac6dd6aa90ec21935eb6c848f50ebf9b783160eefdd6accd8d2fd9ebeef1"}
+      ],
+      "build_tools": [
+        {"image": "docker/dockerfile:1.19.0@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6", "amd64_manifest": "sha256:62b0eac4b38b65f257ba2525a1bc87978b5e339d6133b5daef1bde40fe7aa10f"}
+      ],
+      "dockerfile": "kafka/Dockerfile",
+      "output_repository": "dcim-development/kafka",
+      "output_tag": "4.3.1-r1",
+      "source_date_epoch": 1781724180,
+      "patches": [
+        {"finding": "CVE-2026-45186", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
+        {"finding": "CVE-2026-56131", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
+        {"finding": "CVE-2026-56407", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
+        {"finding": "CVE-2026-56408", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
+        {"finding": "CVE-2026-2100", "artifact": "runtime p11-kit", "from_version": "0.25.5-r2", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
+        {"finding": "CVE-2026-54512", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
+        {"finding": "CVE-2026-54513", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
+        {"finding": "GHSA-2r2c-cx56-8933", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"},
+        {"finding": "GHSA-47qp-hqvx-6r3f", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"}
+      ],
+      "publish": false
+    },
+    {
+      "component": "grafana",
+      "source": {
+        "repository": "https://github.com/grafana/grafana",
+        "tag": "v13.1.0",
+        "commit": "b309c9bb3b81a748c3a75289236a27309ed2566a",
+        "archive_sha256": "1de79b2f09e33e3a03fe83dc86bce3601be163bbf55098c37beb1dc11c01de86"
+      },
+      "inputs": [
+        {"filename": "grafana-b309c9b.tar.gz", "url": "https://codeload.github.com/grafana/grafana/tar.gz/b309c9bb3b81a748c3a75289236a27309ed2566a", "sha256": "1de79b2f09e33e3a03fe83dc86bce3601be163bbf55098c37beb1dc11c01de86", "context": true},
+        {"filename": "tempo-4aeafc2.tar.gz", "url": "https://codeload.github.com/grafana/tempo/tar.gz/4aeafc237b8d9a8d62e45735131e8a89eb741a00", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f", "context": true}
+      ],
+      "base_images": [
+        {"image": "grafana/grafana:13.1.0-ubuntu-slim@sha256:936197495b76734df72002e6f3ff122cffd2d7027679a1c7c4a611cf90baee05", "amd64_manifest": "sha256:e3f34c3699da4cac220ac8eae84267977d433e11d40b870a8dd9c750b32cc33f"}
+      ],
+      "build_tools": [
+        {"image": "golang:1.26.5-alpine3.24@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2", "amd64_manifest": "sha256:111d79159b2326f7e80c4a4706e1ba166acb0e2611df853955f3621828cd49e8"}
+      ],
+      "dockerfile": "grafana/Dockerfile",
+      "output_repository": "dcim-development/grafana",
+      "output_tag": "13.1.0-r1",
+      "source_date_epoch": 1782214211,
+      "patches": [
+        {"finding": "CVE-2026-21728", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
+        {"finding": "CVE-2026-28377", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
+        {"finding": "CVE-2026-39822", "artifact": "Grafana Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"}
+      ],
+      "publish": false
+    },
+    {
+      "component": "postgres-exporter",
+      "source": {
+        "repository": "https://github.com/prometheus-community/postgres_exporter",
+        "tag": "v0.20.1",
+        "commit": "867fbcac31cd18c143e244190ea9168cca069827",
+        "archive_sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"
+      },
+      "inputs": [
+        {"filename": "postgres-exporter-867fbca.tar.gz", "url": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/867fbcac31cd18c143e244190ea9168cca069827", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501", "context": true}
+      ],
+      "base_images": [
+        {"image": "prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e", "amd64_manifest": "sha256:4f3d82803c1f99ea5e767890de3557d2479ebbc711f63f2e04c663daa840057a"}
+      ],
+      "build_tools": [
+        {"image": "golang:1.26.5-alpine3.24@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2", "amd64_manifest": "sha256:111d79159b2326f7e80c4a4706e1ba166acb0e2611df853955f3621828cd49e8"}
+      ],
+      "dockerfile": "postgres-exporter/Dockerfile",
+      "output_repository": "dcim-development/postgres-exporter",
+      "output_tag": "0.20.1-r1",
+      "source_date_epoch": 1783475125,
+      "patches": [
+        {"finding": "CVE-2026-39822", "artifact": "postgres_exporter Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"}
+      ],
+      "publish": false
+    }
+  ]
+}

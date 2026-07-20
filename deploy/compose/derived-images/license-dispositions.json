@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "recipes_sha256": "02b3cf5841a2d6806f535d98bb835dfb6f124c0783729c555b606a690fdf33ee",
+  "decision": {
+    "owner": "shuffahaqgzz",
+    "date": "2026-07-20",
+    "issue": "#10",
+    "scope": "synthetic dcim-build local Development only",
+    "publication": false,
+    "distribution": false,
+    "od_06": "OPEN"
+  },
+  "dispositions": [
+    {
+      "component": "postgresql",
+      "category": "reciprocal",
+      "reviewed_count": 1,
+      "inventory_sha256": "962f0c22531d586ce2119d983eb58f80d189902fc7838899c6ec8c234739d421",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql",
+      "category": "restricted",
+      "reviewed_count": 25,
+      "inventory_sha256": "da6c38b009ef3e6c9578b688ab0b235e4442baf9e4cd0742a27f6dfbcfb6d211",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql",
+      "category": "unknown",
+      "reviewed_count": 8,
+      "inventory_sha256": "e452dbc66d86d1d3790f29e0db043350c73b0de4e48591862dd50cb253a233e8",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "reciprocal",
+      "reviewed_count": 2,
+      "inventory_sha256": "97105220ffc994ce24e7fa99401231684f5db91d06bdaeea9707b58f1e7ef703",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "restricted",
+      "reviewed_count": 457,
+      "inventory_sha256": "5675248afdaa568c3295db8cd0709bd08f09301838c08b3388a3a8f5dc2701ee",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "apache-kafka",
+      "category": "unknown",
+      "reviewed_count": 266,
+      "inventory_sha256": "da31a4708e12989c10af85dcad4f1ba056b24ea83eaf89466c64d825c3236a47",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "reciprocal",
+      "reviewed_count": 3,
+      "inventory_sha256": "22bb9d2dca61e2653483b9434ca1566b4757ba7a8108c82a82c9c499b2bc1ad6",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "restricted",
+      "reviewed_count": 369,
+      "inventory_sha256": "5f1a0095679d41d30ff2bb64f1d5f38f84b3c745d82e11c4ad63477c4a9df232",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "grafana-oss",
+      "category": "unknown",
+      "reviewed_count": 247,
+      "inventory_sha256": "c897d58fe53020c62ff120a648a8a0b6715b3f6da96efaf3d8e890b6a8460001",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "postgresql-exporter",
+      "category": "unknown",
+      "reviewed_count": 1,
+      "inventory_sha256": "394e15f4089479f773a582ccea663f6711134178c80f3d4db9cd4e17d3df9769",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "prometheus",
+      "category": "unknown",
+      "reviewed_count": 1,
+      "inventory_sha256": "394e15f4089479f773a582ccea663f6711134178c80f3d4db9cd4e17d3df9769",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "reciprocal",
+      "reviewed_count": 2,
+      "inventory_sha256": "97105220ffc994ce24e7fa99401231684f5db91d06bdaeea9707b58f1e7ef703",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "restricted",
+      "reviewed_count": 457,
+      "inventory_sha256": "5675248afdaa568c3295db8cd0709bd08f09301838c08b3388a3a8f5dc2701ee",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "jmx-exporter-java-runtime",
+      "category": "unknown",
+      "reviewed_count": 266,
+      "inventory_sha256": "da31a4708e12989c10af85dcad4f1ba056b24ea83eaf89466c64d825c3236a47",
+      "disposition": "accepted-local-development-only"
+    }
+  ],
+  "revalidation_triggers": [
+    "license-inventory-change",
+    "recipe-change",
+    "publication-or-distribution-request",
+    "od-06-status-change",
+    "staging-production-or-handover-request"
+  ]
+}

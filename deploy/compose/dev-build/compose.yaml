@@ -1,0 +1,289 @@
+x-long-running: &long-running
+  restart: "on-failure:3"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  read_only: true
+  init: true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-healthcheck: &healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 20s
+
+services:
+  postgres:
+    <<: *long-running
+    image: ${DCIM_POSTGRES_IMAGE:?run make foundation-images-qualify}
+    profiles: [data]
+    user: "999:999"
+    environment:
+      POSTGRES_DB: dcim_foundation
+      POSTGRES_USER: dcim_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-superuser-password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - postgres-superuser-password
+      - postgres-monitor-password
+      - postgres-smoke-password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./config/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/run/postgresql:size=16m,uid=999,gid=999,mode=0775
+    networks: [data]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "pg_isready -U dcim_bootstrap -d dcim_foundation"]
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 4G}
+
+  kafka:
+    <<: *long-running
+    image: ${DCIM_KAFKA_IMAGE:?run make foundation-images-qualify}
+    profiles: [data]
+    user: "1000:1000"
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:?run make foundation-bootstrap}
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_MESSAGE_MAX_BYTES: "1048576"
+      KAFKA_REPLICA_FETCH_MAX_BYTES: "1048576"
+      KAFKA_LOG_RETENTION_HOURS: "24"
+      KAFKA_LOG_SEGMENT_BYTES: "268435456"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_JMX_PORT: "9999"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /opt/kafka/config:size=32m,uid=1000,gid=1000,mode=0750
+      - /opt/kafka/logs:size=256m,uid=1000,gid=1000,mode=0750
+    networks: [data]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "/opt/kafka/bin/kafka-metadata-quorum.sh --bootstrap-server localhost:9092 describe --status >/dev/null"]
+      start_period: 40s
+    deploy:
+      resources:
+        limits: {cpus: "3.0", memory: 6G}
+
+  postgres-exporter:
+    <<: *long-running
+    image: ${DCIM_POSTGRES_EXPORTER_IMAGE:?run make foundation-images-qualify}
+    profiles: [observability]
+    user: "65534:65534"
+    environment:
+      DATA_SOURCE_URI: postgres:5432/dcim_foundation?sslmode=disable
+      DATA_SOURCE_USER: dcim_monitor
+      DATA_SOURCE_PASS_FILE: /run/secrets/postgres-monitor-password
+    secrets: [postgres-monitor-password]
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, wget, --spider, -q, http://127.0.0.1:9187/metrics]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  kafka-jmx-exporter:
+    <<: *long-running
+    image: eclipse-temurin:21.0.11_10-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64
+    profiles: [observability]
+    user: "65534:65534"
+    command:
+      - java
+      - -jar
+      - /opt/jmx-exporter/jmx_prometheus_standalone-1.6.0.jar
+      - "5556"
+      - /etc/jmx-exporter/kafka.yaml
+    volumes:
+      - ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/artifacts/jmx_prometheus_standalone-1.6.0.jar:/opt/jmx-exporter/jmx_prometheus_standalone-1.6.0.jar:ro
+      - ./config/kafka/jmx-exporter.yaml:/etc/jmx-exporter/kafka.yaml:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1:5556/metrics]
+    depends_on:
+      kafka: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  prometheus:
+    <<: *long-running
+    image: prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893
+    profiles: [observability]
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=20GB
+      - --web.enable-lifecycle
+    volumes:
+      - prometheus-data:/prometheus
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [observability]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, wget, --spider, -q, http://127.0.0.1:9090/-/ready]
+    depends_on:
+      postgres-exporter: {condition: service_healthy}
+      kafka-jmx-exporter: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 4G}
+
+  grafana:
+    <<: *long-running
+    image: ${DCIM_GRAFANA_IMAGE:?run make foundation-images-qualify}
+    profiles: [observability]
+    user: "472:472"
+    environment:
+      GF_SECURITY_ADMIN_USER__FILE: /run/secrets/grafana-admin-user
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SERVER_HTTP_ADDR: 0.0.0.0
+    secrets: [grafana-admin-user, grafana-admin-password]
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/lib/grafana:size=256m,uid=472,gid=472,mode=0750
+    networks: [observability]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1:3000/api/health]
+    depends_on:
+      prometheus: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 1G}
+
+  postgres-smoke:
+    image: ${DCIM_POSTGRES_IMAGE:?run make foundation-images-qualify}
+    profiles: [smoke]
+    user: "999:999"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    environment:
+      PGHOST: postgres
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_smoke
+    secrets: [postgres-smoke-password]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'export PGPASSWORD="$$(cat /run/secrets/postgres-smoke-password)"; exec "$$@"'
+      - --
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    networks: [data]
+    command: [psql, -v, ON_ERROR_STOP=1, -c, SELECT 1]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, psql, -c, SELECT 1]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    deploy:
+      resources:
+        limits: {cpus: "0.33", memory: 640M}
+
+  kafka-smoke:
+    image: ${DCIM_KAFKA_IMAGE:?run make foundation-images-qualify}
+    profiles: [smoke]
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    networks: [data]
+    command: [/opt/kafka/bin/kafka-topics.sh, --bootstrap-server, kafka:9092, --list]
+    depends_on:
+      kafka: {condition: service_healthy}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, /opt/kafka/bin/kafka-topics.sh, --bootstrap-server, kafka:9092, --list]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    deploy:
+      resources:
+        limits: {cpus: "0.33", memory: 640M}
+
+  observability-smoke:
+    image: prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893
+    profiles: [smoke]
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    networks: [observability]
+    command: [promtool, check, rules, /etc/prometheus/rules.yml]
+    volumes:
+      - ./config/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+    depends_on:
+      prometheus: {condition: service_healthy}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, promtool, check, rules, /etc/prometheus/rules.yml]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    deploy:
+      resources:
+        limits: {cpus: "0.34", memory: 640M}
+
+networks:
+  data:
+    name: dcim-build-data
+    internal: true
+  observability:
+    name: dcim-build-observability
+    internal: true
+
+volumes:
+  postgres-data: {name: dcim-build-postgres-data}
+  kafka-data: {name: dcim-build-kafka-data}
+  prometheus-data: {name: dcim-build-prometheus-data}
+
+secrets:
+  postgres-superuser-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/postgres-superuser-password
+  postgres-monitor-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/postgres-monitor-password
+  postgres-smoke-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/postgres-smoke-password
+  grafana-admin-user:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/grafana-admin-user
+  grafana-admin-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/grafana-admin-password

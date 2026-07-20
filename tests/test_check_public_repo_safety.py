@@ -16,6 +16,33 @@ SPEC.loader.exec_module(repo_safety)
 
 
 class RepositorySafetyTests(unittest.TestCase):
+    def test_approved_public_download_url_ignores_archive_path_suffix(self) -> None:
+        findings = repo_safety.text_findings(
+            '"url": "https://codeload.github.com/example/project/tar.gz/revision"',
+            "manifest.json",
+        )
+        self.assertFalse(any(item.rule == "endpoint-fqdn" for item in findings))
+
+    def test_public_maven_download_is_approved(self) -> None:
+        findings = repo_safety.text_findings(
+            '"url": "https://repo.maven.apache.org/maven2/example/artifact.jar"',
+            "manifest.json",
+        )
+        self.assertFalse(any(item.rule == "endpoint-fqdn" for item in findings))
+
+    def test_malformed_url_fails_scan_without_crashing(self) -> None:
+        findings = repo_safety.text_findings(
+            'endpoint="https://[malformed' + '.company.com/path"',
+            "config.json",
+        )
+        self.assertTrue(any(item.rule == "endpoint-fqdn" for item in findings))
+
+    def test_absolute_mount_target_is_not_treated_as_network_endpoint(self) -> None:
+        findings = repo_safety.text_findings(
+            '"target": "/opt/example/artifact-1.0.jar"', "compose.json"
+        )
+        self.assertFalse(any(item.rule == "endpoint-fqdn" for item in findings))
+
     def scan(self, name: str, data: bytes) -> list[object]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "target_platform": "linux/amd64",
+  "verified_utc": "2026-07-20",
+  "license_review": "Runtime components remain separately distributed; this inventory does not resolve repository license decision OD-06. Grafana AGPL-3.0-only remains an explicit review item.",
+  "scanner": {
+    "image": "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+    "amd64_manifest": "sha256:c6e969c5662a546ad5de4a73c2a6b7a7c627f86d916903e175aa623af5b97ada",
+    "license": "Apache-2.0",
+    "upstream": "https://github.com/aquasecurity/trivy"
+  },
+  "images": [
+    {
+      "component": "PostgreSQL",
+      "image": "postgres:17.10-bookworm@sha256:4f736ae292687621d4dbe0d499ffd024a36bd2ee7d8ca6f2ccd4c800f047b394",
+      "amd64_manifest": "sha256:67870dc097790edf2bd6726658db995dcc830f799d41bb2b78ef07c9a2d5f010",
+      "license": "PostgreSQL",
+      "upstream": "https://github.com/docker-library/postgres"
+    },
+    {
+      "component": "Apache Kafka",
+      "image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
+      "amd64_manifest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26",
+      "license": "Apache-2.0",
+      "upstream": "https://kafka.apache.org/community/downloads/"
+    },
+    {
+      "component": "Prometheus",
+      "image": "prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893",
+      "amd64_manifest": "sha256:bd2dcadfb0d1096e2a4c21817ac7af918e2f19ff628e4bf25fd67a924c13dd80",
+      "license": "Apache-2.0",
+      "upstream": "https://github.com/prometheus/prometheus"
+    },
+    {
+      "component": "Grafana OSS",
+      "image": "grafana/grafana:13.1.0@sha256:121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63",
+      "amd64_manifest": "sha256:6ea068891652aa6a65ca9065c26b89de939653803c836426970305c11fd00534",
+      "license": "AGPL-3.0-only",
+      "upstream": "https://github.com/grafana/grafana"
+    },
+    {
+      "component": "PostgreSQL exporter",
+      "image": "prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e",
+      "amd64_manifest": "sha256:4f3d82803c1f99ea5e767890de3557d2479ebbc711f63f2e04c663daa840057a",
+      "license": "Apache-2.0",
+      "upstream": "https://github.com/prometheus-community/postgres_exporter"
+    },
+    {
+      "component": "JMX exporter Java runtime",
+      "image": "eclipse-temurin:21.0.11_10-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64",
+      "amd64_manifest": "sha256:c978ac6dd6aa90ec21935eb6c848f50ebf9b783160eefdd6accd8d2fd9ebeef1",
+      "license": "GPL-2.0-with-classpath-exception",
+      "upstream": "https://github.com/adoptium/containers"
+    }
+  ],
+  "artifacts": [
+    {
+      "component": "Prometheus JMX Exporter standalone",
+      "version": "1.6.0",
+      "filename": "jmx_prometheus_standalone-1.6.0.jar",
+      "sha256": "6314f19186eb97023d424f5bdf108269fd86dbb0c70f65809b4d8751d68842b9",
+      "license": "Apache-2.0",
+      "upstream": "https://github.com/prometheus/jmx_exporter/releases/tag/v1.6.0",
+      "download": "https://github.com/prometheus/jmx_exporter/releases/download/v1.6.0/jmx_prometheus_standalone-1.6.0.jar"
+    }
+  ]
+}
