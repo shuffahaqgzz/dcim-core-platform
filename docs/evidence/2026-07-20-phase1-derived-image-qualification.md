@@ -1,12 +1,13 @@
 # Phase 1 Derived Image Qualification — PASS, Governance Decisions Recorded
 
-Verified UTC: 2026-07-20T16:54:00Z  
+Verified UTC: 2026-07-20T17:02:08Z  
 Implementation commit: `3f80efd8466258b584e7ad7a663b5e7fbfa2c9d1`  
 Security follow-up commit: `ad8ca4e63c2e4f8ffc7f21c257c78caf979450d4`  
 Governance implementation commit: `2cd69ed73cb65afb3266be1ee4924704f40bce98`  
 Review hardening commit: `f051ab5173ff43b005d3a6aa1456003837b50ff9`  
 Final fingerprint hardening commit: `47885ba5b157e868f5054bcb70e8684274b7eea0`  
 Final scan-evidence hardening commit: `1ebd1042d64c5fa040641c5c0c92f5aed4e79d02`  
+Final vulnerability-severity hardening commit: `32b48abfb588346144641683f0b5b6ea050432b9`  
 Issues: #10, parent #9; owner-approved exception: ADR-0013; source-to-binary
 clarification: ADR-0014
 
@@ -90,8 +91,8 @@ make preflight DCIM_RUNTIME_ROOT=${DCIM_RUNTIME_ROOT}
 Clean second builds used BuildKit `--no-cache`; both OCI exports used timestamp
 rewrite. The external lock binds both build IDs and public input provenance.
 Fresh six-image supply-chain scan took approximately 130 seconds by command
-wall clock. Final commit-hook recovery test reported `87.1s`; earlier fast smoke
-reported `94.4s`. Final preflight passed 111 unit/contract tests, public-safety, JSON,
+wall clock. Final commit-hook recovery test reported `89.2s`; earlier fast smoke
+reported `94.4s`. Final preflight passed 112 unit/contract tests, public-safety, JSON,
 fixture, Markdown, qualification, fresh supply-chain, policy, health, and
 recovery gates.
 
@@ -109,7 +110,8 @@ Owner status: ADR-0013 and ADR-0014 Accepted. Component/category license
 dispositions are recorded and enforced fail-closed. Prior hard findings for
 stale scan reuse, database identity, malformed license/SBOM output, policy
 bypasses, evidence fields, health checks, ambiguous license categories,
-duplicate scanner metadata, and stale docs remain reconciled.
+duplicate scanner metadata, unknown vulnerability severities, and stale docs
+remain reconciled.
 This is not `DEV-APPROVED`, Staging approval, Production authorization, or merge
 approval.
 

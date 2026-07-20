@@ -383,7 +383,8 @@ Phase 1 design implementation is acceptable only when:
 - `dcim-build` starts no service without explicit profiles;
 - all required services start within the resource and timing envelope;
 - health, observability, policy, fast smoke, recovery, and dump/restore tests pass;
-- only Grafana is reachable from host loopback;
+- only Grafana is reachable from the Linux Development host through its
+  runtime-resolved internal bridge address;
 - image provenance, digest, SBOM, license, and vulnerability evidence exists;
 - runtime secrets and raw evidence remain outside Git;
 - clean-machine rebuild passes on Ubuntu 24.04;
