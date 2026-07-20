@@ -6,8 +6,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from scripts.foundation_images import runtime_environment
+from scripts.foundation_images import build_once, runtime_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,6 +108,34 @@ def license_dispositions(recipes_sha256: str) -> dict[str, object]:
 
 
 class FoundationImagesTests(unittest.TestCase):
+    def test_build_preserves_oci_export_but_loads_docker_archive(self) -> None:
+        image_id = "sha256:" + "f" * 64
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / "contexts" / "postgres"
+            context.mkdir(parents=True)
+            output_root = context.parent.parent / "outputs"
+            oci_archive = output_root / "postgres-first.oci.tar"
+            docker_archive = output_root / "postgres-first.docker.tar"
+            with (
+                patch("scripts.foundation_images.run") as run_mock,
+                patch(
+                    "scripts.foundation_images.inspect_image",
+                    return_value=(image_id, {}),
+                ),
+            ):
+                build_once(recipe("postgres"), context, "first", clean=False)
+
+        commands = [call.args[0] for call in run_mock.call_args_list]
+        self.assertIn(
+            f"type=oci,dest={oci_archive},rewrite-timestamp=true", commands[0],
+        )
+        self.assertIn(
+            f"type=docker,dest={docker_archive},rewrite-timestamp=true", commands[0],
+        )
+        self.assertIn(
+            ["docker", "load", "--input", str(docker_archive)], commands,
+        )
+
     def test_runtime_environment_uses_only_immutable_local_image_ids(self) -> None:
         image_id = "sha256:" + "f" * 64
         environment = runtime_environment([

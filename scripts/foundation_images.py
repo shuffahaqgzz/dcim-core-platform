@@ -285,10 +285,12 @@ def build_once(recipe: dict[str, object], context: Path, suffix: str, clean: boo
     tag = f"{recipe['output_repository']}:{recipe['output_tag']}-{suffix}"
     output_root = context.parent.parent / "outputs"
     output_root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    archive = output_root / f"{recipe['component']}-{suffix}.oci.tar"
+    oci_archive = output_root / f"{recipe['component']}-{suffix}.oci.tar"
+    docker_archive = output_root / f"{recipe['component']}-{suffix}.docker.tar"
     command = [
         "docker", "buildx", "build", "--output",
-        f"type=oci,dest={archive},rewrite-timestamp=true",
+        f"type=oci,dest={oci_archive},rewrite-timestamp=true",
+        "--output", f"type=docker,dest={docker_archive},rewrite-timestamp=true",
         "--platform", "linux/amd64",
         "--provenance=false", "--build-arg", f"SOURCE_DATE_EPOCH={recipe['source_date_epoch']}",
         "--tag", tag,
@@ -297,7 +299,7 @@ def build_once(recipe: dict[str, object], context: Path, suffix: str, clean: boo
         command.append("--no-cache")
     command.append(str(context))
     run(command, timeout=3600)
-    run(["docker", "load", "--input", str(archive)], timeout=900)
+    run(["docker", "load", "--input", str(docker_archive)], timeout=900)
     return inspect_image(tag)
 
 
