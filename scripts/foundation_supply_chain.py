@@ -52,6 +52,7 @@ REVALIDATION_TRIGGERS = {
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
+VALID_VULNERABILITY_SEVERITIES = {"UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
 
 
 def blocking_counts(report: dict[str, object]) -> tuple[int, int, int]:
@@ -72,7 +73,9 @@ def blocking_counts(report: dict[str, object]) -> tuple[int, int, int]:
         for finding in findings:
             if not isinstance(finding, dict):
                 raise ValueError("scanner vulnerability entries must be objects")
-            severity = str(finding.get("Severity", "")).upper()
+            severity = finding.get("Severity")
+            if not isinstance(severity, str) or severity not in VALID_VULNERABILITY_SEVERITIES:
+                raise ValueError("scanner vulnerability severity is invalid")
             if severity == "CRITICAL":
                 critical += 1
             elif severity == "HIGH" and str(finding.get("FixedVersion", "")).strip():

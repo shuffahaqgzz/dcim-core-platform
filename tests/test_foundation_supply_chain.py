@@ -195,6 +195,14 @@ class FoundationSupplyChainTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Results"):
             foundation_supply_chain.blocking_counts({})
 
+    def test_unrecognized_vulnerability_severities_fail_closed(self) -> None:
+        for severity in (None, 7, "", " critical ", "BLOCKER"):
+            with self.subTest(severity=severity):
+                with self.assertRaisesRegex(ValueError, "severity"):
+                    foundation_supply_chain.blocking_counts({
+                        "Results": [{"Vulnerabilities": [{"Severity": severity}]}],
+                    })
+
     def test_critical_finding_blocks_even_without_fix(self) -> None:
         report = {"Results": [{"Vulnerabilities": [{"Severity": "CRITICAL", "FixedVersion": ""}]}]}
         self.assertEqual((1, 0, 0), foundation_supply_chain.blocking_counts(report))
