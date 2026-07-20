@@ -21,9 +21,10 @@ Derived image publication is prohibited.
 The issue #10 owner accepted exact component/category license findings for local
 synthetic Development only. The reviewed records are in
 [`deploy/compose/derived-images/license-dispositions.json`](../../deploy/compose/derived-images/license-dispositions.json).
-New or changed review-required counts fail closed. Publication, distribution,
-handover, Staging, and Production remain outside this disposition. OD-06 remains
-OPEN.
+Each reviewed record binds its exact count and a canonical identity fingerprint;
+inventory replacement with the same aggregate count still fails closed.
+Publication, distribution, handover, Staging, and Production remain outside this
+disposition. OD-06 remains OPEN.
 
 ADR-0014 accepts immutable official PostgreSQL and Kafka release binaries plus
 checksum-verified source provenance for this scope. Grafana OSS and PostgreSQL
@@ -53,8 +54,9 @@ disposition part of qualification and normalized Compose policy.
 
 Package-level license reports and CycloneDX SBOMs were parsed fail-closed and
 bound to evidence hashes. Restricted, reciprocal, and unknown category counts
-matched the issue #10 owner disposition exactly across all six effective images.
-This does not close OD-06 or constitute publication or distribution approval.
+and canonical identity fingerprints matched the issue #10 owner disposition
+exactly across all six effective images. This does not close OD-06 or constitute
+publication or distribution approval.
 Raw scanner reports, SBOMs, build artifacts, image IDs, and runtime state remain beneath
 `${DCIM_RUNTIME_ROOT}/dev-build`; none are committed.
 
@@ -84,8 +86,8 @@ make preflight DCIM_RUNTIME_ROOT=${DCIM_RUNTIME_ROOT}
 Clean second builds used BuildKit `--no-cache`; both OCI exports used timestamp
 rewrite. The external lock binds both build IDs and public input provenance.
 Fresh six-image supply-chain scan took approximately 130 seconds by command
-wall clock. Final recovery test reported `89.0s`; earlier fast smoke reported
-`94.4s`. Final preflight passed 74 unit/contract tests, public-safety, JSON,
+wall clock. Final recovery test reported `88.5s`; earlier fast smoke reported
+`94.4s`. Final preflight passed 75 unit/contract tests, public-safety, JSON,
 fixture, Markdown, qualification, fresh supply-chain, policy, health, and
 recovery gates.
 

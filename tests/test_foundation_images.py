@@ -88,6 +88,7 @@ def license_dispositions(recipes_sha256: str) -> dict[str, object]:
                 "component": component,
                 "category": "unknown",
                 "reviewed_count": 1,
+                "inventory_sha256": "a" * 64,
                 "disposition": "accepted-local-development-only",
             }
             for component in (

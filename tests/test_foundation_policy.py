@@ -92,6 +92,16 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("license disposition digest", result.stderr)
 
+    def test_duplicate_derived_lock_member_fails_closed(self) -> None:
+        lock = self.image_lock.read_text(encoding="utf-8")
+        self.image_lock.write_text(
+            lock.replace('"schema_version": 2', '"schema_version": 2, "schema_version": 2'),
+            encoding="utf-8",
+        )
+        result = self.validate(self.normalized_model())
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("duplicate JSON member", result.stderr)
+
     def test_unpinned_image_fails_closed(self) -> None:
         model = self.normalized_model()
         model["services"]["postgres"]["image"] = "postgres:17.10-bookworm"

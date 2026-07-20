@@ -33,6 +33,7 @@ def license_disposition_manifest() -> dict[str, object]:
                 "component": component,
                 "category": "unknown",
                 "reviewed_count": 1,
+                "inventory_sha256": "a" * 64,
                 "disposition": "accepted-local-development-only",
             }
             for component in (
@@ -76,12 +77,14 @@ class FoundationSupplyChainTests(unittest.TestCase):
                     "component": "postgres",
                     "category": "restricted",
                     "reviewed_count": 2,
+                    "inventory_sha256": "a" * 64,
                     "disposition": "accepted-local-development-only",
                 },
                 {
                     "component": "postgres",
                     "category": "unknown",
                     "reviewed_count": 1,
+                    "inventory_sha256": "b" * 64,
                     "disposition": "accepted-local-development-only",
                 },
             ],
@@ -90,6 +93,7 @@ class FoundationSupplyChainTests(unittest.TestCase):
             dispositions,
             "postgres",
             {"notice": 4, "restricted": 2, "unknown": 1},
+            {"restricted": "a" * 64, "unknown": "b" * 64},
         )
         self.assertEqual({"restricted": 2, "unknown": 1}, reviewed)
 
@@ -97,7 +101,8 @@ class FoundationSupplyChainTests(unittest.TestCase):
             foundation_supply_chain.review_license_categories(
                 dispositions,
                 "postgres",
-                {"notice": 4, "restricted": 3, "unknown": 1},
+                {"notice": 4, "restricted": 2, "unknown": 1},
+                {"restricted": "c" * 64, "unknown": "b" * 64},
             )
 
     def test_effective_images_substitute_only_approved_derived_components(self) -> None:

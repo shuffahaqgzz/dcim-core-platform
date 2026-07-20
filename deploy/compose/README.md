@@ -56,12 +56,13 @@ license, and vulnerability evidence outside Git, then writes `images.env` and
 `derived-images-lock.json` under `${DCIM_RUNTIME_ROOT}/dev-build`.
 
 `derived-images/license-dispositions.json` records issue #10 owner review for
-the exact review-required category counts in the qualified six-image set. New or
-changed `restricted`, `reciprocal`, or `unknown` counts fail closed. Recipe,
-publication/distribution, OD-06, or deployment-scope changes require fresh owner
-review. Qualification upgrades a valid external lock from schema v1 to v2 after
-revalidating existing reports; rollback to v1 restores the Governance HOLD and
-cannot pass current policy or supply-chain gates.
+the exact review-required inventories in the qualified six-image set. Each
+`restricted`, `reciprocal`, and `unknown` record binds both count and a canonical
+identity fingerprint; a changed inventory cannot pass by preserving aggregate
+counts. Recipe, publication/distribution, OD-06, or deployment-scope changes
+require fresh owner review. Qualification upgrades a valid external lock from
+schema v1 to v2 only after revalidating existing reports; rollback to v1 restores
+the Governance HOLD and cannot pass current policy or supply-chain gates.
 
 These images are local Development artifacts. They are never pushed. Clean
 official upstream images remain preferred replacements.

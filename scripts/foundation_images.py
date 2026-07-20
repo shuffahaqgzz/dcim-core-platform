@@ -19,19 +19,23 @@ from urllib.parse import urlsplit
 try:
     from scripts.foundation_supply_chain import (
         blocking_counts,
+        license_category_fingerprints,
         review_license_categories,
         validate_license_disposition_manifest,
         validate_license_report,
         validate_sbom,
     )
+    from scripts.strict_json import load_object, loads_object
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
     from foundation_supply_chain import (
         blocking_counts,
+        license_category_fingerprints,
         review_license_categories,
         validate_license_disposition_manifest,
         validate_license_report,
         validate_sbom,
     )
+    from strict_json import load_object, loads_object
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,19 +59,6 @@ LICENSE_COMPONENTS = {
     "grafana": "grafana-oss",
     "postgres-exporter": "postgresql-exporter",
 }
-
-
-class DuplicateKeyError(ValueError):
-    """Raised when JSON contains duplicate object members."""
-
-
-def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise DuplicateKeyError(f"duplicate JSON member: {key}")
-        result[key] = value
-    return result
 
 
 def external_root(path: Path) -> Path:
@@ -280,7 +271,7 @@ def prepare_context(
 
 def inspect_image(image: str) -> tuple[str, dict[str, str]]:
     raw = run(["docker", "image", "inspect", image, "--format", "{{json .}}"])
-    inspected = json.loads(raw)
+    inspected = loads_object(raw, "docker image inspection")
     image_id = inspected.get("Id")
     labels = inspected.get("Config", {}).get("Labels", {}) or {}
     if not isinstance(image_id, str) or not IMAGE_ID.fullmatch(image_id):
@@ -348,21 +339,21 @@ def scan_image(
         "image", "--input", f"/evidence/{archive.name}", "--format", "cyclonedx",
         "--output", f"/evidence/{sbom}",
     ]), timeout=900)
-    report = json.loads((evidence / vulnerability).read_text(encoding="utf-8"))
+    report = load_object(evidence / vulnerability)
     critical, fixable_high, unfixable_high = blocking_counts(report)
     counts = {
         "critical": critical,
         "fixable_high": fixable_high,
         "unfixable_high_without_disposition": unfixable_high,
     }
-    license_categories = validate_license_report(
-        json.loads((evidence / license_report).read_text(encoding="utf-8"))
-    )
+    license_data = load_object(evidence / license_report)
+    license_categories = validate_license_report(license_data)
     reviewed_license_categories = review_license_categories(
         license_dispositions, LICENSE_COMPONENTS[component], license_categories,
+        license_category_fingerprints(license_data),
     )
     sbom_components = validate_sbom(
-        json.loads((evidence / sbom).read_text(encoding="utf-8"))
+        load_object(evidence / sbom)
     )
     metadata = {
         "license_categories": license_categories,
@@ -478,9 +469,9 @@ def reusable_records(
     if not lock_path.is_file() or not environment_path.is_file():
         return None
     try:
-        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock = load_object(lock_path)
         records = lock["images"]
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = load_object(manifest_path)
         recipes = {str(recipe["component"]): recipe for recipe in manifest["recipes"]}
         lock_upgraded = False
         if (
@@ -492,7 +483,9 @@ def reusable_records(
         if lock.get("schema_version") == 1:
             lock_upgraded = True
         elif lock.get("license_dispositions_sha256") != sha256_file(license_dispositions_path):
-            return None
+            # Rebind only after every stored report is validated against the new
+            # exact component/category count and canonical inventory fingerprint.
+            lock_upgraded = True
         expected_environment = runtime_environment(records)
         actual_environment = dict(
             line.split("=", 1) for line in environment_path.read_text(encoding="utf-8").splitlines()
@@ -547,7 +540,7 @@ def reusable_records(
                 if not (root / "evidence/derived-images" / f"{component}-{suffix}").is_file():
                     return None
             actual_critical, actual_fixable, actual_unfixable = blocking_counts(
-                json.loads(report_paths["vulnerability"].read_text(encoding="utf-8"))
+                load_object(report_paths["vulnerability"])
             )
             if counts != {
                 "critical": actual_critical,
@@ -555,14 +548,14 @@ def reusable_records(
                 "unfixable_high_without_disposition": actual_unfixable,
             }:
                 return None
-            actual_license_categories = validate_license_report(
-                json.loads(report_paths["license"].read_text(encoding="utf-8"))
-            )
+            license_data = load_object(report_paths["license"])
+            actual_license_categories = validate_license_report(license_data)
             reviewed_license_categories = review_license_categories(
                 license_dispositions, LICENSE_COMPONENTS[component], actual_license_categories,
+                license_category_fingerprints(license_data),
             )
             actual_sbom_components = validate_sbom(
-                json.loads(report_paths["sbom"].read_text(encoding="utf-8"))
+                load_object(report_paths["sbom"])
             )
             evidence_metadata = record.get("evidence")
             if not isinstance(evidence_metadata, dict):
@@ -605,14 +598,8 @@ def main() -> int:
     arguments = parser.parse_args()
     try:
         external_root(arguments.runtime_root)
-        manifest = json.loads(
-            arguments.manifest.read_text(encoding="utf-8"),
-            object_pairs_hook=unique_object,
-        )
-        license_dispositions = json.loads(
-            arguments.license_dispositions.read_text(encoding="utf-8"),
-            object_pairs_hook=unique_object,
-        )
+        manifest = load_object(arguments.manifest)
+        license_dispositions = load_object(arguments.license_dispositions)
         validate_license_disposition_manifest(
             license_dispositions, sha256_file(arguments.manifest),
         )

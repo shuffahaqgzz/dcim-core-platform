@@ -15,84 +15,98 @@
       "component": "postgresql",
       "category": "reciprocal",
       "reviewed_count": 1,
+      "inventory_sha256": "475912594e3a5b60596f75ba7dc375dab59347ac033011585f10559df4715868",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "postgresql",
       "category": "restricted",
       "reviewed_count": 25,
+      "inventory_sha256": "d52ab3d32f4daee498af5b19aa6588e8c60c4c71a21fc0e0011a0d58043dd2ca",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "postgresql",
       "category": "unknown",
       "reviewed_count": 8,
+      "inventory_sha256": "15c62b0aa6deaa307075b29af2becccfaeac562b786ab46a12312175e6315a5b",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "apache-kafka",
       "category": "reciprocal",
       "reviewed_count": 2,
+      "inventory_sha256": "1da58ed7377eac1e10fff96a7042e0045ff6e1ea211200e0da4017f76ca4723f",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "apache-kafka",
       "category": "restricted",
       "reviewed_count": 457,
+      "inventory_sha256": "ce036f7c46651d40e181628318f7fcd0ade3d35de82071390f57329d6c589fd9",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "apache-kafka",
       "category": "unknown",
       "reviewed_count": 266,
+      "inventory_sha256": "c8dcf6ca89f5abb33ae9350278bb42730165aa256acf08fc9af05dc7b65abd92",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "grafana-oss",
       "category": "reciprocal",
       "reviewed_count": 3,
+      "inventory_sha256": "0106dc1ca463611031905830fd4262ad680bbb3f7b3e874fb8e56219be1bf846",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "grafana-oss",
       "category": "restricted",
       "reviewed_count": 369,
+      "inventory_sha256": "ad511d8624a0878b46c49411109947fcc4a03a43d1a5fe82411ca17dcbfe6b49",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "grafana-oss",
       "category": "unknown",
       "reviewed_count": 247,
+      "inventory_sha256": "6ab33db992b1905cfdc5fbfcd0bc9f8d286d43aed79c4b1f2c261476ad7bc8a9",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "postgresql-exporter",
       "category": "unknown",
       "reviewed_count": 1,
+      "inventory_sha256": "227d9fc16ce7af9ee9e9060f6632de6ee1b064343238160709fd5a6630896a42",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "prometheus",
       "category": "unknown",
       "reviewed_count": 1,
+      "inventory_sha256": "227d9fc16ce7af9ee9e9060f6632de6ee1b064343238160709fd5a6630896a42",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "jmx-exporter-java-runtime",
       "category": "reciprocal",
       "reviewed_count": 2,
+      "inventory_sha256": "1da58ed7377eac1e10fff96a7042e0045ff6e1ea211200e0da4017f76ca4723f",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "jmx-exporter-java-runtime",
       "category": "restricted",
       "reviewed_count": 457,
+      "inventory_sha256": "ce036f7c46651d40e181628318f7fcd0ade3d35de82071390f57329d6c589fd9",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "jmx-exporter-java-runtime",
       "category": "unknown",
       "reviewed_count": 266,
+      "inventory_sha256": "c8dcf6ca89f5abb33ae9350278bb42730165aa256acf08fc9af05dc7b65abd92",
       "disposition": "accepted-local-development-only"
     }
   ],

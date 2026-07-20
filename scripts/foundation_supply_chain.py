@@ -13,6 +13,11 @@ import re
 import subprocess
 import sys
 
+try:
+    from scripts.strict_json import load_object
+except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
+    from strict_json import load_object
+
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "deploy/compose/images.json"
@@ -43,26 +48,6 @@ REVALIDATION_TRIGGERS = {
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
-
-
-class DuplicateKeyError(ValueError):
-    """Raised when JSON contains duplicate object members."""
-
-
-def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise DuplicateKeyError(f"duplicate JSON member: {key}")
-        result[key] = value
-    return result
-
-
-def load_json(path: Path) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
-    if not isinstance(value, dict):
-        raise ValueError(f"{path.name} must contain a JSON object")
-    return value
 
 
 def blocking_counts(report: dict[str, object]) -> tuple[int, int, int]:
@@ -115,6 +100,19 @@ def sha256_file(path: Path) -> str:
 
 
 def validate_license_report(report: dict[str, object]) -> dict[str, int]:
+    licenses = license_items(report)
+    if not licenses:
+        # A valid scanner result with no detected license is an explicit unknown,
+        # not a silent pass. Owner disposition remains required.
+        return {"unknown": 1}
+    categories: dict[str, int] = {}
+    for license_item in licenses:
+        category = str(license_item.get("Category", "unknown")).lower()
+        categories[category] = categories.get(category, 0) + 1
+    return categories
+
+
+def license_items(report: dict[str, object]) -> list[dict[str, object]]:
     results = report.get("Results")
     if not isinstance(results, list) or not results:
         raise ValueError("license report requires nonempty Results")
@@ -128,22 +126,41 @@ def validate_license_report(report: dict[str, object]) -> dict[str, int]:
         if not isinstance(found, list) or any(not isinstance(item, dict) for item in found):
             raise ValueError("license entries must be objects")
         licenses.extend(found)
-    if not licenses:
-        # A valid scanner result with no detected license is an explicit unknown,
-        # not a silent pass. ADR-0013 keeps it local-only and review-required.
-        return {"unknown": 1}
-    categories: dict[str, int] = {}
     for license_item in licenses:
         name = license_item.get("Name")
-        category = str(license_item.get("Category", "unknown")).lower()
         if not isinstance(name, str) or not name:
             raise ValueError("license entry requires a name")
-        categories[category] = categories.get(category, 0) + 1
-    return categories
+    return licenses
+
+
+def license_category_fingerprints(report: dict[str, object]) -> dict[str, str]:
+    licenses = license_items(report)
+    grouped: dict[str, list[tuple[str, str, str, str]]] = {}
+    if not licenses:
+        grouped["unknown"] = [("unknown", "", "", "")]
+    for item in licenses:
+        category = str(item.get("Category", "unknown")).lower()
+        if category not in REVIEW_REQUIRED_LICENSE_CATEGORIES:
+            continue
+        grouped.setdefault(category, []).append((
+            category,
+            str(item.get("Name", "")),
+            str(item.get("PkgName", "")),
+            str(item.get("FilePath", "")),
+        ))
+    return {
+        category: hashlib.sha256(
+            json.dumps(sorted(identities), separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        for category, identities in grouped.items()
+    }
 
 
 def review_license_categories(
-    manifest: dict[str, object], component: str, detected: dict[str, int],
+    manifest: dict[str, object],
+    component: str,
+    detected: dict[str, int],
+    fingerprints: dict[str, str],
 ) -> dict[str, int]:
     entries = manifest.get("dispositions")
     if not isinstance(entries, list):
@@ -154,6 +171,7 @@ def review_license_categories(
             continue
         category = entry.get("category")
         count = entry.get("reviewed_count")
+        fingerprint = entry.get("inventory_sha256")
         if category in reviewed:
             raise ValueError(f"{component}: duplicate license disposition for {category}")
         if category not in REVIEW_REQUIRED_LICENSE_CATEGORIES:
@@ -162,6 +180,8 @@ def review_license_categories(
             raise ValueError(f"{component}: reviewed license count must be positive")
         if entry.get("disposition") != "accepted-local-development-only":
             raise ValueError(f"{component}: invalid license disposition")
+        if not isinstance(fingerprint, str) or fingerprints.get(str(category)) != fingerprint:
+            raise ValueError(f"{component}: new or changed license findings require owner review")
         reviewed[str(category)] = count
     required = {
         category: count for category, count in detected.items()
@@ -212,7 +232,9 @@ def validate_license_disposition_manifest(
     entries = manifest.get("dispositions")
     if not isinstance(entries, list) or not entries:
         raise ValueError("license dispositions must be a nonempty array")
-    entry_fields = {"component", "category", "reviewed_count", "disposition"}
+    entry_fields = {
+        "component", "category", "reviewed_count", "inventory_sha256", "disposition",
+    }
     keys: set[tuple[object, object]] = set()
     components: set[object] = set()
     for entry in entries:
@@ -232,6 +254,9 @@ def validate_license_disposition_manifest(
         count = entry.get("reviewed_count")
         if not isinstance(count, int) or isinstance(count, bool) or count < 1:
             raise ValueError("license disposition reviewed_count must be positive")
+        fingerprint = entry.get("inventory_sha256")
+        if not isinstance(fingerprint, str) or not SHA256.fullmatch(fingerprint):
+            raise ValueError("license disposition inventory_sha256 must be SHA-256")
         if entry.get("disposition") != "accepted-local-development-only":
             raise ValueError("license disposition value mismatch")
     if components != REQUIRED_LICENSE_COMPONENTS:
@@ -331,9 +356,9 @@ def scan(
     cache.mkdir(parents=True, exist_ok=True, mode=0o700)
     evidence.chmod(0o700)
     cache.chmod(0o700)
-    inventory = load_json(INVENTORY)
-    derived_lock = load_json(derived_lock_path)
-    license_dispositions = load_json(license_dispositions_path)
+    inventory = load_object(INVENTORY)
+    derived_lock = load_object(derived_lock_path)
+    license_dispositions = load_object(license_dispositions_path)
     validate_license_disposition_manifest(
         license_dispositions, sha256_file(RECIPES),
     )
@@ -376,16 +401,16 @@ def scan(
             "image", *frozen_db_flags, *input_arguments, "--format", "cyclonedx",
             "--output", f"/evidence/{sbom_file}",
         ])
-        report = json.loads((evidence / vulnerability_file).read_text(encoding="utf-8"))
+        report = load_object(evidence / vulnerability_file)
         critical, fixable_high, unfixable_high = blocking_counts(report)
-        license_categories = validate_license_report(
-            json.loads((evidence / license_file).read_text(encoding="utf-8"))
-        )
+        license_data = load_object(evidence / license_file)
+        license_categories = validate_license_report(license_data)
         reviewed_license_categories = review_license_categories(
             license_dispositions, name, license_categories,
+            license_category_fingerprints(license_data),
         )
         sbom_components = validate_sbom(
-            json.loads((evidence / sbom_file).read_text(encoding="utf-8"))
+            load_object(evidence / sbom_file)
         )
         blocked = blocked or bool(critical or fixable_high or unfixable_high)
         summaries.append(

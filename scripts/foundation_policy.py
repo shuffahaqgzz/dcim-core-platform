@@ -10,6 +10,11 @@ from pathlib import Path
 import re
 import sys
 
+try:
+    from scripts.strict_json import load_object, loads_object
+except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
+    from strict_json import load_object, loads_object
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_BIND_TARGETS = {
@@ -108,7 +113,7 @@ def validate_model(
 ) -> list[str]:
     errors: list[str] = []
     try:
-        inventory = json.loads(IMAGE_INVENTORY.read_text(encoding="utf-8"))
+        inventory = load_object(IMAGE_INVENTORY)
         approved_images = {item["component"]: item["image"] for item in inventory["images"]}
     except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
         return [f"image inventory invalid: {error}"]
@@ -293,12 +298,12 @@ def main() -> int:
     arguments = parser.parse_args()
     try:
         raw = sys.stdin.read() if arguments.input == "-" else Path(arguments.input).read_text(encoding="utf-8")
-        model = json.loads(raw)
-        derived_lock = json.loads(arguments.derived_lock.read_text(encoding="utf-8"))
+        model = loads_object(raw, "normalized Compose model")
+        derived_lock = load_object(arguments.derived_lock)
         license_dispositions_sha256 = hashlib.sha256(
             arguments.license_dispositions.read_bytes()
         ).hexdigest()
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"foundation-policy: invalid input: {error}", file=sys.stderr)
         return 2
     errors = validate_model(model, derived_lock, license_dispositions_sha256)
