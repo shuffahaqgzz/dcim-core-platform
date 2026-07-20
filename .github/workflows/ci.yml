@@ -39,8 +39,6 @@ jobs:
     name: synthetic foundation fast smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    env:
-      DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -53,11 +51,17 @@ jobs:
           python-version: '3.12'
 
       - name: Bootstrap protected synthetic runtime
+        env:
+          DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
         run: make foundation-bootstrap
 
       - name: Run normalized policy and fast smoke
+        env:
+          DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
         run: make foundation-smoke
 
       - name: Stop synthetic foundation and preserve evidence for job lifetime
         if: always()
+        env:
+          DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
         run: make foundation-stop
