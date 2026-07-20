@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 from typing import Iterable
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ALLOWLIST = ROOT / ".public-safety-allowlist"
@@ -43,7 +44,7 @@ PLACEHOLDER_VALUES = {"", "none", "null", "unset", "not-set", "not_set", "redact
 ANGLE_PLACEHOLDERS = {"<SET_LOCALLY>", "<REMOVED>", "<REDACTED>", "<MASKED>", "<GENERATE_LOCALLY>", "<PRIVATE-REFERENCE>", "<SECRET-STORE-REFERENCE>"}
 # Reserved for future low-risk, fingerprint-bound rules. Sensitive rules are never allowlistable.
 ALLOWLISTABLE_RULES: set[str] = set()
-APPROVED_PUBLIC_DOMAINS = ("github.com", "openai.com", "json-schema.org")
+APPROVED_PUBLIC_DOMAINS = ("github.com", "apache.org", "openai.com", "json-schema.org")
 STRUCTURED_SUFFIXES = {".json", ".jsonl"}
 
 
@@ -259,9 +260,20 @@ def text_findings(text: str, rel: str) -> list[Finding]:
                 findings.append(Finding("credential-assignment", rel, line_no, f"possible non-placeholder {match.group(1)} assignment"))
         for match in ENDPOINT_ASSIGN_RE.finditer(line_text):
             endpoint_value = match.group("value")
+            if endpoint_value.startswith("/") and not endpoint_value.startswith("//"):
+                continue
             if rel.endswith(".py") and not match.group("quote") and "://" not in endpoint_value:
                 continue
-            for hostname in FQDN_RE.findall(endpoint_value):
+            try:
+                parsed = urlsplit(endpoint_value) if "://" in endpoint_value else None
+            except ValueError:
+                parsed = None
+            hostnames = (
+                [parsed.hostname]
+                if parsed and parsed.hostname and FQDN_RE.fullmatch(parsed.hostname)
+                else ([] if parsed else FQDN_RE.findall(endpoint_value))
+            )
+            for hostname in hostnames:
                 lowered_host = hostname.lower()
                 if any(lowered_host == domain or lowered_host.endswith("." + domain) for domain in APPROVED_PUBLIC_DOMAINS):
                     continue

@@ -1,6 +1,15 @@
-.PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight
+.PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain
 
 PYTHON ?= python3
+DCIM_RUNTIME_ROOT ?= $(abspath ../dcim-runtime)
+FOUNDATION_COMPOSE := deploy/compose/dev-build/compose.yaml
+FOUNDATION_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/runtime.env
+FOUNDATION_IMAGE_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/images.env
+FOUNDATION_IMAGE_LOCK := $(DCIM_RUNTIME_ROOT)/dev-build/derived-images-lock.json
+FOUNDATION_IMAGE_RECIPES := deploy/compose/derived-images/recipes.json
+FOUNDATION_PROFILES := --profile data --profile observability --profile smoke
+FOUNDATION_SERVICES := postgres kafka postgres-exporter kafka-jmx-exporter prometheus grafana
+FOUNDATION_COMPOSE_CMD := DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' docker compose --env-file '$(FOUNDATION_ENV)' --env-file '$(FOUNDATION_IMAGE_ENV)' -f '$(FOUNDATION_COMPOSE)' $(FOUNDATION_PROFILES)
 
 help:
 	@printf '%s\n' \
@@ -12,10 +21,56 @@ help:
 	  'markdown-links  Check repository-local Markdown links' \
 	  'test            Run standard-library tests' \
 	  'phase0-check    Run all Phase 0 gates' \
-	  'preflight       Alias for Phase 0 gates'
+	  'preflight       Run all Development gates' \
+	  'foundation-bootstrap Create protected synthetic runtime material' \
+	  'foundation-images-qualify Build, reproduce, and scan local derived images' \
+	  'foundation-up   Start explicit synthetic foundation capabilities' \
+	  'foundation-stop Stop containers and preserve state' \
+	  'foundation-down Remove containers/networks and preserve state' \
+	  'foundation-grafana-url Resolve current internal Grafana URL' \
+	  'foundation-reset Interactively remove only dcim-build volumes' \
+	  'foundation-smoke Run bounded synthetic fast smoke' \
+	  'foundation-recovery Run restart and PostgreSQL restore checks' \
+	  'foundation-supply-chain Generate external SBOM/license/vulnerability evidence'
 
 bootstrap:
 	./scripts/bootstrap-dev.sh
+
+foundation-bootstrap:
+	$(PYTHON) scripts/foundation_bootstrap.py --runtime-root '$(DCIM_RUNTIME_ROOT)'
+
+foundation-artifacts:
+	$(PYTHON) scripts/foundation_artifacts.py --runtime-root '$(DCIM_RUNTIME_ROOT)'
+
+foundation-images-qualify:
+	$(PYTHON) scripts/foundation_images.py --manifest '$(FOUNDATION_IMAGE_RECIPES)' --runtime-root '$(DCIM_RUNTIME_ROOT)'
+
+foundation-policy: foundation-images-qualify
+	@$(FOUNDATION_COMPOSE_CMD) config --format json | $(PYTHON) scripts/foundation_policy.py --input - --derived-lock '$(FOUNDATION_IMAGE_LOCK)'
+
+foundation-up: foundation-artifacts foundation-supply-chain foundation-policy
+	$(FOUNDATION_COMPOSE_CMD) up -d --wait --wait-timeout 180 $(FOUNDATION_SERVICES)
+
+foundation-stop:
+	$(FOUNDATION_COMPOSE_CMD) stop --timeout 60
+
+foundation-down:
+	$(FOUNDATION_COMPOSE_CMD) down --timeout 60
+
+foundation-grafana-url:
+	DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' $(PYTHON) scripts/foundation_smoke.py grafana-url
+
+foundation-reset:
+	$(PYTHON) scripts/foundation_reset.py
+
+foundation-smoke: foundation-up
+	DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' $(PYTHON) scripts/foundation_smoke.py fast
+
+foundation-recovery: foundation-up
+	DCIM_RUNTIME_ROOT='$(DCIM_RUNTIME_ROOT)' $(PYTHON) scripts/foundation_smoke.py recovery
+
+foundation-supply-chain: foundation-images-qualify
+	$(PYTHON) scripts/foundation_supply_chain.py --runtime-root '$(DCIM_RUNTIME_ROOT)' --derived-lock '$(FOUNDATION_IMAGE_LOCK)'
 
 compile:
 	$(PYTHON) -m compileall -q scripts tests
@@ -37,4 +92,4 @@ test:
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
 
-preflight: phase0-check
+preflight: phase0-check foundation-supply-chain foundation-recovery

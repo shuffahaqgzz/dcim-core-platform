@@ -1,0 +1,15 @@
+hostPort: kafka:9999
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  - pattern: "kafka.server<type=KafkaServer, name=BrokerState><>Value"
+    name: kafka_server_broker_state
+    type: GAUGE
+  - pattern: "kafka.controller<type=KafkaController, name=ActiveControllerCount><>Value"
+    name: kafka_controller_active_controller_count
+    type: GAUGE
+  - pattern: "kafka.log<type=Log, name=Size, topic=(.+), partition=(.+)><>Value"
+    name: kafka_log_size_bytes
+    labels: {topic: "$1", partition: "$2"}
+    type: GAUGE
+  - pattern: ".*"

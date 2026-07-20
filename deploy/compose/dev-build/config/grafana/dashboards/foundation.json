@@ -1,0 +1,13 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"type": "stat", "title": "Foundation targets up", "datasource": {"type": "prometheus", "uid": "foundation-prometheus"}, "targets": [{"expr": "sum(up)", "refId": "A"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+    {"type": "stat", "title": "Kafka storage ratio", "datasource": {"type": "prometheus", "uid": "foundation-prometheus"}, "targets": [{"expr": "dcim_foundation:kafka_storage_ratio", "refId": "A"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}}
+  ],
+  "schemaVersion": 42,
+  "tags": ["synthetic", "foundation"],
+  "title": "DCIM Development Foundation",
+  "uid": "dcim-foundation",
+  "version": 1
+}
