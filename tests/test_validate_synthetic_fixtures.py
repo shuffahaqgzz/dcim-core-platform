@@ -41,6 +41,23 @@ class SyntheticFixtureValidationTests(unittest.TestCase):
         )
         self.assertEqual(6, len(fixture_validation.validate_asset_row(row)))
 
+    def test_unreviewed_fixture_formats_are_rejected(self) -> None:
+        paths = [
+            Path("README.md"),
+            Path("assets.csv"),
+            Path("events/safe.json"),
+            Path("events/unreviewed.csv"),
+            Path("events/unreviewed.yaml"),
+        ]
+
+        self.assertEqual(
+            [
+                "unsupported synthetic fixture: events/unreviewed.csv",
+                "unsupported synthetic fixture: events/unreviewed.yaml",
+            ],
+            fixture_validation.fixture_inventory_errors(paths),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

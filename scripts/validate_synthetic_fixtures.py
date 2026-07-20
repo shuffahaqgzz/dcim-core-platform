@@ -48,6 +48,15 @@ def validate_asset_row(row: dict[str, str]) -> list[str]:
     return errors
 
 
+def fixture_inventory_errors(relative_paths: list[Path]) -> list[str]:
+    errors: list[str] = []
+    for path in sorted(relative_paths):
+        if path.as_posix() in {"README.md", "assets.csv"} or path.suffix == ".json":
+            continue
+        errors.append(f"unsupported synthetic fixture: {path.as_posix()}")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     for relative in REQUIRED:
@@ -59,6 +68,9 @@ def main() -> int:
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid JSON {path.relative_to(ROOT)}: {exc}")
     fixture_paths = sorted(path for path in FIXTURES.rglob("*") if path.is_file())
+    errors.extend(
+        fixture_inventory_errors([path.relative_to(FIXTURES) for path in fixture_paths])
+    )
     for finding in scan_paths(fixture_paths, ROOT):
         errors.append(
             f"public-safety violation {finding.path} [{finding.rule}]; value=<redacted>"

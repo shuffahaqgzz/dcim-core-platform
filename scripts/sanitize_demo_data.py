@@ -9,9 +9,11 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -20,6 +22,14 @@ IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 IPV6_RE = re.compile(r"(?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:])")
 FQDN_RE = re.compile(r"(?i)\b(?=[a-z0-9.-]*[a-z])[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+\b")
 INTERNAL_FQDN_RE = re.compile(r"(?i)\b[a-z0-9][a-z0-9.-]*\.(?:local|lan|corp|internal|office|prod)\b")
+CREDENTIAL_VALUE_RE = re.compile(
+    r"(?i)\b(?:password|passwd|pwd|token|secret|api[_-]?key|community(?:[_-]?string)?)\b\s*[:=]\s*\S+"
+)
+AUTHORIZATION_VALUE_RE = re.compile(r"(?i)\bauthorization\s*:\s*\S+")
+URL_CREDENTIAL_RE = re.compile(
+    r"(?i)\b(?:postgres(?:ql)?|mysql|redis|mongodb(?:\+srv)?)://[^\s/:]+:[^\s/@]+@"
+)
+PRIVATE_KEY_RE = re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")
 HOST_KEYS = {"hostname", "host", "fqdn", "device_name", "instance", "source_instance", "device", "node", "target"}
 IP_KEYS = {"ip", "ip_address", "address", "target_ip"}
 SERIAL_KEYS = {"serial", "serial_number", "asset_tag"}
@@ -29,7 +39,23 @@ ACCOUNT_KEYS = {"account", "user", "username"}
 TIMESTAMP_KEYS = {"timestamp", "event_timestamp", "observed_at", "created_at", "updated_at"}
 MESSAGE_KEYS = {"message", "raw_message", "description", "detail"}
 URL_KEYS = {"url", "uri", "endpoint", "base_url"}
-CREDENTIAL_KEYS = {"credential", "credential_ref", "credential_reference", "password", "token", "secret", "community", "api_key"}
+CREDENTIAL_KEYS = {
+    "access_key",
+    "api_key",
+    "authorization",
+    "client_secret",
+    "community",
+    "credential",
+    "credential_ref",
+    "credential_reference",
+    "credentials",
+    "password",
+    "private_key",
+    "secret",
+    "secret_key",
+    "signing_key",
+    "token",
+}
 PRESERVE_KEYS = {"event_type", "schema_version", "priority", "connector", "transport", "metric", "status", "validation_status", "step", "result", "unit"}
 UUID_KEYS = {"event_id", "correlation_id"}
 PRESERVED_DOTTED_IDENTIFIERS = {"event_type", "schema_version"}
@@ -42,6 +68,22 @@ APPROVED_EVENT_TYPES = {
     "synthetic.invalid",
     "ups.battery.alarm",
 }
+APPROVED_PRESERVED_VALUES = {
+    "connector": {
+        "isapi-fixture",
+        "metrics-fixture",
+        "redfish-fixture",
+        "snmpv3-fixture",
+    },
+    "metric": {"battery_charge_percent"},
+    "priority": {"P1", "P2", "P3"},
+    "result": {"accepted", "ok"},
+    "status": {"degraded"},
+    "step": {"fixture-load", "schema-validate"},
+    "transport": {"fixture", "redfish", "snmpv3", "syslog", "rest", "stream"},
+    "unit": {"percent"},
+    "validation_status": {"accepted", "quarantined"},
+}
 APPROVED_OBJECT_KEYS = {
     "account",
     "asset_identity",
@@ -51,7 +93,6 @@ APPROVED_OBJECT_KEYS = {
     "capacity_gib",
     "ci_identity",
     "component",
-    "compressed_ipv6",
     "connector",
     "correlation_id",
     "cpu_used_percent",
@@ -66,7 +107,6 @@ APPROVED_OBJECT_KEYS = {
     "expected_disposition",
     "expected_reason",
     "fqdn",
-    "hardware_serial_code",
     "health",
     "host",
     "hostname",
@@ -81,14 +121,10 @@ APPROVED_OBJECT_KEYS = {
     "metadata_only",
     "metric",
     "native_event_id",
-    "nested",
-    "network_note",
     "node",
-    "note",
     "nvr_name",
     "observed_at",
     "occurred_at",
-    "origin",
     "payload",
     "pool",
     "priority",
@@ -109,10 +145,8 @@ APPROVED_OBJECT_KEYS = {
     "target",
     "target_ip",
     "timestamp",
-    "token_count",
     "transport",
     "unit",
-    "unknown_nested",
     "updated_at",
     "uri",
     "url",
@@ -122,7 +156,6 @@ APPROVED_OBJECT_KEYS = {
     "utilization_percent",
     "validation_status",
     "value",
-    "vendor_auth_token_value",
 }
 APPROVED_OBJECT_KEYS |= (
     HOST_KEYS
@@ -299,22 +332,37 @@ def network_identity_findings(value: str, *, allow_dotted_identifier: bool = Fal
     return findings
 
 
+def credential_content_findings(value: str) -> list[str]:
+    patterns = (
+        CREDENTIAL_VALUE_RE,
+        AUTHORIZATION_VALUE_RE,
+        URL_CREDENTIAL_RE,
+        PRIVATE_KEY_RE,
+    )
+    return ["credential material remains"] if any(pattern.search(value) for pattern in patterns) else []
+
+
 def validate_object_key(key: object) -> str:
     if not isinstance(key, str):
         raise ValueError("object key must be a string")
     if network_identity_findings(key):
         raise ValueError("object key contains sensitive network identity")
-    if key not in APPROVED_OBJECT_KEYS and not credential_like_key(key):
+    if key not in APPROVED_OBJECT_KEYS:
         raise ValueError("object key is not approved for sanitized output")
     return key
 
 
 def validate_preserved_value(key: str, value: str) -> None:
     lowered = key.lower()
+    if credential_content_findings(value):
+        raise ValueError("preserved semantic field contains credential material")
     if lowered == "event_type" and value not in APPROVED_EVENT_TYPES:
         raise ValueError("event_type is not approved for sanitized output")
     if lowered == "schema_version" and value != "0.1.0":
         raise ValueError("schema_version is not approved for sanitized output")
+    approved = APPROVED_PRESERVED_VALUES.get(lowered)
+    if approved is not None and value not in approved:
+        raise ValueError(f"{lowered} is not approved for sanitized output")
 
 
 def sanitize_scalar(key: str, value: Any, salt: str) -> Any:
@@ -323,6 +371,8 @@ def sanitize_scalar(key: str, value: Any, salt: str) -> Any:
     if lowered in CREDENTIAL_KEYS or credential_like_key(key):
         return "<REMOVED>"
     if not isinstance(value, str):
+        if lowered in PRESERVE_KEYS:
+            raise ValueError("preserved semantic field must be a string")
         if sensitive_string_key(key):
             raise ValueError("sensitive identifier must be a string")
         return value
@@ -388,6 +438,7 @@ def residual_findings(value: Any, key: str = "") -> list[str]:
             allow_dotted_identifier=allow_dotted_identifier,
         )
     )
+    findings.extend(credential_content_findings(value))
     return findings
 
 
@@ -430,7 +481,24 @@ def write_output(path: Path, records: list[Any], jsonl: bool) -> None:
         text = "".join(json.dumps(record, sort_keys=True) + "\n" for record in records)
     else:
         text = json.dumps(records[0], indent=2, sort_keys=True) + "\n"
-    path.write_text(text, encoding="utf-8")
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(text)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        temporary_path.replace(path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:
