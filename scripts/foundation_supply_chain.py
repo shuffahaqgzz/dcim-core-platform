@@ -30,6 +30,10 @@ DERIVED_COMPONENTS = {
     "PostgreSQL exporter": "postgres-exporter",
 }
 REVIEW_REQUIRED_LICENSE_CATEGORIES = {"reciprocal", "restricted", "unknown"}
+BENIGN_LICENSE_CATEGORIES = {"notice", "permissive", "unencumbered"}
+ACCEPTED_LICENSE_CATEGORIES = (
+    REVIEW_REQUIRED_LICENSE_CATEGORIES | BENIGN_LICENSE_CATEGORIES
+)
 REQUIRED_LICENSE_COMPONENTS = {
     "postgresql",
     "apache-kafka",
@@ -107,7 +111,12 @@ def validate_license_report(report: dict[str, object]) -> dict[str, int]:
         return {"unknown": 1}
     categories: dict[str, int] = {}
     for license_item in licenses:
-        category = str(license_item.get("Category", "unknown")).lower()
+        raw_category = license_item.get("Category", "unknown")
+        if not isinstance(raw_category, str):
+            raise ValueError("license entry requires a recognized category")
+        category = raw_category.strip().lower()
+        if category not in ACCEPTED_LICENSE_CATEGORIES:
+            raise ValueError("license entry requires a recognized category")
         categories[category] = categories.get(category, 0) + 1
     return categories
 
@@ -340,8 +349,8 @@ def database_snapshot(evidence: Path, cache: Path) -> dict[str, object]:
     }
     if any(not path.is_file() for path in files.values()):
         raise ValueError("scanner database snapshot incomplete")
-    metadata = json.loads(files["vulnerability_metadata"].read_text(encoding="utf-8"))
-    java_metadata = json.loads(files["java_metadata"].read_text(encoding="utf-8"))
+    metadata = load_object(files["vulnerability_metadata"])
+    java_metadata = load_object(files["java_metadata"])
     return {
         "vulnerability_updated_at": metadata.get("UpdatedAt"),
         "vulnerability_next_update": metadata.get("NextUpdate"),

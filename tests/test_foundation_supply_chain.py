@@ -4,7 +4,9 @@ import importlib.util
 import copy
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/foundation_supply_chain.py"
@@ -137,6 +139,39 @@ class FoundationSupplyChainTests(unittest.TestCase):
         self.assertEqual(1, foundation_supply_chain.validate_sbom({
             "bomFormat": "CycloneDX", "components": [{"name": "synthetic"}],
         }))
+
+    def test_unrecognized_license_categories_fail_closed(self) -> None:
+        for category in ("forbidden", "", 7):
+            with self.subTest(category=category):
+                with self.assertRaisesRegex(ValueError, "category"):
+                    foundation_supply_chain.validate_license_report({
+                        "Results": [{"Licenses": [{
+                            "Name": "Synthetic-License",
+                            "Category": category,
+                        }]}],
+                    })
+
+    def test_database_snapshot_rejects_duplicate_metadata_members(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = root / "evidence"
+            cache = root / "cache"
+            (cache / "db").mkdir(parents=True)
+            (cache / "java-db").mkdir(parents=True)
+            (cache / "db/trivy.db").write_bytes(b"synthetic-db")
+            (cache / "java-db/trivy-java.db").write_bytes(b"synthetic-java-db")
+            (cache / "db/metadata.json").write_text(
+                '{"UpdatedAt":"first","UpdatedAt":"second","NextUpdate":"later"}',
+                encoding="utf-8",
+            )
+            (cache / "java-db/metadata.json").write_text(
+                '{"UpdatedAt":"first","NextUpdate":"later"}',
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(foundation_supply_chain, "run_scan"):
+                with self.assertRaisesRegex(ValueError, "duplicate"):
+                    foundation_supply_chain.database_snapshot(evidence, cache)
 
     def test_license_fingerprint_detects_package_version_change(self) -> None:
         report = {

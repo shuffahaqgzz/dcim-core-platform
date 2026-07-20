@@ -1,11 +1,11 @@
 # Phase 1 Derived Image Qualification — PASS, Governance Decisions Recorded
 
 Verified UTC: 2026-07-20T15:20:15Z  
-Implementation commit: `9d68483c32214397421900825140f8576c91f6c3`  
-Security follow-up commit: `513b1ac845f81c46066fc4739f70b809adadd548`  
-Governance implementation commit: `e7c459b8b52a80cb39e0d23d07110d9dad2c68bf`  
-Review hardening commit: `d3655d12420829987a9d3043c153955714964db8`  
-Final fingerprint hardening commit: `79427cc9c94de6af9cac6c07090e5621b5e01441`  
+Implementation commit: `3f80efd8466258b584e7ad7a663b5e7fbfa2c9d1`  
+Security follow-up commit: `ad8ca4e63c2e4f8ffc7f21c257c78caf979450d4`  
+Governance implementation commit: `2cd69ed73cb65afb3266be1ee4924704f40bce98`  
+Review hardening commit: `f051ab5173ff43b005d3a6aa1456003837b50ff9`  
+Final fingerprint hardening commit: `47885ba5b157e868f5054bcb70e8684274b7eea0`  
 Issues: #10, parent #9; owner-approved exception: ADR-0013; source-to-binary
 clarification: ADR-0014
 
