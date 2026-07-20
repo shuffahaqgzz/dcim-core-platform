@@ -1,6 +1,8 @@
 # Phase 1 Derived Image Qualification — GO for Development
 
-Date: 2026-07-20
+Verified UTC: 2026-07-20T11:51:49Z  
+Implementation commit: `9d68483c32214397421900825140f8576c91f6c3`  
+Issues: #10, parent #9; owner-approved exception: ADR-0013
 
 Scope: synthetic `dcim-build` Development foundation only. This record does not
 claim Staging or Production readiness.
@@ -53,12 +55,46 @@ Synthetic checks passed with the effective image lock:
 - PostgreSQL and Kafka restart/replay;
 - PostgreSQL dump/restore checksum recovery.
 
+## Reproducible commands and measurements
+
+Commands used a protected external `${DCIM_RUNTIME_ROOT}` and synthetic
+foundation data only:
+
+```text
+make foundation-images-qualify
+python3 scripts/foundation_supply_chain.py --runtime-root ${DCIM_RUNTIME_ROOT} --derived-lock ${DCIM_RUNTIME_ROOT}/dev-build/derived-images-lock.json
+make preflight DCIM_RUNTIME_ROOT=${DCIM_RUNTIME_ROOT}
+```
+
+Clean second builds used BuildKit `--no-cache`; both OCI exports used timestamp
+rewrite. The external lock binds both build IDs and public input provenance.
+Fresh six-image supply-chain scan took approximately 130 seconds by command
+wall clock. Final recovery test reported `90.4s`; earlier fast smoke reported
+`94.4s`. Final preflight passed 69 unit/contract tests, public-safety, JSON,
+fixture, Markdown, qualification, fresh supply-chain, policy, health, and
+recovery gates.
+
+Synthetic provenance: repository fixtures and generated `dcim-build` runtime
+material from `foundation-bootstrap`; image provenance comes from the immutable
+public recipe manifest. No sanitized or connected-source artifact was used.
+
+Owner status: ADR-0013 Accepted. Read-only Standards, Spec, and Security reviews
+completed; hard findings for stale scan reuse, database identity, license/SBOM
+validation, policy bypasses, evidence fields, health checks, and stale docs were
+reconciled before this record. This is not `DEV-APPROVED` or merge approval.
+
 ## Disposition
 
 Image blockers from the original official set are resolved for the local Phase
 1 Development foundation. Gate policy was not weakened and architecture was not
 changed. OD-06, official repin cadence, source-signature coverage, issue/PR
 review, and all Production conditions remain open or separately governed.
+
+PostgreSQL and Kafka derivatives consume immutable official release image
+digests while their public source archives are checksum-verified for provenance;
+they do not independently reproduce every upstream application binary from
+source. Replacement or stricter source-to-binary verification remains a
+revalidation trigger.
 
 Public-safety review found no credential, endpoint, host identity, raw payload,
 log, dump, screenshot, or connected-source data in this evidence.
