@@ -51,6 +51,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Configure OCI-capable Buildx builder
+        run: |
+          docker buildx create --driver docker-container --use --name dcim-ci-builder
+          docker buildx inspect --bootstrap
+
       - name: Bootstrap protected synthetic runtime
         env:
           DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
