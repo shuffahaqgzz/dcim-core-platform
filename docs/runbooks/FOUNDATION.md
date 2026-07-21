@@ -5,7 +5,10 @@ workflow execution, or infrastructure control path exists in this foundation.
 
 ## Lifecycle
 
-Set `DCIM_RUNTIME_ROOT` to a protected path outside this repository, then run:
+The default protected root is
+`${XDG_STATE_HOME:-$HOME/.local/state}/dcim-core-platform/runtime`, independent
+of the checkout or worktree location. Set `DCIM_RUNTIME_ROOT` only to select a
+different protected root explicitly, then run:
 
 ```text
 make foundation-bootstrap
@@ -28,11 +31,40 @@ Git. `foundation-up`, policy, supply-chain, and preflight also enforce this lock
 volumes. `foundation-reset` is interactive, unavailable in CI, and removes only
 allowlisted volumes labelled for project `dcim-build`.
 
+Bootstrap stores the resolved external runtime root in protected `runtime.env`.
+Keep using that same root with the persistent `dcim-build` volumes; selecting a
+fresh bootstrap root does not authorize resetting or re-identifying existing
+state. Legacy issue #10 material may not contain that non-secret root entry;
+the Make lifecycle supplies `DCIM_RUNTIME_ROOT` explicitly and remains
+compatible without overwriting bootstrap material. The workspace bootstrap and
+Make lifecycle share the same XDG default.
+With that file and `images.env`, plain Compose without a profile resolves
+successfully and selects zero services. Every executable service still requires
+the explicit `data`, `observability`, or `smoke` Capability Profile.
+
+Runtime writers reject symbolic-link path components. Image locks bind the exact
+qualification recipe and license disposition. Normalized policy also enforces
+the exact Runtime Plane/project name, network membership, stateful volume owner,
+health command, exporter process, Kafka KRaft/retention/message settings, and
+Prometheus retention command.
+
 Grafana has no published host port. Per ADR-0012, the Linux Development host
 resolves its current internal bridge address with `foundation-grafana-url`.
 
 Raw JSON evidence, secrets, artifacts, and dumps stay under the protected
-external runtime root. Git receives no raw runtime output.
+external runtime root. Fast evidence cannot claim PASS after five minutes;
+recovery evidence cannot claim PASS after fifteen minutes. Each evidence record
+uses schema version 2 and contains only its schema version, commit, effective
+image digests, Capability Profiles, UTC timestamp, duration, assertion result,
+synthetic run ID, and mode. Schema version 1 evidence remains historical and is
+not migrated; it lacks required image binding. Git receives no raw runtime
+output.
+
+Fast smoke requires rejection of a message above the 1 MiB Kafka ceiling and
+reports broker-managed internal topics separately from the single allowlisted
+non-internal topic. Recovery records the exact Kafka offset and synthetic
+PostgreSQL row before restart, then performs read-only post-restart checks before
+dump/restore. Lost state cannot be recreated and mistaken for persistence.
 
 ## Non-claims
 

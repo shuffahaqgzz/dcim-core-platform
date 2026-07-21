@@ -8,10 +8,15 @@ import base64
 import os
 from pathlib import Path
 import secrets
+import stat
 import sys
 
+try:
+    from scripts.protected_runtime import ensure_protected_directory, protected_runtime_path
+except ModuleNotFoundError:
+    from protected_runtime import ensure_protected_directory, protected_runtime_path
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
 SECRET_NAMES = (
     "postgres-superuser-password",
     "postgres-monitor-password",
@@ -19,14 +24,6 @@ SECRET_NAMES = (
     "grafana-admin-user",
     "grafana-admin-password",
 )
-
-
-def is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-    except ValueError:
-        return False
-    return True
 
 
 def protected_value(name: str) -> str:
@@ -39,37 +36,44 @@ def kafka_cluster_id() -> str:
     return base64.urlsafe_b64encode(secrets.token_bytes(16)).decode("ascii").rstrip("=")
 
 
-def write_new(path: Path, value: str, mode: int = 0o600) -> None:
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-        handle.write(value)
-    path.chmod(mode)
+def write_new(directory: Path, name: str, value: str, mode: int = 0o600) -> None:
+    if Path(name).name != name:
+        raise ValueError("invalid protected runtime filename")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
+    directory_descriptor = os.open(directory, directory_flags)
+    metadata = os.fstat(directory_descriptor)
+    if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o700:
+        os.close(directory_descriptor)
+        raise ValueError("protected runtime directory must be owner-only and owner-controlled")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(name, flags, mode, dir_fd=directory_descriptor)
+        os.fchmod(descriptor, mode)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(value)
+    finally:
+        os.close(directory_descriptor)
 
 
 def bootstrap(runtime_root: Path) -> None:
-    root = runtime_root.expanduser().resolve()
-    if is_relative_to(root, REPOSITORY_ROOT):
-        raise ValueError("DCIM_RUNTIME_ROOT must resolve outside repository")
-
-    plane = root / "dev-build"
-    secret_dir = plane / "secrets"
+    secret_dir = ensure_protected_directory(runtime_root, "dev-build", "secrets")
+    plane = secret_dir.parent
+    root = protected_runtime_path(runtime_root)
     targets = [secret_dir / name for name in SECRET_NAMES] + [plane / "runtime.env"]
-    existing = [path for path in targets if path.exists()]
+    existing = [path for path in targets if path.exists() or path.is_symlink()]
     if existing:
         raise FileExistsError("refusing to overwrite existing dcim-build runtime material")
 
     old_umask = os.umask(0o077)
     try:
-        secret_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
-        root.chmod(0o700)
-        plane.chmod(0o700)
-        secret_dir.chmod(0o700)
         values = {name: protected_value(name) for name in SECRET_NAMES}
         for name, value in values.items():
-            write_new(secret_dir / name, value, 0o444)
+            write_new(secret_dir, name, value, 0o444)
         write_new(
-            plane / "runtime.env",
+            plane,
+            "runtime.env",
             "COMPOSE_PROJECT_NAME=dcim-build\n"
+            f"DCIM_RUNTIME_ROOT={root}\n"
             f"KAFKA_CLUSTER_ID={kafka_cluster_id()}\n",
         )
     finally:

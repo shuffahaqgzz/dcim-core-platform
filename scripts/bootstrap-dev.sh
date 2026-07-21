@@ -3,7 +3,8 @@ set -euo pipefail
 umask 077
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-runtime_root="${DCIM_RUNTIME_ROOT:-$(dirname "$repo_root")/dcim-runtime}"
+state_home="${XDG_STATE_HOME:-${HOME}/.local/state}"
+runtime_root="${DCIM_RUNTIME_ROOT:-$state_home/dcim-core-platform/runtime}"
 runtime_root="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$runtime_root")"
 
 case "$runtime_root/" in

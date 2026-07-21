@@ -12,18 +12,18 @@ import sys
 import tempfile
 from urllib.request import urlopen
 
+try:
+    from scripts.protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+    )
+except ModuleNotFoundError:
+    from protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+    )
+
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "deploy/compose/images.json"
-
-
-def outside_repository(path: Path) -> Path:
-    resolved = path.expanduser().resolve()
-    try:
-        resolved.relative_to(ROOT)
-    except ValueError:
-        return resolved
-    raise ValueError("DCIM_RUNTIME_ROOT must resolve outside repository")
 
 
 def digest(path: Path) -> str:
@@ -35,13 +35,13 @@ def digest(path: Path) -> str:
 
 
 def fetch(runtime_root: Path) -> None:
-    root = outside_repository(runtime_root)
+    root = external_runtime_root(runtime_root)
     inventory = json.loads(INVENTORY.read_text(encoding="utf-8"))
-    directory = root / "dev-build/artifacts"
-    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    directory.chmod(0o700)
+    directory = ensure_protected_directory(root, "dev-build", "artifacts")
     for artifact in inventory["artifacts"]:
-        destination = directory / artifact["filename"]
+        destination = protected_runtime_path(
+            root, "dev-build", "artifacts", artifact["filename"],
+        )
         if destination.exists():
             if digest(destination) != artifact["sha256"]:
                 raise ValueError(f"existing artifact checksum mismatch: {artifact['filename']}")

@@ -1,7 +1,8 @@
 .PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain
 
 PYTHON ?= python3
-DCIM_RUNTIME_ROOT ?= $(abspath ../dcim-runtime)
+DCIM_STATE_HOME := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)
+DCIM_RUNTIME_ROOT ?= $(DCIM_STATE_HOME)/dcim-core-platform/runtime
 FOUNDATION_COMPOSE := deploy/compose/dev-build/compose.yaml
 FOUNDATION_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/runtime.env
 FOUNDATION_IMAGE_ENV := $(DCIM_RUNTIME_ROOT)/dev-build/images.env
@@ -47,7 +48,7 @@ foundation-images-qualify:
 	$(PYTHON) scripts/foundation_images.py --manifest '$(FOUNDATION_IMAGE_RECIPES)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)' --runtime-root '$(DCIM_RUNTIME_ROOT)'
 
 foundation-policy: foundation-images-qualify
-	@$(FOUNDATION_COMPOSE_CMD) config --format json | $(PYTHON) scripts/foundation_policy.py --input - --derived-lock '$(FOUNDATION_IMAGE_LOCK)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
+	@$(FOUNDATION_COMPOSE_CMD) config --format json | $(PYTHON) scripts/foundation_policy.py --input - --runtime-root '$(DCIM_RUNTIME_ROOT)' --derived-lock '$(FOUNDATION_IMAGE_LOCK)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
 
 foundation-up: foundation-artifacts foundation-supply-chain foundation-policy
 	$(FOUNDATION_COMPOSE_CMD) up -d --wait --wait-timeout 180 $(FOUNDATION_SERVICES)

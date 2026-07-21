@@ -8,3 +8,4 @@
 - Tidak ada HA, Production SLA, Production claim, atau dukungan 24x7.
 - Ownership tim Staging, retention final, security contact final, serta repository license masih TBD.
 - Phase 0 tidak membuktikan deployability application stack, recovery stack, throughput, atau operational source behavior.
+- Phase 1 foundation hanya membuktikan lifecycle synthetic `dcim-build`; hasilnya tidak membuktikan P1/P2 vertical slice, Kafka backup, HA, Staging, atau Production readiness.
