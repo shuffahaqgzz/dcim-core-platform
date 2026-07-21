@@ -26,6 +26,10 @@ try:
         validate_sbom,
     )
     from scripts.strict_json import load_object, loads_object
+    from scripts.protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        write_protected_text,
+    )
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
     from foundation_supply_chain import (
         blocking_counts,
@@ -36,6 +40,10 @@ except ModuleNotFoundError:  # Direct script execution adds scripts/, not reposi
         validate_sbom,
     )
     from strict_json import load_object, loads_object
+    from protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        write_protected_text,
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,12 +70,7 @@ LICENSE_COMPONENTS = {
 
 
 def external_root(path: Path) -> Path:
-    resolved = path.expanduser().resolve()
-    try:
-        resolved.relative_to(ROOT)
-    except ValueError:
-        return resolved
-    raise ValueError("runtime root must resolve outside repository")
+    return external_runtime_root(path)
 
 
 def validate_locked_image(value: object, field: str, errors: list[str]) -> None:
@@ -376,14 +379,11 @@ def qualify(
     runtime_root: Path,
     license_dispositions: dict[str, object],
 ) -> list[dict[str, object]]:
-    root = external_root(runtime_root) / "dev-build"
-    input_root = root / "derived-images/inputs"
-    context_root = root / "derived-images/contexts"
-    evidence = root / "evidence/derived-images"
-    cache = root / "cache/trivy"
-    for path in (input_root, context_root, evidence, cache):
-        path.mkdir(parents=True, exist_ok=True, mode=0o700)
-        path.chmod(0o700)
+    root = external_root(runtime_root)
+    input_root = ensure_protected_directory(root, "dev-build", "derived-images", "inputs")
+    context_root = ensure_protected_directory(root, "dev-build", "derived-images", "contexts")
+    evidence = ensure_protected_directory(root, "dev-build", "evidence", "derived-images")
+    cache = ensure_protected_directory(root, "dev-build", "cache", "trivy")
     scanner = str(manifest["scanner"]["image"])
     records: list[dict[str, object]] = []
     for recipe in manifest["recipes"]:
@@ -438,14 +438,14 @@ def write_lock(
     license_dispositions_path: Path,
     runtime_root: Path,
 ) -> None:
-    root = external_root(runtime_root) / "dev-build"
+    root = external_root(runtime_root)
+    ensure_protected_directory(root, "dev-build")
     environment = runtime_environment(records)
-    environment_path = root / "images.env"
-    environment_path.write_text(
+    write_protected_text(
+        root,
+        ("dev-build", "images.env"),
         "".join(f"{key}={value}\n" for key, value in sorted(environment.items())),
-        encoding="utf-8",
     )
-    environment_path.chmod(0o600)
     lock = {
         "schema_version": 2,
         "generated_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -454,9 +454,11 @@ def write_lock(
         "publication": False,
         "images": records,
     }
-    lock_path = root / "derived-images-lock.json"
-    lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    lock_path.chmod(0o600)
+    write_protected_text(
+        root,
+        ("dev-build", "derived-images-lock.json"),
+        json.dumps(lock, indent=2, sort_keys=True) + "\n",
+    )
 
 
 def reusable_records(
@@ -465,9 +467,10 @@ def reusable_records(
     license_dispositions: dict[str, object],
     runtime_root: Path,
 ) -> list[dict[str, object]] | None:
-    root = external_root(runtime_root) / "dev-build"
-    lock_path = root / "derived-images-lock.json"
-    environment_path = root / "images.env"
+    runtime = external_root(runtime_root)
+    root = protected_runtime_path(runtime, "dev-build")
+    lock_path = protected_runtime_path(runtime, "dev-build", "derived-images-lock.json")
+    environment_path = protected_runtime_path(runtime, "dev-build", "images.env")
     if not lock_path.is_file() or not environment_path.is_file():
         return None
     try:

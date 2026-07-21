@@ -15,8 +15,16 @@ import sys
 
 try:
     from scripts.strict_json import load_object
+    from scripts.protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        write_protected_text,
+    )
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
     from strict_json import load_object
+    from protected_runtime import (
+        ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        write_protected_text,
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -86,12 +94,7 @@ def blocking_counts(report: dict[str, object]) -> tuple[int, int, int]:
 
 
 def external_root(path: Path) -> Path:
-    resolved = path.expanduser().resolve()
-    try:
-        resolved.relative_to(ROOT)
-    except ValueError:
-        return resolved
-    raise ValueError("DCIM_RUNTIME_ROOT must resolve outside repository")
+    return external_runtime_root(path)
 
 
 def safe_name(component: str) -> str:
@@ -370,14 +373,13 @@ def scan(
     license_dispositions_path: Path,
 ) -> tuple[list[dict[str, object]], bool]:
     root = external_root(runtime_root)
-    evidence = root / "dev-build/evidence/supply-chain"
-    cache = root / "dev-build/cache/trivy"
-    evidence.mkdir(parents=True, exist_ok=True, mode=0o700)
-    cache.mkdir(parents=True, exist_ok=True, mode=0o700)
-    evidence.chmod(0o700)
-    cache.chmod(0o700)
+    evidence = ensure_protected_directory(root, "dev-build", "evidence", "supply-chain")
+    cache = ensure_protected_directory(root, "dev-build", "cache", "trivy")
+    expected_lock = protected_runtime_path(root, "dev-build", "derived-images-lock.json")
+    if derived_lock_path.expanduser().absolute() != expected_lock:
+        raise ValueError("derived image lock must come from protected runtime root")
     inventory = load_object(INVENTORY)
-    derived_lock = load_object(derived_lock_path)
+    derived_lock = load_object(expected_lock)
     license_dispositions = load_object(license_dispositions_path)
     validate_license_disposition_manifest(
         license_dispositions, sha256_file(RECIPES),
@@ -461,9 +463,11 @@ def scan(
         "images": summaries,
         "result": "fail" if blocked else "pass",
     }
-    summary_path = evidence / "summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    summary_path.chmod(0o600)
+    write_protected_text(
+        root,
+        ("dev-build", "evidence", "supply-chain", "summary.json"),
+        json.dumps(summary, indent=2, sort_keys=True) + "\n",
+    )
     return summaries, blocked
 
 

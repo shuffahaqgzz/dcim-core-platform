@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy/compose/dev-build/compose.yaml"
 POLICY = ROOT / "scripts/foundation_policy.py"
+RECIPES = ROOT / "deploy/compose/derived-images/recipes.json"
 
 
 class FoundationPolicyTests(unittest.TestCase):
@@ -36,6 +37,7 @@ class FoundationPolicyTests(unittest.TestCase):
         self.image_lock.write_text(json.dumps({
             "schema_version": 2,
             "publication": False,
+            "manifest_sha256": hashlib.sha256(RECIPES.read_bytes()).hexdigest(),
             "license_dispositions_sha256": disposition_sha256,
             "images": [
                 {"component": component, "image_id": image_id}
@@ -67,13 +69,16 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         return json.loads(result.stdout)
 
-    def validate(self, model: dict[str, object]) -> subprocess.CompletedProcess[str]:
+    def validate(
+        self, model: dict[str, object], *, derived_lock: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         model_path = Path(self.temporary.name) / "model.json"
         model_path.write_text(json.dumps(model), encoding="utf-8")
         return subprocess.run(
             [
                 "python3", str(POLICY), "--input", str(model_path),
-                "--derived-lock", str(self.image_lock),
+                "--runtime-root", str(self.runtime_root),
+                "--derived-lock", str(derived_lock or self.image_lock),
                 "--license-dispositions", str(self.license_dispositions),
             ],
             cwd=ROOT, capture_output=True, text=True, check=False,
@@ -91,6 +96,25 @@ class FoundationPolicyTests(unittest.TestCase):
         result = self.validate(self.normalized_model())
         self.assertNotEqual(0, result.returncode)
         self.assertIn("license disposition digest", result.stderr)
+
+    def test_derived_lock_must_bind_exact_recipe_manifest(self) -> None:
+        lock = json.loads(self.image_lock.read_text(encoding="utf-8"))
+        lock["manifest_sha256"] = "0" * 64
+        self.image_lock.write_text(json.dumps(lock), encoding="utf-8")
+
+        result = self.validate(self.normalized_model())
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("recipe manifest digest", result.stderr)
+
+    def test_derived_lock_must_belong_to_selected_runtime_root(self) -> None:
+        external_lock = Path(self.temporary.name) / "lookalike-lock.json"
+        external_lock.write_bytes(self.image_lock.read_bytes())
+
+        result = self.validate(self.normalized_model(), derived_lock=external_lock)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("selected runtime root", result.stderr)
 
     def test_duplicate_derived_lock_member_fails_closed(self) -> None:
         lock = self.image_lock.read_text(encoding="utf-8")
@@ -175,6 +199,24 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("secret environment", result.stderr)
 
+    def test_runtime_artifact_and_secret_must_match_selected_root(self) -> None:
+        model = self.normalized_model()
+        model["secrets"]["postgres-monitor-password"]["file"] = (
+            "/tmp/other-runtime/dev-build/secrets/postgres-monitor-password"
+        )
+        for mount in model["services"]["kafka-jmx-exporter"]["volumes"]:
+            if mount.get("target") == "/opt/jmx-exporter/jmx_prometheus_standalone-1.6.0.jar":
+                mount["source"] = (
+                    "/tmp/other-runtime/dev-build/artifacts/"
+                    "jmx_prometheus_standalone-1.6.0.jar"
+                )
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("bind source/target", result.stderr)
+        self.assertIn("top-level secret source", result.stderr)
+
     def test_profile_membership_must_match_service_role(self) -> None:
         model = self.normalized_model()
         model["services"]["postgres"]["profiles"] = ["observability"]
@@ -197,6 +239,85 @@ class FoundationPolicyTests(unittest.TestCase):
         result = self.validate(model)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("network allowlist mismatch", result.stderr)
+
+    def test_stateful_volume_mounts_must_match_exact_service_owner(self) -> None:
+        model = self.normalized_model()
+        model["services"]["postgres-exporter"]["volumes"] = [{
+            "type": "volume",
+            "source": "postgres-data",
+            "target": "/var/lib/postgresql/data",
+            "volume": {},
+        }]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("volume mount allowlist", result.stderr)
+
+    def test_dual_homed_exporter_command_must_match_reviewed_inventory(self) -> None:
+        model = self.normalized_model()
+        model["services"]["kafka-jmx-exporter"]["command"] = [
+            "python3", "-m", "http.server", "5556",
+        ]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("reviewed exporter process", result.stderr)
+
+    def test_kafka_automatic_topic_creation_must_remain_disabled(self) -> None:
+        model = self.normalized_model()
+        model["services"]["kafka"]["environment"][
+            "KAFKA_AUTO_CREATE_TOPICS_ENABLE"
+        ] = "true"
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Kafka runtime contract", result.stderr)
+
+    def test_service_namespace_and_network_membership_must_be_exact(self) -> None:
+        model = self.normalized_model()
+        model["services"]["postgres"]["network_mode"] = "container:outside"
+        model["services"]["postgres"]["networks"] = {}
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("external namespace prohibited", result.stderr)
+        self.assertIn("network membership mismatch", result.stderr)
+
+    def test_project_and_network_names_must_bind_to_dev_build_plane(self) -> None:
+        model = self.normalized_model()
+        model["name"] = "other-project"
+        model["networks"]["data"]["name"] = "other-data"
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("project name", result.stderr)
+        self.assertIn("network runtime name", result.stderr)
+
+    def test_healthcheck_must_match_functional_service_contract(self) -> None:
+        model = self.normalized_model()
+        model["services"]["kafka"]["healthcheck"]["test"] = ["CMD", "true"]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("health contract mismatch", result.stderr)
+
+    def test_prometheus_retention_command_must_match_capacity_contract(self) -> None:
+        model = self.normalized_model()
+        model["services"]["prometheus"]["command"] = [
+            item.replace("7d", "14d")
+            for item in model["services"]["prometheus"]["command"]
+        ]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Prometheus runtime contract", result.stderr)
 
 
 if __name__ == "__main__":

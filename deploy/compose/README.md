@@ -15,6 +15,10 @@ merge. The complete design and acceptance contract are in
 Runtime Planes require separate project names, networks, volumes, runtime
 configuration, credentials, and promotion lifecycles. Compose profiles are
 Capability Profiles within a plane and are not security boundaries.
+The Make lifecycle and workspace bootstrap resolve the same checkout-independent
+default root at `${XDG_STATE_HOME:-$HOME/.local/state}/dcim-core-platform/runtime`.
+An explicit `DCIM_RUNTIME_ROOT` override must remain paired with the state it
+bootstrapped; a new root is not a reason to reset persistent volumes.
 
 ## Phase 1 Capability Profiles
 
@@ -46,6 +50,11 @@ Future profile names remain reserved: `core`, `dashboard`, `workflow`,
 - normalized Compose policy checks plus synthetic fast/recovery smoke tests;
 - no HA, SLA, Staging, Production, or vertical-slice claim.
 
+Plain Compose with the protected runtime and image environment files but no
+profile selects zero services. Policy binds the exact `dcim-build` project,
+network membership, service-owned stateful volumes, functional health checks,
+reviewed exporter commands, Kafka runtime settings, and Prometheus retention.
+
 ## Derived image qualification
 
 `derived-images/recipes.json` records immutable public inputs, checksums,
@@ -66,3 +75,8 @@ the Governance HOLD and cannot pass current policy or supply-chain gates.
 
 These images are local Development artifacts. They are never pushed. Clean
 official upstream images remain preferred replacements.
+
+Fast and recovery evidence remains external, binds the effective image digests,
+and uses five- and fifteen-minute fail-closed deadlines respectively. Fast smoke
+proves the Kafka oversize-message rejection. Recovery verifies pre-restart
+PostgreSQL and Kafka state without rewriting it after restart.

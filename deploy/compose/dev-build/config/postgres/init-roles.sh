@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-monitor_value="$(tr -d '\r\n' </run/secrets/postgres-monitor-password)"
-smoke_value="$(tr -d '\r\n' </run/secrets/postgres-smoke-password)"
-
 psql --set=ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
   --set=credential_clause=PASSWORD \
-  --set=monitor_value="$monitor_value" --set=smoke_value="$smoke_value" <<'SQL'
+  <<'SQL'
+\set monitor_value `tr -d '\r\n' </run/secrets/postgres-monitor-password`
+\set smoke_value `tr -d '\r\n' </run/secrets/postgres-smoke-password`
 CREATE ROLE dcim_monitor LOGIN :credential_clause :'monitor_value';
 GRANT pg_monitor TO dcim_monitor;
 GRANT CONNECT ON DATABASE dcim_foundation TO dcim_monitor;
