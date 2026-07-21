@@ -285,10 +285,13 @@ class FoundationLifecycleTests(unittest.TestCase):
                 f"PATH={shlex.quote(str(fake_bin))}:$PATH "
                 f"python3 {shlex.quote(str(ROOT / 'scripts/foundation_reset.py'))}"
             )
+            environment = os.environ.copy()
+            environment.pop("CI", None)
 
             result = subprocess.run(
                 ["script", "-qec", command, "/dev/null"],
                 cwd=ROOT,
+                env=environment,
                 capture_output=True,
                 text=True,
                 timeout=15,
