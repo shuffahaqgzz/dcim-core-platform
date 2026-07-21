@@ -16,7 +16,10 @@ authorize `dcim-integration-ro`, `dcim-demo`, or any Production path.
 - Docker Engine and the Compose plugin installed;
 - Python 3.12-compatible standard library;
 - GNU Make;
-- No network access required for synthetic lifecycle;
+- Normal reused-state lifecycle can reuse existing qualified local artifacts.
+  A brand-new clean acceptance root may require outbound access to immutable
+  public release inputs, scanner databases, and artifacts unless those inputs
+  are already present in the local engine/cache;
 - No package installation required.
 
 ## Lifecycle commands
@@ -41,7 +44,8 @@ All commands use the Make interface. The external runtime root defaults to
 | `make foundation-grafana-url` | Resolve current internal Grafana URL |
 | `make foundation-reset` | Interactively remove only `dcim-build` volumes (CI-prohibited) |
 | `make foundation-evidence-summary` | Generate public-safe evidence summary |
-| `make preflight` | Run all Development gates |
+| `make foundation-clean-acceptance` | Run issue #9 isolated clean-runtime acceptance from a brand-new protected root |
+| `make preflight` | Run normal Development gates against the selected protected state |
 
 ## Startup sequence
 
@@ -56,6 +60,34 @@ All commands use the Make interface. The external runtime root defaults to
    three explicit profiles (`data`, `observability`, `smoke`), and waits up to
    180 seconds for all services to become healthy.
 4. Plain `docker compose up` without `--profile` starts nothing.
+
+## Isolated clean-runtime acceptance
+
+Parent issue #9 closure requires an isolated acceptance run. Ordinary
+`make preflight` is not clean-runtime evidence because it may operate against
+existing protected runtime state and named volumes.
+
+Prepare a dedicated owner-only parent outside the repository. The parent and
+existing path components must be owner/root controlled and not group- or
+world-writable. Choose a runtime root path that does not exist, then run:
+
+```bash
+make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>
+```
+
+The acceptance entry point refuses the normal owner runtime root, any
+pre-existing runtime root, an unsafe or symlinked runtime parent, any existing
+normal `dcim-build` container, network, volume, or project/named image, and any
+pre-existing labeled or acceptance-named container, network, volume, or image in
+the generated `dcim-build-acceptance-*` Compose namespace. It then bootstraps,
+writes a validated acceptance-only Compose resource override under the protected
+runtime root, qualifies or builds immutable inputs, validates normalized policy,
+starts only explicit profiles, runs fast smoke, runs recovery and PostgreSQL
+restore, performs a bounded stop, and generates public-safe external summaries.
+
+The run intentionally does not remove acceptance containers, networks, volumes,
+raw scanner reports, SBOMs, dumps, or runtime material. Cleanup requires a
+separate owner-approved allowlist.
 
 ## Recovery procedure
 
@@ -141,10 +173,16 @@ Each evidence file contains: commit, image digests, capability profiles, UTC
 timestamp, duration, assertion result, and synthetic run ID. No runtime secrets,
 host details, credentials, or environment dumps are recorded.
 
-Generate a public-safe summary:
+Generate a normal reused-state public-safe summary:
 
 ```bash
 make foundation-evidence-summary
+```
+
+Generate a clean-runtime summary through the acceptance target:
+
+```bash
+make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>
 ```
 
 ## Limitations

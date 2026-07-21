@@ -4,11 +4,25 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import secrets
 import stat
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+COMPOSE_PROJECT = re.compile(r"dcim-build(?:-acceptance-[a-z0-9]{12,32})?\Z")
+ACCEPTANCE_COMPOSE_PROJECT = re.compile(r"dcim-build-acceptance-[a-z0-9]{12,32}\Z")
+
+
+def validate_compose_project_name(value: str, *, acceptance_only: bool = False) -> str:
+    """Validate the narrow synthetic Compose project namespace contract."""
+
+    pattern = ACCEPTANCE_COMPOSE_PROJECT if acceptance_only else COMPOSE_PROJECT
+    if not pattern.fullmatch(value):
+        if acceptance_only:
+            raise ValueError("acceptance Compose project name is not allowlisted")
+        raise ValueError("Compose project name is not allowlisted")
+    return value
 
 
 def _absolute(path: Path) -> Path:

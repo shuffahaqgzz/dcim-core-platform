@@ -10,8 +10,9 @@ Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset
 - Owner: `shuffahaqgzz`.
 - Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
 - Current milestone: **Phase 1 compact infrastructure foundation**. Implementasi
-  dan qualification synthetic Development sedang menunggu review dan merge;
-  milestone berikutnya tetap mengikuti tracked issue dan condition register.
+  synthetic Development sudah ada di `main`; parent issue #9 masih membutuhkan
+  isolated clean-runtime acceptance, final review, dan owner disposition sebelum
+  closure.
 
 ## Public code, private runtime
 

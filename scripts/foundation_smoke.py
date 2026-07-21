@@ -23,17 +23,20 @@ from urllib.request import Request, urlopen
 try:
     from scripts.protected_runtime import (
         ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        validate_compose_project_name,
     )
     from scripts.strict_json import load_object
 except ModuleNotFoundError:
     from protected_runtime import (
         ensure_protected_directory, external_runtime_root, protected_runtime_path,
+        validate_compose_project_name,
     )
     from strict_json import load_object
 
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_FILE = ROOT / "deploy/compose/dev-build/compose.yaml"
+ACCEPTANCE_OVERRIDE_NAME = "acceptance-compose.override.yaml"
 IMAGE_INVENTORY = ROOT / "deploy/compose/images.json"
 IMAGE_RECIPES = ROOT / "deploy/compose/derived-images/recipes.json"
 LICENSE_DISPOSITIONS = ROOT / "deploy/compose/derived-images/license-dispositions.json"
@@ -77,16 +80,54 @@ def runtime_root(value: Path | None = None) -> Path:
         raise SmokeFailure(str(error)) from error
 
 
+def compose_override_path(root: Path, project: str) -> Path | None:
+    raw = os.environ.get("DCIM_COMPOSE_OVERRIDE")
+    if project == "dcim-build":
+        if raw:
+            raise SmokeFailure("Compose override is prohibited for normal lifecycle")
+        return None
+    if not raw:
+        raise SmokeFailure("acceptance Compose override is required")
+    try:
+        override = protected_runtime_path(
+            root, "dev-build", ACCEPTANCE_OVERRIDE_NAME,
+        )
+    except ValueError as error:
+        raise SmokeFailure(str(error)) from error
+    supplied = Path(os.path.abspath(os.fspath(Path(raw).expanduser())))
+    if supplied != override:
+        raise SmokeFailure("acceptance Compose override path mismatch")
+    if not override.is_file() or override.is_symlink():
+        raise SmokeFailure("acceptance Compose override is unavailable")
+    return override
+
+
 def compose_prefix() -> list[str]:
     root = runtime_root()
+    project = compose_project_name()
     command = [
         "docker", "compose", "--env-file", str(root / "dev-build/runtime.env"),
         "--env-file", str(root / "dev-build/images.env"),
         "-f", str(COMPOSE_FILE),
     ]
+    override = compose_override_path(root, project)
+    if override is not None:
+        command.extend(("-f", str(override)))
     for profile in PROFILES:
         command.extend(("--profile", profile))
     return command
+
+
+def compose_project_name() -> str:
+    value = os.environ.get("COMPOSE_PROJECT_NAME", "dcim-build")
+    try:
+        return validate_compose_project_name(value)
+    except ValueError as error:
+        raise SmokeFailure(str(error)) from error
+
+
+def compose_container(service: str) -> str:
+    return f"{compose_project_name()}-{service}-1"
 
 
 def compose(*arguments: str, timeout: int = 180, input_text: str | None = None) -> str:
@@ -179,7 +220,7 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
         for service, (_, expected_id, expected_reference) in running_contract.items():
             inspected = run(
                 [
-                    "docker", "inspect", f"dcim-build-{service}-1", "--format",
+                    "docker", "inspect", compose_container(service), "--format",
                     "{{.Image}}|{{.Config.Image}}",
                 ],
                 timeout=10,
@@ -442,7 +483,7 @@ def wait_for_observability(timeout: int = 60) -> None:
 def grafana_url() -> str:
     address = run(
         [
-            "docker", "inspect", "dcim-build-grafana-1", "--format",
+            "docker", "inspect", compose_container("grafana"), "--format",
             "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
         ],
         timeout=10,

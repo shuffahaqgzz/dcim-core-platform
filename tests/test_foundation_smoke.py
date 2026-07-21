@@ -83,6 +83,71 @@ def write_inspection_only_docker(path: Path) -> None:
 
 
 class FoundationSmokeContractTests(unittest.TestCase):
+    def test_normal_compose_prefix_rejects_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build",
+                "DCIM_COMPOSE_OVERRIDE": str(plane / "acceptance-compose.override.yaml"),
+            }
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "prohibited"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+    def test_acceptance_compose_prefix_requires_valid_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build-acceptance-abcdef123456",
+            }
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "required"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+            environment["DCIM_COMPOSE_OVERRIDE"] = str(plane / "wrong.yaml")
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "mismatch"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+    def test_acceptance_compose_prefix_includes_external_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            override = plane / "acceptance-compose.override.yaml"
+            override.write_text("networks: {}\n", encoding="utf-8")
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build-acceptance-abcdef123456",
+                "DCIM_COMPOSE_OVERRIDE": str(override),
+            }
+
+            with mock.patch.dict(os.environ, environment, clear=True):
+                command = FOUNDATION_SMOKE.compose_prefix()
+
+            self.assertIn(str(override), command)
+            self.assertEqual(2, command.count("-f"))
+
     def test_evidence_rejects_tampered_lock_and_nonrunning_image_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "runtime"

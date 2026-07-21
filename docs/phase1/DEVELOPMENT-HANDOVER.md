@@ -1,24 +1,26 @@
 # Phase 1 Development Handover
 
 Date: 2026-07-21
-Status: PR-ready
-Issue: #12
+Status: Closure candidate pending isolated clean-runtime acceptance
+Issue: #12; closure package for parent #9
 Parent: #9
-Branch: `feat/issue-12`
+Branch: local closure candidate; final PR branch is resolved at publication
+time
 
 ## What was delivered
 
 The reproducible Development acceptance package for the qualified synthetic
-foundation. This handover turns the verified lifecycle (issue #11) into
-reviewable evidence and handover material.
+foundation. This handover distinguishes the verified reused-state lifecycle from
+the additional isolated clean-runtime proof required before parent issue #9 can
+close.
 
 ## Acceptance criterion mapping
 
 | # | Issue #12 AC | Artifact | Verification |
 |---|---|---|---|
-| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make preflight` target; `scripts/foundation_evidence_summary.py` | `make preflight` exits 0; evidence summary generated |
-| 2 | All gates pass with no critical failure | `make preflight` (phase0-check + foundation-supply-chain + foundation-recovery + foundation-evidence-summary) | Exit code 0; 155+ tests pass |
-| 3 | Code review confirms standards and security boundary | This PR; code review against `origin/main` | No connector, control, privileged, or bridge paths introduced |
+| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`; `scripts/foundation_acceptance.py` | Requires an isolated acceptance run from a brand-new root and namespace |
+| 2 | All gates pass with no critical failure | `make preflight` plus clean acceptance summary | `make preflight` remains the normal reused-state Development gate; it is not clean-runtime evidence |
+| 3 | Code review confirms standards and security boundary | Review against the final issue #9 diff/head | No connector, control, privileged, or bridge paths introduced |
 | 4 | Public-safe evidence records allowlisted fields only | `scripts/foundation_evidence_summary.py`; `tests/test_foundation_evidence_summary.py` | 13 tests validate allowlist enforcement |
 | 5 | Runbooks document lifecycle, recovery, failure, Grafana, limitations | `docs/phase1/FOUNDATION-RUNBOOK.md` | Covers all required sections |
 | 6 | Handover PR-ready; C-03, C-05, C-07, OD-06 unchanged | This document; conditions register unchanged | No condition status modified |
@@ -28,10 +30,14 @@ reviewable evidence and handover material.
 | File | Change |
 |---|---|
 | `scripts/foundation_evidence_summary.py` | New: public-safe evidence summary generator |
-| `tests/test_foundation_evidence_summary.py` | New: 13 tests for evidence summary |
-| `Makefile` | Extended: added `foundation-evidence-summary` target and included it in `preflight` |
+| `scripts/foundation_acceptance.py` | New: isolated clean-runtime acceptance orchestrator |
+| `tests/test_foundation_evidence_summary.py` | Evidence summary safety and acceptance-gate tests |
+| `tests/test_foundation_acceptance.py` | Clean-runtime guardrail tests |
+| `Makefile` | Extended: added `foundation-evidence-summary` and `foundation-clean-acceptance` targets; `preflight` remains the normal Development gate |
 | `docs/phase1/FOUNDATION-RUNBOOK.md` | New: lifecycle, recovery, failure handling, Grafana access, limitations, non-claims |
 | `docs/phase1/DEVELOPMENT-HANDOVER.md` | New: this document |
+| `docs/phase1/ISSUE-9-ACCEPTANCE-MATRIX.md` | New: parent issue #9 row-level closure tracker |
+| `docs/phase1/ISSUE-9-CLOSURE-PACKAGE.md` | New: PR body and issue closure comment draft |
 
 ## Conditions and open decisions
 
@@ -59,7 +65,8 @@ condition status.
 ## Evidence
 
 - Raw evidence: `${DCIM_RUNTIME_ROOT}/dev-build/evidence/` (external, not in Git)
-- Summary: `make foundation-evidence-summary` (stdout or file)
+- Normal reused-state summary: `make foundation-evidence-summary` (stdout or file)
+- Clean-runtime summary: `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`
 - Evidence fields: commit, image digests, capability profiles, UTC timestamp,
   duration, assertion result, synthetic run ID
 - Prohibited fields: hostname, runtime_root, environment, credential, container,
@@ -99,6 +106,10 @@ This handover does not claim:
 
 ## Next steps
 
-1. Owner reviews this PR and evidence;
-2. Owner decides whether to mark issue #12 closed;
-3. Subsequent issues address remaining Phase 1 breadth as governed.
+1. Run isolated clean-runtime acceptance from a brand-new protected root;
+2. Run final `make preflight`, public-safety, review, and security gates;
+3. Fill the PR and issue closure drafts in
+   [`ISSUE-9-CLOSURE-PACKAGE.md`](ISSUE-9-CLOSURE-PACKAGE.md) with exact final
+   evidence;
+4. Owner reviews the issue #9 closure package and decides whether to close #9;
+5. Subsequent issues address remaining Development baseline breadth as governed.

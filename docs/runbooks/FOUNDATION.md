@@ -21,6 +21,24 @@ make foundation-stop
 make foundation-down
 ```
 
+Issue #9 clean-runtime acceptance uses a separate target and a brand-new
+protected root under an owner/root-controlled path with no group- or
+world-writable existing component. Ordinary `make preflight` can reuse the
+selected protected state and must not be represented as clean-machine proof:
+
+```text
+make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>
+```
+
+The acceptance target uses an isolated `dcim-build-acceptance-*` Compose
+namespace, refuses any existing normal `dcim-build` container, network, volume,
+or project/named image, refuses any pre-existing labeled or acceptance-named
+container, network, volume, or image in the acceptance namespace, writes a
+validated acceptance-only Compose resource override under the protected runtime
+root, and stops services without removing state or raw evidence. A clean root
+can require outbound access to immutable public inputs, scanner databases, and
+artifacts unless those inputs are already cached locally.
+
 Image qualification uses only public pinned inputs. It builds ADR-0013 derived
 images twice, checks reproducibility, scans vulnerability and license data,
 generates SBOMs, and writes local immutable image references beneath
