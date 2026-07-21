@@ -1,4 +1,4 @@
-.PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain
+.PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary
 
 PYTHON ?= python3
 DCIM_STATE_HOME := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)
@@ -33,7 +33,8 @@ help:
 	  'foundation-reset Interactively remove only dcim-build volumes' \
 	  'foundation-smoke Run bounded synthetic fast smoke' \
 	  'foundation-recovery Run restart and PostgreSQL restore checks' \
-	  'foundation-supply-chain Generate external SBOM/license/vulnerability evidence'
+	  'foundation-supply-chain Generate external SBOM/license/vulnerability evidence' \
+	  'foundation-evidence-summary Generate public-safe evidence summary'
 
 bootstrap:
 	./scripts/bootstrap-dev.sh
@@ -74,6 +75,9 @@ foundation-recovery: foundation-up
 foundation-supply-chain: foundation-images-qualify
 	$(PYTHON) scripts/foundation_supply_chain.py --runtime-root '$(DCIM_RUNTIME_ROOT)' --derived-lock '$(FOUNDATION_IMAGE_LOCK)' --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
 
+foundation-evidence-summary:
+	$(PYTHON) scripts/foundation_evidence_summary.py --evidence-dir '$(DCIM_RUNTIME_ROOT)/dev-build/evidence' --commit '$(shell git rev-parse HEAD)'
+
 compile:
 	$(PYTHON) -m compileall -q scripts tests
 
@@ -94,4 +98,4 @@ test:
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
 
-preflight: phase0-check foundation-supply-chain foundation-recovery
+preflight: phase0-check foundation-supply-chain foundation-recovery foundation-evidence-summary
