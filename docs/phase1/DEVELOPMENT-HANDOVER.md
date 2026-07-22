@@ -1,7 +1,7 @@
 # Phase 1 Development Handover
 
 Date: 2026-07-21
-Status: Closure candidate pending isolated clean-runtime acceptance
+Status: Closure candidate with clean-runtime + preflight evidence captured
 Issue: #12; closure package for parent #9
 Parent: #9
 Branch: local closure candidate; final PR branch is resolved at publication
@@ -10,16 +10,15 @@ time
 ## What was delivered
 
 The reproducible Development acceptance package for the qualified synthetic
-foundation. This handover distinguishes the verified reused-state lifecycle from
-the additional isolated clean-runtime proof required before parent issue #9 can
-close.
+foundation. This handover now includes both reused-state baseline proof and an
+isolated clean-runtime proof.
 
 ## Acceptance criterion mapping
 
 | # | Issue #12 AC | Artifact | Verification |
 |---|---|---|---|
-| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`; `scripts/foundation_acceptance.py` | Requires an isolated acceptance run from a brand-new root and namespace |
-| 2 | All gates pass with no critical failure | `make preflight` plus clean acceptance summary | `make preflight` remains the normal reused-state Development gate; it is not clean-runtime evidence |
+| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`; `scripts/foundation_acceptance.py` | Verified (pass); isolated clean-runtime summary recorded |
+| 2 | All gates pass with no critical failure | `make preflight` plus clean acceptance summary | `make preflight` remains the normal reused-state Development gate; PASS on final commit |
 | 3 | Code review confirms standards and security boundary | Review against the final issue #9 diff/head | No connector, control, privileged, or bridge paths introduced |
 | 4 | Public-safe evidence records allowlisted fields only | `scripts/foundation_evidence_summary.py`; `tests/test_foundation_evidence_summary.py` | 13 tests validate allowlist enforcement |
 | 5 | Runbooks document lifecycle, recovery, failure, Grafana, limitations | `docs/phase1/FOUNDATION-RUNBOOK.md` | Covers all required sections |
@@ -56,15 +55,18 @@ condition status.
 | Command | Tests | Result |
 |---|---|---|
 | `make compile` | Python compileall | exit 0 |
-| `make test` | 155+ unit tests | exit 0 |
+| `make test` | 205 unit tests | PASS |
 | `make public-safety` | Public repo safety scan | exit 0 |
 | `make validate-json` | Schema validation | exit 0 |
 | `make validate-fixtures` | Fixture inventory | exit 0 |
-| `make markdown-links` | Link checker | exit 0 |
+| `make markdown-links` | Link checker | PASS |
+| `make preflight` | 205 tests + foundation gate outputs | PASS |
 
 ## Evidence
 
-- Raw evidence: `${DCIM_RUNTIME_ROOT}/dev-build/evidence/` (external, not in Git)
+- Raw evidence: `${DCIM_RUNTIME_ROOT}/dev-build/evidence/` (external, not in Git),
+  including `phase1-clean-acceptance-summary.json` and acceptance smoke/recovery
+  records
 - Normal reused-state summary: `make foundation-evidence-summary` (stdout or file)
 - Clean-runtime summary: `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`
 - Evidence fields: commit, image digests, capability profiles, UTC timestamp,
@@ -106,8 +108,8 @@ This handover does not claim:
 
 ## Next steps
 
-1. Run isolated clean-runtime acceptance from a brand-new protected root;
-2. Run final `make preflight`, public-safety, review, and security gates;
+1. Run isolated clean-runtime acceptance from a brand-new protected root (complete);
+2. Run final `make preflight` (complete);
 3. Fill the PR and issue closure drafts in
    [`ISSUE-9-CLOSURE-PACKAGE.md`](ISSUE-9-CLOSURE-PACKAGE.md) with exact final
    evidence;

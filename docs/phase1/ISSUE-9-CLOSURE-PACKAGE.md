@@ -1,7 +1,8 @@
 # Issue #9 Closure Package Draft
 
 Date: 2026-07-21
-Status: draft; do not post or use for issue closure until pending gates pass
+Status: draft; do not post or use for issue closure until remote checks, owner
+disposition, and GitHub mutation are complete
 Scope: synthetic `dcim-build` Runtime Plane only
 Parent issue: #9
 Governing ADRs: ADR-0013 and ADR-0014
@@ -13,12 +14,14 @@ owner-accepted, or claim Staging or Production readiness.
 
 ## Current disposition
 
-Implementation status: closure candidate.
+Implementation status: closure candidate with clean-runtime and preflight evidence
+captured.
 
 Blocking closure gates:
 
-1. isolated clean-runtime acceptance from a brand-new protected external root;
-2. final `make preflight` on the exact final commit;
+1. isolated clean-runtime acceptance from a brand-new protected external root
+   (PASS);
+2. final `make preflight` on the exact final commit (PASS);
 3. remote PR checks on the exact final head;
 4. explicit owner disposition approving Phase 1 compact infrastructure
    foundation closure;
@@ -84,11 +87,12 @@ See `docs/phase1/ISSUE-9-ACCEPTANCE-MATRIX.md`.
 Current classification before owner-approved runtime closure:
 
 - verified by current evidence: 20;
-- to be verified by isolated clean-runtime run: 26;
+- verified by isolated clean-runtime run: 25;
 - superseded by accepted ADR: 2;
 - out of scope according to issue #9: 1;
 - owner disposition required: 1;
-- remaining issue #9 closure blockers: 27;
+- pending remote-hosted runner evidence: 1;
+- remaining issue #9 closure blockers: 2;
 - unresolved implementation defects in this candidate: 0.
 
 ## Verification
@@ -99,20 +103,34 @@ commit SHA in this committed draft; the commit would change when the draft is
 amended.
 
 ```text
-git diff --check <base>...<final-head>
-<result>
+git diff --check 3a92960314df11d68152dc59244d31b93eaa9a57...<final-head>
+PASS (no conflicts, no trailing whitespace issues)
 
 python3 -m unittest tests.test_foundation_acceptance tests.test_foundation_smoke tests.test_foundation_policy tests.test_foundation_evidence_summary -q
-<test count and result>
+98 tests passed
 
 make phase0-check
-<test count and result>
+205 tests passed
 
 make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>
-<bounded step results and public-safe evidence path>
+PASS
+bootstrap: PASS
+qualification/build: PASS
+policy: PASS
+supply-chain: PASS
+startup: PASS
+fast smoke: PASS
+recovery and PostgreSQL restore: PASS
+bounded stop: PASS
+public-safe summary: PASS
+Evidence: phase1-clean-acceptance-summary.json (external runtime evidence)
 
 make preflight
-<total test count, supply-chain result, recovery result, evidence-summary result>
+exit 0
+205 tests
+foundation supply-chain: PASS
+foundation recovery: PASS
+foundation evidence summary: PASS
 ```
 
 Remote checks on exact final PR head:
@@ -206,11 +224,12 @@ Final commit: `<final-head-sha>`
 Acceptance matrix:
 
 - verified by current evidence: 20;
-- verified by isolated clean-runtime run: 26;
+- verified by isolated clean-runtime run: 25;
 - superseded by accepted ADR: 2;
 - out of scope according to issue #9: 1;
-- owner disposition recorded: 1;
-- unresolved/blocking rows: 0.
+- owner disposition required: 1;
+- pending remote-hosted runner evidence: 1;
+- unresolved/blocking rows: 2.
 
 Clean-runtime acceptance:
 
@@ -242,19 +261,19 @@ foundation evidence summary: PASS
 Remote checks on the exact final PR head:
 
 ```text
-preflight: PASS
-dependency-review: PASS
-public-safety: PASS
-synthetic foundation fast smoke: PASS
-pinned image SBOM, license, and vulnerability gate: PASS
+preflight: <pending>
+dependency-review: <pending>
+public-safety: <pending>
+synthetic foundation fast smoke: <pending>
+pinned image SBOM, license, and vulnerability gate: <pending>
 ```
 
 Reviews:
 
 ```text
-Standards review: no unresolved critical/high findings
-Spec review: no unresolved critical/high findings
-Security review: no unresolved critical/high findings
+Standards review: <pending>
+Spec review: <pending>
+Security review: <pending>
 ```
 
 Public-data declaration: repository and issue content contain only public-safe
