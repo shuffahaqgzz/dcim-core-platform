@@ -1,7 +1,9 @@
 # Phase 1 Development Handover
 
 Date: 2026-07-21
-Status: Closure candidate with clean-runtime + preflight evidence captured
+Status: Closure candidate with clean-runtime and local preflight candidate
+evidence captured; final pushed-head binding, remote evidence, final review, and
+owner disposition remain pending
 Issue: #12; closure package for parent #9
 Parent: #9
 Branch: PR #16 draft branch; exact final pushed head remains commit-bound at
@@ -10,19 +12,20 @@ publication time
 ## What was delivered
 
 The reproducible Development acceptance package for the qualified synthetic
-foundation. This handover now includes both reused-state baseline proof and an
-isolated clean-runtime proof.
+foundation. This handover now includes candidate reused-state baseline evidence
+and isolated clean-runtime evidence. Exact final pushed-head binding remains
+pending at publication time.
 
 ## Acceptance criterion mapping
 
 | # | Issue #12 AC | Artifact | Verification |
 |---|---|---|---|
-| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`; `scripts/foundation_acceptance.py` | Verified (pass); isolated clean-runtime summary recorded |
-| 2 | All gates pass with no critical failure | `make preflight` plus clean acceptance summary | `make preflight` remains the normal reused-state Development gate; PASS on final commit |
-| 3 | Code review confirms standards and security boundary | Review against the final issue #9 diff/head | No connector, control, privileged, or bridge paths introduced |
+| 1 | Clean runtime root completes full lifecycle on Ubuntu 24.04 | `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`; `scripts/foundation_acceptance.py` | Candidate isolated clean-runtime summary recorded; rebind to exact final pushed head remains pending if the branch changes |
+| 2 | All gates pass with no critical failure | `make preflight` plus clean acceptance summary | Candidate/local evidence captured; final pushed-head remote/Docker gate evidence remains pending |
+| 3 | Code review confirms standards and security boundary | Candidate review evidence; exact final issue #9 diff/head review pending | No connector, control, privileged, or bridge paths identified in the candidate; final pushed-head review remains required |
 | 4 | Public-safe evidence records allowlisted fields only | `scripts/foundation_evidence_summary.py`; `tests/test_foundation_evidence_summary.py` | 13 tests validate allowlist enforcement |
 | 5 | Runbooks document lifecycle, recovery, failure, Grafana, limitations | `docs/phase1/FOUNDATION-RUNBOOK.md` | Covers all required sections |
-| 6 | Handover PR-ready; C-03, C-05, C-07, OD-06 unchanged | This document; conditions register unchanged | No condition status modified |
+| 6 | Handover PR-ready candidate; C-03, C-05, C-07, OD-06 unchanged | This document; conditions register unchanged | No condition status modified; owner disposition remains pending |
 
 ## Changed files
 
@@ -54,19 +57,19 @@ condition status.
 
 | Command | Tests | Result |
 |---|---|---|
-| `make compile` | Python compileall | exit 0 |
-| `make test` | 210 unit tests | PASS |
-| `make public-safety` | Public repo safety scan | exit 0 |
-| `make validate-json` | Schema validation | exit 0 |
-| `make validate-fixtures` | Fixture inventory | exit 0 |
-| `make markdown-links` | Link checker | PASS |
-| `make preflight` | 210 tests + foundation gate outputs | PASS |
+| `make compile` | Python compileall | candidate evidence exit 0 |
+| `make test` | 210 unit tests | candidate evidence PASS |
+| `make public-safety` | Public repo safety scan | candidate evidence exit 0 |
+| `make validate-json` | Schema validation | candidate evidence exit 0 |
+| `make validate-fixtures` | Fixture inventory | candidate evidence exit 0 |
+| `make markdown-links` | Link checker | candidate evidence PASS |
+| `make preflight` | 210 tests + foundation gate outputs | candidate/local evidence captured; final pushed-head CI/milestone-host Docker gate evidence pending |
 
 ## Evidence
 
-- Raw evidence: `${DCIM_RUNTIME_ROOT}/dev-build/evidence/` (external, not in Git),
-  including `phase1-clean-acceptance-summary.json` and acceptance smoke/recovery
-  records
+- Candidate raw evidence: `${DCIM_RUNTIME_ROOT}/dev-build/evidence/` (external,
+  not in Git), including `phase1-clean-acceptance-summary.json` and acceptance
+  smoke/recovery records. Exact final pushed-head rebinding remains pending.
 - Normal reused-state summary: `make foundation-evidence-summary` (stdout or file)
 - Clean-runtime summary: `make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`
 - Evidence fields: commit, image digests, capability profiles, UTC timestamp,
@@ -108,10 +111,18 @@ This handover does not claim:
 
 ## Next steps
 
-1. Run isolated clean-runtime acceptance from a brand-new protected root (complete);
-2. Run final `make preflight` (complete);
-3. Fill the PR and issue closure drafts in
+1. Fix and publish the exact final branch head, then bind closure text to that
+   SHA outside the committed draft;
+2. Rerun or explicitly reclassify commit-bound local candidate checks, including
+   clean-runtime acceptance and `make preflight`, for the exact final head on an
+   authorized CI or milestone host;
+3. Obtain remote PR checks and Docker-dependent gate evidence on the exact final
+   pushed head;
+4. Complete standards, spec, and security review against the exact final issue
+   #9 diff/head;
+5. Fill the PR and issue closure drafts in
    [`ISSUE-9-CLOSURE-PACKAGE.md`](ISSUE-9-CLOSURE-PACKAGE.md) with exact final
    evidence;
-4. Owner reviews the issue #9 closure package and decides whether to close #9;
-5. Subsequent issues address remaining Development baseline breadth as governed.
+6. Owner reviews the issue #9 closure package and decides whether to approve any
+   GitHub mutation or close #9;
+7. Subsequent issues address remaining Development baseline breadth as governed.
