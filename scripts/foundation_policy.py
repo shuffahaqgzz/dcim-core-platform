@@ -127,6 +127,8 @@ DERIVED_COMPONENT_BY_SERVICE = {
     "kafka": "kafka",
     "kafka-smoke": "kafka",
     "grafana": "grafana",
+    "prometheus": "prometheus",
+    "observability-smoke": "prometheus",
     "postgres-exporter": "postgres-exporter",
 }
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -236,7 +238,9 @@ def validate_model(
         derived_images = {
             item["component"]: item["image_id"] for item in derived_lock["images"]
         }
-        if set(derived_images) != {"postgres", "kafka", "grafana", "postgres-exporter"}:
+        if set(derived_images) != {
+            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+        }:
             raise ValueError("derived component allowlist mismatch")
         if any(not isinstance(image, str) or not IMAGE_ID.fullmatch(image) for image in derived_images.values()):
             raise ValueError("invalid derived image ID")

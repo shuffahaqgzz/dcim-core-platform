@@ -53,7 +53,7 @@ local pass-clean proof.
 | 16 | Grafana declarative provisioning with disposable state | Verified by isolated clean-runtime run | clean acceptance Grafana smoke; Grafana tmpfs/provisioning policy checks |
 | 17 | Runtime secrets generated outside Git | Verified by isolated clean-runtime run | clean acceptance bootstrap; `scripts/protected_runtime.py`; public-safety scan |
 | 18 | Secret-file or `_FILE` delivery | Verified by current evidence | secret allowlist and environment checks in `scripts/foundation_policy.py`; PostgreSQL argv guard tests |
-| 19 | Official upstream image set only | Superseded by accepted ADR | ADR-0013/0014 permit four local Development-only derived hardened images; Prometheus/JMX runtime remain qualified upstream |
+| 19 | Official upstream image set only | Superseded by accepted ADR | ADR-0013/0014/0015 permit five local Development-only derived hardened images; only the JMX runtime remains qualified upstream |
 | 20 | Provenance, architecture, license, SBOM, scanner, vulnerability evidence | Verified by isolated clean-runtime run | `foundation-images-qualify`; `foundation-supply-chain`; derived-image lock and external evidence |
 | 21 | Critical/fixable High block; unfixable High owner disposition | Owner disposition required | policy in issue #9 and ADR-0013; `scripts/foundation_supply_chain.py`; issue #10 license/vulnerability disposition remains owner-authority-bound |
 | 22 | CPU and memory limits within 10 vCPU/18 GiB | Verified by current evidence | aggregate resource checks in `scripts/foundation_policy.py` |

@@ -12,24 +12,43 @@ ARG GRAFANA_DIRECTORY="grafana-b309c9bb3b81a748c3a75289236a27309ed2566a"
 ARG TEMPO_ARCHIVE="tempo-4aeafc2.tar.gz"
 ARG TEMPO_SHA256="6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"
 ARG TEMPO_DIRECTORY="tempo-4aeafc237b8d9a8d62e45735131e8a89eb741a00"
+ARG GRPC_ARCHIVE="grpc-go-ebd8f06.tar.gz"
+ARG GRPC_SHA256="50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"
 
 COPY ${GRAFANA_ARCHIVE} /tmp/grafana.tar.gz
 COPY ${TEMPO_ARCHIVE} /tmp/tempo.tar.gz
+COPY ${GRPC_ARCHIVE} /tmp/grpc-go.tar.gz
 RUN echo "${GRAFANA_SHA256}  /tmp/grafana.tar.gz" | sha256sum -c - \
     && echo "${TEMPO_SHA256}  /tmp/tempo.tar.gz" | sha256sum -c - \
-    && mkdir -p /src/grafana /src/tempo \
+    && echo "${GRPC_SHA256}  /tmp/grpc-go.tar.gz" | sha256sum -c - \
+    && mkdir -p /src/grafana /src/tempo /src/grpc-go \
     && tar -xzf /tmp/grafana.tar.gz -C /src/grafana --strip-components=1 \
-    && tar -xzf /tmp/tempo.tar.gz -C /src/tempo --strip-components=1
+    && tar -xzf /tmp/tempo.tar.gz -C /src/tempo --strip-components=1 \
+    && tar -xzf /tmp/grpc-go.tar.gz -C /src/grpc-go --strip-components=1
 
 WORKDIR /src/grafana
+ENV GOWORK=off
 RUN sed -i 's/^go 1\.26\.4$/go 1.26.5/' go.mod go.work \
     && sed -i 's#github.com/grafana/tempo v1.5.1-0.20260427112133-525d1bab07e0#github.com/grafana/tempo v2.10.3+incompatible#' go.mod \
     && printf '\nreplace github.com/grafana/tempo => /src/tempo\n' >> go.mod \
+    && go mod edit -require=google.golang.org/grpc@v1.82.1 \
+    && go mod edit -replace=google.golang.org/grpc=/src/grpc-go \
     && grep -F 'github.com/grafana/tempo v2.10.3+incompatible' go.mod \
-    && grep -F 'replace github.com/grafana/tempo => /src/tempo' go.mod
-RUN go mod download
+    && grep -F 'replace github.com/grafana/tempo => /src/tempo' go.mod \
+    && grep -F 'google.golang.org/grpc v1.82.1' go.mod \
+    && grep -F 'replace google.golang.org/grpc => /src/grpc-go' go.mod \
+    && go mod vendor -e \
+    && go mod edit -dropreplace=github.com/grafana/tempo \
+    && go mod edit -dropreplace=google.golang.org/grpc \
+    && sed -i 's|^# github.com/grafana/tempo v2.10.3+incompatible => /src/tempo$|# github.com/grafana/tempo v2.10.3+incompatible|' vendor/modules.txt \
+    && sed -i '/^# github\.com\/grafana\/tempo => \/src\/tempo$/d' vendor/modules.txt \
+    && sed -i 's|^# google.golang.org/grpc v1.82.1 => /src/grpc-go$|# google.golang.org/grpc v1.82.1|' vendor/modules.txt \
+    && sed -i '/^# google\.golang\.org\/grpc => \/src\/grpc-go$/d' vendor/modules.txt \
+    && go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc \
+    && grep -Fx '# github.com/grafana/tempo v2.10.3+incompatible' vendor/modules.txt \
+    && grep -Fx '# google.golang.org/grpc v1.82.1' vendor/modules.txt
 RUN --network=none CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -buildvcs=false -trimpath -tags oss \
+    go build -mod=vendor -buildvcs=false -trimpath -tags oss \
     -ldflags='-s -w -X main.version=13.1.0 -X main.commit=b309c9bb3b81a748c3a75289236a27309ed2566a -X main.buildBranch=main -X main.buildstamp=1782214211' \
     -o /out/grafana ./pkg/cmd/grafana
 RUN touch -d "@${SOURCE_DATE_EPOCH}" /out/grafana
@@ -40,11 +59,12 @@ ARG SOURCE_DATE="2026-06-23T11:30:11Z"
 LABEL org.opencontainers.image.created="${SOURCE_DATE}" \
       org.opencontainers.image.source="https://github.com/grafana/grafana" \
       org.opencontainers.image.revision="b309c9bb3b81a748c3a75289236a27309ed2566a" \
-      org.opencontainers.image.version="13.1.0-dcim.1" \
+      org.opencontainers.image.version="13.1.0-dcim.3" \
       org.opencontainers.image.vendor="DCIM Development derivative" \
       io.dcim.derivative="true" \
-      io.dcim.recipe.revision="1" \
+      io.dcim.recipe.revision="3" \
       io.dcim.remediation.go="1.26.5" \
-      io.dcim.remediation.tempo="2.10.3"
+      io.dcim.remediation.tempo="2.10.3" \
+      io.dcim.remediation.grpc-go="1.82.1"
 
 COPY --from=grafana-build --chown=472:0 /out/grafana /usr/share/grafana/bin/grafana

@@ -42,9 +42,9 @@ Future profile names remain reserved: `core`, `dashboard`, `workflow`,
 
 ## Non-negotiable implementation constraints
 
-- official upstream images pinned as `exact-version@sha256:digest`, or the four
-  ADR-0013 Development-only derived images selected through an external local
-  immutable image-ID lock;
+- official upstream images pinned as `exact-version@sha256:digest`, or the five
+  ADR-0013/ADR-0015 Development-only derived images selected through an external
+  local immutable image-ID lock;
 - external runtime secrets and state; no runtime material in Git;
 - isolated internal networks and service-specific named volumes;
 - only the two metrics exporters may be long-running dual-homed services, with

@@ -6,6 +6,7 @@
 - Decision source: owner acceptance in the issue #10 blocker-resolution task
 - Issues: #10, parent #9
 - Clarified by: [ADR-0014](0014-official-release-binary-source-provenance.md)
+- Extended by: [ADR-0015](0015-full-source-prometheus-grpc-remediation.md)
 
 ## Context
 

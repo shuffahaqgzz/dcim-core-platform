@@ -35,6 +35,7 @@ DERIVED_COMPONENTS = {
     "PostgreSQL": "postgres",
     "Apache Kafka": "kafka",
     "Grafana OSS": "grafana",
+    "Prometheus": "prometheus",
     "PostgreSQL exporter": "postgres-exporter",
 }
 REVIEW_REQUIRED_LICENSE_CATEGORIES = {"reciprocal", "restricted", "unknown"}

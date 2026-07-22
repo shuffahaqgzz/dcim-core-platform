@@ -117,10 +117,11 @@ class FoundationSupplyChainTests(unittest.TestCase):
             {"component": "kafka", "image_id": "sha256:" + "b" * 64},
             {"component": "grafana", "image_id": "sha256:" + "c" * 64},
             {"component": "postgres-exporter", "image_id": "sha256:" + "d" * 64},
+            {"component": "prometheus", "image_id": "sha256:" + "e" * 64},
         ]}
         images = foundation_supply_chain.effective_images(inventory, lock)
         self.assertEqual("sha256:" + "a" * 64, images[0]["image"])
-        self.assertEqual("official-prometheus", images[1]["image"])
+        self.assertEqual("sha256:" + "e" * 64, images[1]["image"])
 
     def test_license_and_sbom_reports_fail_closed(self) -> None:
         with self.assertRaisesRegex(ValueError, "license"):

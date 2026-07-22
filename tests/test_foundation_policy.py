@@ -43,7 +43,9 @@ class FoundationPolicyTests(unittest.TestCase):
             "license_dispositions_sha256": disposition_sha256,
             "images": [
                 {"component": component, "image_id": image_id}
-                for component in ("postgres", "kafka", "grafana", "postgres-exporter")
+                for component in (
+                    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+                )
             ],
         }), encoding="utf-8")
         (self.runtime_root / "dev-build/images.env").write_text(
@@ -51,6 +53,7 @@ class FoundationPolicyTests(unittest.TestCase):
                 f"DCIM_POSTGRES_IMAGE={image_id}",
                 f"DCIM_KAFKA_IMAGE={image_id}",
                 f"DCIM_GRAFANA_IMAGE={image_id}",
+                f"DCIM_PROMETHEUS_IMAGE={image_id}",
                 f"DCIM_POSTGRES_EXPORTER_IMAGE={image_id}",
             ]) + "\n",
             encoding="utf-8",

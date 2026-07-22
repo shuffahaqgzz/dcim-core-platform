@@ -1,11 +1,11 @@
 # Issue #9 Closure Package Draft
 
-Date: 2026-07-21
+Date: 2026-07-22
 Status: draft; do not post or use for issue closure until remote checks, owner
 disposition, and GitHub mutation are complete
 Scope: synthetic `dcim-build` Runtime Plane only
 Parent issue: #9
-Governing ADRs: ADR-0013 and ADR-0014
+Governing ADRs: ADR-0013, ADR-0014, and ADR-0015
 
 This file is a public-safe PR and issue-closure draft for the Phase 1 compact
 infrastructure foundation. It intentionally separates closure-candidate evidence
@@ -70,14 +70,14 @@ This PR does not close #9 by itself. Parent issue closure remains pending:
 
 ## Governing decisions
 
-- ADR-0013 supersedes the original official-upstream-only parent requirement for
-  four failing components by allowing constrained local Development-only derived
-  hardened images.
+- ADR-0013 supersedes the original official-upstream-only parent requirement by
+  allowing constrained local Development-only derived hardened images.
 - ADR-0014 clarifies that PostgreSQL and Kafka use immutable official release
   binaries with checksum-verified source provenance for this scope.
-- Grafana OSS and PostgreSQL exporter remain full source builds.
-- Prometheus and the JMX exporter Java runtime remain qualified pinned upstream
-  images.
+- ADR-0015 accepts the full-source Prometheus v3.13.1 derivative required to
+  preserve exact remediated dependency metadata in SBOM and vulnerability scans.
+- Grafana OSS, Prometheus, and PostgreSQL exporter are full source builds.
+- The JMX exporter Java runtime remains a qualified pinned upstream image.
 - OD-06 remains OPEN; derived images are not published or distributed.
 
 ## Acceptance mapping
@@ -282,10 +282,10 @@ summaries. Raw runtime evidence, scanner reports, SBOMs, dumps, runtime IDs,
 secrets, and mutable state remain under protected external runtime storage and
 outside Git.
 
-ADR reconciliation: ADR-0013 and ADR-0014 supersede the original
-official-upstream-only image requirement for four local Development-only derived
-hardened images. Prometheus and the JMX exporter Java runtime remain qualified
-upstream images. The original official-only NO-GO evidence is preserved.
+ADR reconciliation: ADR-0013, ADR-0014, and ADR-0015 supersede the original
+official-upstream-only image requirement for five local Development-only derived
+hardened images. Only the JMX exporter Java runtime remains a qualified upstream
+image. The original official-only NO-GO evidence is preserved.
 
 Limitations and non-claims: this closes only the Phase 1 compact infrastructure
 foundation for synthetic `dcim-build`. It does not claim P1/P2 vertical slices,

@@ -47,7 +47,9 @@ except ModuleNotFoundError:  # Direct script execution adds scripts/, not reposi
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_COMPONENTS = {"postgres", "kafka", "grafana", "postgres-exporter"}
+REQUIRED_COMPONENTS = {
+    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+}
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -59,12 +61,14 @@ ENVIRONMENT_KEYS = {
     "postgres": "DCIM_POSTGRES_IMAGE",
     "kafka": "DCIM_KAFKA_IMAGE",
     "grafana": "DCIM_GRAFANA_IMAGE",
+    "prometheus": "DCIM_PROMETHEUS_IMAGE",
     "postgres-exporter": "DCIM_POSTGRES_EXPORTER_IMAGE",
 }
 LICENSE_COMPONENTS = {
     "postgres": "postgresql",
     "kafka": "apache-kafka",
     "grafana": "grafana-oss",
+    "prometheus": "prometheus",
     "postgres-exporter": "postgresql-exporter",
 }
 
@@ -112,7 +116,10 @@ def validate_manifest(value: object) -> list[str]:
         return errors + ["recipes must be an array"]
     components = [item.get("component") for item in recipes if isinstance(item, dict)]
     if len(components) != len(recipes) or set(components) != REQUIRED_COMPONENTS or len(components) != len(set(components)):
-        errors.append("recipes must contain exactly postgres, kafka, grafana, and postgres-exporter")
+        errors.append(
+            "recipes must contain exactly postgres, kafka, grafana, prometheus, "
+            "and postgres-exporter"
+        )
 
     for index, recipe in enumerate(recipes):
         field = f"recipes[{index}]"

@@ -6,6 +6,7 @@
 - Decision source: explicit owner decision in the issue #10 governance-hold task
 - Issues: #10, parent #9
 - Clarifies: [ADR-0013](0013-derived-hardened-foundation-images.md)
+- Extended by: [ADR-0015](0015-full-source-prometheus-grpc-remediation.md)
 
 ## Context
 
