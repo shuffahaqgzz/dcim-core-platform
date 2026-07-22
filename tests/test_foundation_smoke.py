@@ -37,7 +37,8 @@ def write_image_lock(plane: Path) -> None:
             "images": [
                 {"component": component, "image_id": f"sha256:{index:064x}"}
                 for index, component in enumerate(
-                    ("postgres", "kafka", "grafana", "postgres-exporter"), start=1,
+                    ("postgres", "kafka", "grafana", "prometheus", "postgres-exporter"),
+                    start=1,
                 )
             ],
         }),
@@ -65,12 +66,11 @@ def write_inspection_only_docker(path: Path) -> None:
                 "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                 "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                 "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
             }
             if container in derived:
                 print(derived[container] + "|synthetic-derived")
-            elif container == "dcim-build-prometheus-1":
-                print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
             elif container == "dcim-build-kafka-jmx-exporter-1":
                 print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
             else:
@@ -371,13 +371,12 @@ class FoundationSmokeContractTests(unittest.TestCase):
                             "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                             "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                             "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                            "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
                         }
                         if any("{{.Image}}" in item for item in arguments):
                             if container in derived:
                                 print(derived[container] + "|synthetic-derived")
-                            elif container == "dcim-build-prometheus-1":
-                                print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
                             elif container == "dcim-build-kafka-jmx-exporter-1":
                                 print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
                         else:
@@ -506,12 +505,11 @@ class FoundationSmokeContractTests(unittest.TestCase):
                             "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                             "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                             "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                            "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
                         }
                         if container in derived:
                             print(derived[container] + "|synthetic-derived")
-                        elif container == "dcim-build-prometheus-1":
-                            print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
                         elif container == "dcim-build-kafka-jmx-exporter-1":
                             print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
                     sys.exit(0)

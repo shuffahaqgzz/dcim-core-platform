@@ -181,14 +181,16 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
         ).hexdigest():
             raise ValueError("derived image lock license disposition digest mismatch")
         locked_images = lock["images"]
-        if not isinstance(locked_images, list) or len(locked_images) != 4:
+        if not isinstance(locked_images, list) or len(locked_images) != 5:
             raise ValueError("derived image lock inventory mismatch")
         derived = {
             str(item["component"]): str(item["image_id"])
             for item in locked_images
             if isinstance(item, dict)
         }
-        if set(derived) != {"postgres", "kafka", "grafana", "postgres-exporter"}:
+        if set(derived) != {
+            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+        }:
             raise ValueError("derived image digest allowlist mismatch")
         if any(not re.fullmatch(r"sha256:[0-9a-f]{64}", value) for value in derived.values()):
             raise ValueError("derived image digest invalid")
@@ -210,7 +212,7 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
                 "postgres-exporter", derived["postgres-exporter"], None,
             ),
             "prometheus": (
-                "prometheus", None, official_references["Prometheus"],
+                "prometheus", derived["prometheus"], None,
             ),
             "kafka-jmx-exporter": (
                 "jmx-exporter-java-runtime", None,
@@ -234,7 +236,6 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
                 raise ValueError(f"running image reference mismatch: {service}")
         digests = {
             **derived,
-            "prometheus": official["Prometheus"],
             "jmx-exporter-java-runtime": official["JMX exporter Java runtime"],
         }
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
