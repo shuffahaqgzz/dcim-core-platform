@@ -456,7 +456,7 @@ def run_acceptance(runtime_root: Path, project: str) -> int:
     environment = os.environ.copy()
     commit = "unknown"
     root: Path | None = None
-    services_started = False
+    services_may_exist = False
     result = "fail"
     failure_reason: str | None = None
     acceptance_override: Path | None = None
@@ -530,6 +530,7 @@ def run_acceptance(runtime_root: Path, project: str) -> int:
             timeout=7_200,
             records=records,
         )
+        services_may_exist = True
         run_step(
             "foundation-up",
             [
@@ -540,7 +541,6 @@ def run_acceptance(runtime_root: Path, project: str) -> int:
             timeout=300,
             records=records,
         )
-        services_started = True
         assert_expected_project_inventory(project, environment)
         run_step(
             "foundation-smoke-fast",
@@ -563,7 +563,7 @@ def run_acceptance(runtime_root: Path, project: str) -> int:
             timeout=90,
             records=records,
         )
-        services_started = False
+        services_may_exist = False
         run_step(
             "foundation-evidence-summary",
             [
@@ -590,7 +590,7 @@ def run_acceptance(runtime_root: Path, project: str) -> int:
         print(f"foundation-clean-acceptance: {failure_reason}", file=sys.stderr)
         return_code = 1
     finally:
-        if services_started and root is not None:
+        if services_may_exist and root is not None:
             try:
                 run_step(
                     "foundation-stop-after-failure",

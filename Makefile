@@ -79,7 +79,7 @@ foundation-supply-chain: foundation-images-qualify
 	$(PYTHON) scripts/foundation_supply_chain.py --runtime-root "$$DCIM_RUNTIME_ROOT" --derived-lock "$(FOUNDATION_IMAGE_LOCK)" --license-dispositions '$(FOUNDATION_LICENSE_DISPOSITIONS)'
 
 foundation-evidence-summary:
-	$(PYTHON) scripts/foundation_evidence_summary.py --evidence-dir "$$DCIM_RUNTIME_ROOT/dev-build/evidence" --commit '$(shell git rev-parse HEAD)'
+	$(PYTHON) scripts/foundation_evidence_summary.py --evidence-dir "$$DCIM_RUNTIME_ROOT/dev-build/evidence" --commit '$(shell git rev-parse HEAD)' --require-modes 'recovery' --require-pass --strict-commit
 
 foundation-clean-acceptance:
 	$(PYTHON) scripts/foundation_acceptance.py

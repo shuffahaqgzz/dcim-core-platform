@@ -594,6 +594,47 @@ class FoundationAcceptanceTests(unittest.TestCase):
             for prohibited in ("hostname", "runtime_root", "environment", "credential", "secret"):
                 self.assertNotIn(prohibited, serialized.lower())
 
+    def test_run_acceptance_stops_partial_services_when_startup_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            executed_steps: list[str] = []
+
+            def run_step(
+                label: str,
+                _command: list[str],
+                **_kwargs: object,
+            ) -> str:
+                executed_steps.append(label)
+                if label == "foundation-up":
+                    raise FOUNDATION_ACCEPTANCE.AcceptanceFailure(
+                        "foundation-up failed with exit code 1",
+                    )
+                return "{}" if label == "compose-config" else ""
+
+            with (
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "git_commit", return_value="abc123"),
+                mock.patch.object(
+                    FOUNDATION_ACCEPTANCE,
+                    "validate_new_runtime_root",
+                    return_value=runtime_root,
+                ),
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "assert_commit_bound_tree"),
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "validate_local_docker_context"),
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "assert_no_normal_runtime_state"),
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "assert_no_existing_project_resources"),
+                mock.patch.object(FOUNDATION_ACCEPTANCE, "run_step", side_effect=run_step),
+                mock.patch("sys.stdout", new_callable=io.StringIO),
+                mock.patch("sys.stderr", new_callable=io.StringIO),
+            ):
+                result = FOUNDATION_ACCEPTANCE.run_acceptance(
+                    runtime_root,
+                    "dcim-build-acceptance-abcdef123456",
+                )
+
+            self.assertEqual(1, result)
+            self.assertIn("foundation-up", executed_steps)
+            self.assertIn("foundation-stop-after-failure", executed_steps)
+
     def test_run_acceptance_records_early_validated_root_failure_reason(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             runtime_root = Path(directory) / "runtime"
@@ -639,6 +680,15 @@ class FoundationAcceptanceTests(unittest.TestCase):
         )
 
         self.assertNotIn("foundation-clean-acceptance", preflight_line)
+
+    def test_preflight_evidence_summary_requires_current_passing_recovery(self) -> None:
+        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        recipe = makefile.split("foundation-evidence-summary:\n", maxsplit=1)[1]
+        recipe = recipe.split("\n\nfoundation-clean-acceptance:", maxsplit=1)[0]
+
+        self.assertIn("--require-modes 'recovery'", recipe)
+        self.assertIn("--require-pass", recipe)
+        self.assertIn("--strict-commit", recipe)
 
     def test_clean_acceptance_make_target_defers_runtime_validation_to_python(self) -> None:
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
