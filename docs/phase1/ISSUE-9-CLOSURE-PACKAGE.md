@@ -121,7 +121,7 @@ git diff --check 3a92960314df11d68152dc59244d31b93eaa9a57...<final-head>
 PASS (no conflicts, no trailing whitespace issues)
 
 python3 -m unittest tests.test_foundation_acceptance tests.test_foundation_smoke tests.test_foundation_policy tests.test_foundation_evidence_summary -q
-98 tests passed
+100 tests passed
 
 make phase0-check
 210 tests passed
