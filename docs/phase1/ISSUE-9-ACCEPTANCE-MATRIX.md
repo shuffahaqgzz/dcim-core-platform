@@ -4,7 +4,7 @@ Date: 2026-07-21
 Scope: synthetic `dcim-build` Runtime Plane only
 Parent issue: #9
 Status: clean-runtime completion captured on external runtime; pending final
-remote checks and owner disposition.
+pushed-head remote checks and owner disposition.
 
 This matrix treats the 50 numbered user stories in issue #9 as the parent
 acceptance rows. The issue's implementation, testing, and out-of-scope sections
@@ -25,11 +25,16 @@ remain governing constraints.
 
 Rows classified as "Verified by isolated clean-runtime run" are proven by passing
 `make foundation-clean-acceptance` with
-`DCIM_RUNTIME_ROOT=<new-protected-root>` on the final head and a recorded
-public-safe external summary. Ordinary `make preflight` is the normal Development
-gate and may reuse selected protected state; it is not clean-runtime proof.
-This matrix lists the remaining remote-hosted proof and owner-action gaps above the
-local pass-clean proof.
+`DCIM_RUNTIME_ROOT=<new-protected-root>` on the implementation-candidate head
+identified by the recorded public-safe external summary. Ordinary `make
+preflight` is the normal Development gate and may reuse selected protected state;
+it is not clean-runtime proof. This matrix lists the remaining remote-hosted proof
+and owner-action gaps above the local pass-clean proof.
+
+PR #16 remote checks passed on pre-reconciliation head
+`872df38a4ede87d129533965b28ca335672916bc`, but any local documentation
+reconciliation commit creates a later final pushed head. Row 42 therefore remains
+pending until remote-hosted runner evidence passes on that final pushed head.
 
 ## Matrix
 
@@ -76,7 +81,7 @@ local pass-clean proof.
 | 39 | PostgreSQL dump/restore with logical checksum | Verified by isolated clean-runtime run | clean acceptance recovery smoke |
 | 40 | Machine-readable smoke evidence outside Git | Verified by isolated clean-runtime run | external `dev-build/evidence/*.json`; `scripts/foundation_evidence_summary.py` strict mode |
 | 41 | Only reviewed public-safe summaries are promoted | Verified by current evidence | `scripts/check_public_repo_safety.py`; evidence allowlist tests |
-| 42 | Fast smoke on GitHub-hosted Ubuntu 24.04 runners | Pending remote-hosted runner evidence | final PR/remote check evidence required; local clean acceptance was executed on Ubuntu 24.04.4 |
+| 42 | Fast smoke on GitHub-hosted Ubuntu 24.04 runners | Pending remote-hosted runner evidence | PR #16 checks passed on pre-reconciliation head `872df38a4ede87d129533965b28ca335672916bc`; final pushed head remote-hosted runner evidence remains required |
 | 43 | GitHub Actions and scanner containers pinned | Verified by current evidence | `.github/workflows/`; scanner digest in `scripts/foundation_supply_chain.py` and recipes |
 | 44 | Bounded startup, smoke, recovery, and stop timeouts | Verified by isolated clean-runtime run | clean acceptance step durations and exit codes; Make/Compose timeout settings |
 | 45 | Bounded restart attempts | Verified by current evidence | `restart: "on-failure:3"` policy checks |

@@ -1,8 +1,9 @@
 # Issue #9 Closure Package Draft
 
 Date: 2026-07-22
-Status: draft; do not post or use for issue closure until remote checks, owner
-disposition, and GitHub mutation are complete
+Status: draft; prepare only; do not post or use for issue closure until
+final-head binding, remote checks, owner disposition, and approved GitHub
+mutation are complete
 Scope: synthetic `dcim-build` Runtime Plane only
 Parent issue: #9
 Governing ADRs: ADR-0013, ADR-0014, and ADR-0015
@@ -14,18 +15,29 @@ owner-accepted, or claim Staging or Production readiness.
 
 ## Current disposition
 
-Implementation status: closure candidate with clean-runtime and preflight evidence
-captured.
+Implementation status: closure candidate with clean-runtime and local preflight
+evidence captured; final pushed-head closure evidence remains pending.
 
-Blocking closure gates:
+Closure gate status:
 
 1. isolated clean-runtime acceptance from a brand-new protected external root
-   (PASS);
-2. final `make preflight` on the exact final commit (PASS);
-3. remote PR checks on the exact final head;
+   (candidate evidence PASS);
+2. local `make preflight` for the current candidate evidence set (candidate
+   evidence PASS; rebind after the exact final branch head is fixed if the
+   branch changes);
+3. remote PR checks on the exact final pushed head (PENDING final-head binding;
+   PR #16 checks passed only on pre-reconciliation head
+   `872df38a4ede87d129533965b28ca335672916bc`);
 4. explicit owner disposition approving Phase 1 compact infrastructure
-   foundation closure;
-5. approved GitHub mutation to post the closure comment and close #9.
+   foundation closure (PENDING);
+5. approved GitHub mutation to post the closure comment and close #9 (PENDING).
+
+Final-head binding rule: do not replace `<final-head-sha>` or any remote-check,
+review, owner-disposition, or final-output placeholder in this committed draft.
+After the closure text is otherwise stable, bind the exact final pushed head in
+the PR body and issue comment, rerun or explicitly reclassify commit-bound local
+checks as appropriate, confirm remote checks on that exact pushed head, and only
+then request owner approval for the exact GitHub mutation.
 
 The issue #9 acceptance matrix remains the authoritative row-level tracker:
 [`ISSUE-9-ACCEPTANCE-MATRIX.md`](ISSUE-9-ACCEPTANCE-MATRIX.md).
@@ -54,9 +66,10 @@ and stale generated acceptance namespace state before it mutates the new root.
 
 This PR does not close #9 by itself. Parent issue closure remains pending:
 
-- isolated clean-runtime acceptance from a brand-new protected external root;
-- final `make preflight` on the exact final commit;
-- remote checks on the exact final PR head;
+- final-head binding for the exact final branch commit;
+- current commit-bound local verification text, including preflight if rerun or
+  explicitly reclassified for that exact head;
+- remote checks on the exact final pushed PR head;
 - explicit owner disposition approving closure;
 - approved GitHub issue closure action.
 
@@ -98,9 +111,10 @@ Current classification before owner-approved runtime closure:
 ## Verification
 
 Replace these placeholders in the GitHub PR body after the branch head is fixed
-and all commit-bound checks have been rerun. Do not try to store the final
-commit SHA in this committed draft; the commit would change when the draft is
-amended.
+and all commit-bound checks have been rerun or explicitly reclassified for that
+exact final head. Do not try to store the final commit SHA in this committed
+draft; the commit would change when the draft is amended. The current documented
+test-count baseline is 210 tests; replace it if the final-head rerun differs.
 
 ```text
 git diff --check 3a92960314df11d68152dc59244d31b93eaa9a57...<final-head>
@@ -205,7 +219,8 @@ recovery, and preflight gates.
 
 ## Issue #9 closure action draft
 
-Proposed GitHub action after every closure gate passes:
+Proposed GitHub action after every closure gate passes and the exact posted text
+has been separately owner-approved:
 
 - post the public-safe comment below to issue #9;
 - close issue #9;
@@ -214,6 +229,12 @@ Proposed GitHub action after every closure gate passes:
 - no label change is proposed by default.
 
 ### Issue comment draft
+
+This is a non-posted template. It is not final-head-bound while
+`<final-head-sha>`, `<pending>`, `<total test count>`, and
+`<owner approval text/date>` remain present. Before posting, replace all
+placeholders with exact final-head evidence and reconcile the acceptance counts
+if row 42 moves out of "Pending remote-hosted runner evidence."
 
 ````markdown
 Phase 1 compact infrastructure foundation closure evidence is complete for the
@@ -287,10 +308,11 @@ official-upstream-only image requirement for five local Development-only derived
 hardened images. Only the JMX exporter Java runtime remains a qualified upstream
 image. The original official-only NO-GO evidence is preserved.
 
-Limitations and non-claims: this closes only the Phase 1 compact infrastructure
-foundation for synthetic `dcim-build`. It does not claim P1/P2 vertical slices,
-connected-source integration, Hermes, workflow execution, Kafka backup, HA, SLA,
-Staging readiness, Production authorization, or Production hardening.
+Limitations and non-claims: the closure-candidate scope is limited to the Phase
+1 compact infrastructure foundation for synthetic `dcim-build`. The template
+does not claim P1/P2 vertical slices, connected-source integration, Hermes,
+workflow execution, Kafka backup, HA, SLA, Staging readiness, Production
+authorization, or Production hardening.
 
 Conditions/open decisions: C-03, C-05, C-07, and OD-06 remain unchanged unless
 separately approved by the owner.

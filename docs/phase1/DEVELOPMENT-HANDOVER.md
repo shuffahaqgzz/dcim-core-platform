@@ -4,8 +4,8 @@ Date: 2026-07-21
 Status: Closure candidate with clean-runtime + preflight evidence captured
 Issue: #12; closure package for parent #9
 Parent: #9
-Branch: local closure candidate; final PR branch is resolved at publication
-time
+Branch: PR #16 draft branch; exact final pushed head remains commit-bound at
+publication time
 
 ## What was delivered
 
@@ -55,12 +55,12 @@ condition status.
 | Command | Tests | Result |
 |---|---|---|
 | `make compile` | Python compileall | exit 0 |
-| `make test` | 205 unit tests | PASS |
+| `make test` | 210 unit tests | PASS |
 | `make public-safety` | Public repo safety scan | exit 0 |
 | `make validate-json` | Schema validation | exit 0 |
 | `make validate-fixtures` | Fixture inventory | exit 0 |
 | `make markdown-links` | Link checker | PASS |
-| `make preflight` | 205 tests + foundation gate outputs | PASS |
+| `make preflight` | 210 tests + foundation gate outputs | PASS |
 
 ## Evidence
 
