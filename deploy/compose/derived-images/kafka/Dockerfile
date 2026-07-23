@@ -13,6 +13,8 @@ ARG JACKSON_CORE_ARCHIVE="jackson-core-2.21.4.jar"
 ARG JACKSON_CORE_SHA256="4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d"
 ARG JLINE_ARCHIVE="jline-4.2.1.jar"
 ARG JLINE_SHA256="bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"
+ARG JETTY_SECURITY_ARCHIVE="jetty-security-12.0.36.jar"
+ARG JETTY_SECURITY_SHA256="e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2"
 ARG SOURCE_DATE="2026-06-17T19:23:00Z"
 ARG SOURCE_DATE_EPOCH
 
@@ -26,17 +28,21 @@ COPY --from=kafka-upstream --chown=1000:0 /etc/kafka /etc/kafka
 COPY ${JACKSON_ARCHIVE} /tmp/jackson-databind-2.21.4.jar
 COPY ${JACKSON_CORE_ARCHIVE} /tmp/jackson-core-2.21.4.jar
 COPY ${JLINE_ARCHIVE} /tmp/jline-4.2.1.jar
+COPY ${JETTY_SECURITY_ARCHIVE} /tmp/jetty-security-12.0.36.jar
 
 RUN echo "${JACKSON_SHA256}  /tmp/jackson-databind-2.21.4.jar" | sha256sum -c - \
     && echo "${JACKSON_CORE_SHA256}  /tmp/jackson-core-2.21.4.jar" | sha256sum -c - \
     && echo "${JLINE_SHA256}  /tmp/jline-4.2.1.jar" | sha256sum -c - \
+    && echo "${JETTY_SECURITY_SHA256}  /tmp/jetty-security-12.0.36.jar" | sha256sum -c - \
     && rm /opt/kafka/libs/jackson-databind-2.21.2.jar \
     && rm /opt/kafka/libs/jackson-core-2.21.2.jar \
     && rm /opt/kafka/libs/jline-3.30.4.jar \
+    && rm /opt/kafka/libs/jetty-security-12.0.34.jar \
     && install -o root -g root -m 0444 /tmp/jackson-databind-2.21.4.jar /opt/kafka/libs/jackson-databind-2.21.4.jar \
     && install -o root -g root -m 0444 /tmp/jackson-core-2.21.4.jar /opt/kafka/libs/jackson-core-2.21.4.jar \
     && install -o root -g root -m 0444 /tmp/jline-4.2.1.jar /opt/kafka/libs/jline-4.2.1.jar \
-    && rm /tmp/jackson-databind-2.21.4.jar /tmp/jackson-core-2.21.4.jar /tmp/jline-4.2.1.jar \
+    && install -o root -g root -m 0444 /tmp/jetty-security-12.0.36.jar /opt/kafka/libs/jetty-security-12.0.36.jar \
+    && rm /tmp/jackson-databind-2.21.4.jar /tmp/jackson-core-2.21.4.jar /tmp/jline-4.2.1.jar /tmp/jetty-security-12.0.36.jar \
     && mkdir -p /etc/kafka/secrets /mnt/shared/config /usr/logs /var/lib/kafka/data \
     && chown 1000:1000 /home/appuser /mnt/shared/config /usr/logs \
     && chown 1000:0 /etc/kafka /var/lib/kafka/data \
@@ -44,18 +50,19 @@ RUN echo "${JACKSON_SHA256}  /tmp/jackson-databind-2.21.4.jar" | sha256sum -c - 
     && touch -d "@${SOURCE_DATE_EPOCH}" /etc/passwd /etc/group /etc/shadow /etc/gshadow \
        /home/appuser /mnt/shared/config /usr/logs /var/lib/kafka/data \
        /opt/kafka/libs/jackson-databind-2.21.4.jar /opt/kafka/libs/jackson-core-2.21.4.jar \
-       /opt/kafka/libs/jline-4.2.1.jar
+       /opt/kafka/libs/jline-4.2.1.jar /opt/kafka/libs/jetty-security-12.0.36.jar
 
 LABEL org.opencontainers.image.created="${SOURCE_DATE}" \
       org.opencontainers.image.source="https://github.com/apache/kafka" \
       org.opencontainers.image.revision="26b251a451ce941d3d7a55e6487bcb7f16b5ad48" \
-      org.opencontainers.image.version="4.3.1-dcim.1" \
+      org.opencontainers.image.version="4.3.1-dcim.3" \
       org.opencontainers.image.vendor="DCIM Development derivative" \
       io.dcim.derivative="true" \
-      io.dcim.recipe.revision="2" \
+      io.dcim.recipe.revision="3" \
       io.dcim.remediation.jackson-databind="2.21.4" \
       io.dcim.remediation.jackson-core="2.21.4" \
-      io.dcim.remediation.jline="4.2.1"
+      io.dcim.remediation.jline="4.2.1" \
+      io.dcim.remediation.jetty-security="12.0.36"
 
 EXPOSE 9092
 VOLUME ["/etc/kafka/secrets", "/mnt/shared/config", "/var/lib/kafka/data"]

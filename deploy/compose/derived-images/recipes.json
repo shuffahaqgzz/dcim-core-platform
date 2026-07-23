@@ -76,7 +76,8 @@
         {"filename": "kafka-26b251a.tar.gz", "url": "https://codeload.github.com/apache/kafka/tar.gz/26b251a451ce941d3d7a55e6487bcb7f16b5ad48", "sha256": "4b5a65a52cbfdabe217856b6b4eb7cad7067f250524a38592ff27ee315824ea2", "context": false},
         {"filename": "jackson-databind-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.4/jackson-databind-2.21.4.jar", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9", "context": true},
         {"filename": "jackson-core-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.21.4/jackson-core-2.21.4.jar", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d", "context": true},
-        {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true}
+        {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true},
+        {"filename": "jetty-security-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-security/12.0.36/jetty-security-12.0.36.jar", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2", "context": true}
       ],
       "base_images": [
         {"image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837", "amd64_manifest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26"},
@@ -87,7 +88,7 @@
       ],
       "dockerfile": "kafka/Dockerfile",
       "output_repository": "dcim-development/kafka",
-      "output_tag": "4.3.1-r2",
+      "output_tag": "4.3.1-r3",
       "source_date_epoch": 1781724180,
       "patches": [
         {"finding": "CVE-2026-45186", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
@@ -98,6 +99,7 @@
         {"finding": "CVE-2026-54512", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
         {"finding": "CVE-2026-54513", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
         {"finding": "GHSA-r7wm-3cxj-wff9", "artifact": "jackson-core", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-security", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2"},
         {"finding": "GHSA-2r2c-cx56-8933", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"},
         {"finding": "GHSA-47qp-hqvx-6r3f", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"}
       ],

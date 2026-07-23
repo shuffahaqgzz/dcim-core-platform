@@ -114,7 +114,7 @@ Replace these placeholders in the GitHub PR body after the branch head is fixed
 and all commit-bound checks have been rerun or explicitly reclassified for that
 exact final head. Do not try to store the final commit SHA in this committed
 draft; the commit would change when the draft is amended. The current documented
-test-count baseline is 210 tests; replace it if the final-head rerun differs.
+test-count baseline is 211 tests; replace it if the final-head rerun differs.
 
 ```text
 git diff --check 3a92960314df11d68152dc59244d31b93eaa9a57...<final-head>
@@ -124,7 +124,7 @@ python3 -m unittest tests.test_foundation_acceptance tests.test_foundation_smoke
 100 tests passed
 
 make phase0-check
-210 tests passed
+211 tests passed
 
 make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>
 PASS
@@ -141,7 +141,7 @@ Evidence: phase1-clean-acceptance-summary.json (external runtime evidence)
 
 make preflight
 exit 0
-210 tests
+211 tests
 foundation supply-chain: PASS
 foundation recovery: PASS
 foundation evidence summary: PASS

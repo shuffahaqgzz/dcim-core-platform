@@ -58,12 +58,12 @@ condition status.
 | Command | Tests | Result |
 |---|---|---|
 | `make compile` | Python compileall | candidate evidence exit 0 |
-| `make test` | 210 unit tests | candidate evidence PASS |
+| `make test` | 211 unit tests | candidate evidence PASS |
 | `make public-safety` | Public repo safety scan | candidate evidence exit 0 |
 | `make validate-json` | Schema validation | candidate evidence exit 0 |
 | `make validate-fixtures` | Fixture inventory | candidate evidence exit 0 |
 | `make markdown-links` | Link checker | candidate evidence PASS |
-| `make preflight` | 210 tests + foundation gate outputs | candidate/local evidence captured; final pushed-head CI/milestone-host Docker gate evidence pending |
+| `make preflight` | 211 tests + foundation gate outputs | candidate/local evidence captured; final pushed-head CI/milestone-host Docker gate evidence pending |
 
 ## Evidence
 
