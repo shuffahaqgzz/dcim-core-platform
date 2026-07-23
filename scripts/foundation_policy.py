@@ -11,10 +11,14 @@ import re
 import sys
 
 try:
-    from scripts.protected_runtime import external_runtime_root, protected_runtime_path
+    from scripts.protected_runtime import (
+        external_runtime_root, protected_runtime_path, validate_compose_project_name,
+    )
     from scripts.strict_json import load_object, loads_object
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
-    from protected_runtime import external_runtime_root, protected_runtime_path
+    from protected_runtime import (
+        external_runtime_root, protected_runtime_path, validate_compose_project_name,
+    )
     from strict_json import load_object, loads_object
 
 
@@ -123,6 +127,8 @@ DERIVED_COMPONENT_BY_SERVICE = {
     "kafka": "kafka",
     "kafka-smoke": "kafka",
     "grafana": "grafana",
+    "prometheus": "prometheus",
+    "observability-smoke": "prometheus",
     "postgres-exporter": "postgres-exporter",
 }
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -208,10 +214,15 @@ def validate_model(
     derived_lock: dict[str, object],
     license_dispositions_sha256: str,
     runtime_root: Path,
+    project_name: str = "dcim-build",
 ) -> list[str]:
     errors: list[str] = []
-    if model.get("name") != "dcim-build":
-        errors.append("Compose project name must be dcim-build")
+    try:
+        validate_compose_project_name(project_name)
+    except ValueError as error:
+        errors.append(str(error))
+    if model.get("name") != project_name:
+        errors.append(f"Compose project name must be {project_name}")
     try:
         inventory = load_object(IMAGE_INVENTORY)
         approved_images = {item["component"]: item["image"] for item in inventory["images"]}
@@ -227,7 +238,9 @@ def validate_model(
         derived_images = {
             item["component"]: item["image_id"] for item in derived_lock["images"]
         }
-        if set(derived_images) != {"postgres", "kafka", "grafana", "postgres-exporter"}:
+        if set(derived_images) != {
+            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+        }:
             raise ValueError("derived component allowlist mismatch")
         if any(not isinstance(image, str) or not IMAGE_ID.fullmatch(image) for image in derived_images.values()):
             raise ValueError("invalid derived image ID")
@@ -400,16 +413,23 @@ def validate_model(
     if set(networks) != {"data", "observability"}:
         errors.append("network allowlist mismatch")
     expected_network_names = {
-        "data": "dcim-build-data",
-        "observability": "dcim-build-observability",
+        "data": f"{project_name}-data",
+        "observability": f"{project_name}-observability",
     }
     for name, value in networks.items():
         if name not in {"data", "observability"} or value.get("internal") is not True:
             errors.append(f"{name}: only approved internal networks permitted")
         if value.get("name") != expected_network_names.get(name):
             errors.append(f"{name}: network runtime name mismatch")
+    expected_stateful_volumes = {
+        f"{project_name}-postgres-data",
+        f"{project_name}-kafka-data",
+        f"{project_name}-prometheus-data",
+    }
     volume_names = {value.get("name", name) for name, value in model.get("volumes", {}).items()}
-    if volume_names != STATEFUL_VOLUMES:
+    if project_name == "dcim-build" and volume_names != STATEFUL_VOLUMES:
+        errors.append("persistent volume allowlist mismatch")
+    elif project_name != "dcim-build" and volume_names != expected_stateful_volumes:
         errors.append("persistent volume allowlist mismatch")
     if model.get("configs"):
         errors.append("top-level configs prohibited")
@@ -423,7 +443,7 @@ def validate_model(
         ).resolve()
         if (
             not isinstance(secret, dict)
-            or secret.get("name") != f"dcim-build_{name}"
+            or secret.get("name") != f"{project_name}_{name}"
             or source != expected_source
         ):
             errors.append(f"{name}: top-level secret source prohibited")
@@ -436,6 +456,7 @@ def main() -> int:
     parser.add_argument("--runtime-root", required=True, type=Path)
     parser.add_argument("--derived-lock", required=True, type=Path)
     parser.add_argument("--license-dispositions", required=True, type=Path)
+    parser.add_argument("--project-name", default="dcim-build")
     arguments = parser.parse_args()
     try:
         raw = sys.stdin.read() if arguments.input == "-" else Path(arguments.input).read_text(encoding="utf-8")
@@ -455,6 +476,7 @@ def main() -> int:
         return 2
     errors = validate_model(
         model, derived_lock, license_dispositions_sha256, selected_runtime_root,
+        arguments.project_name,
     )
     if errors:
         for error in errors:

@@ -75,7 +75,9 @@
       "inputs": [
         {"filename": "kafka-26b251a.tar.gz", "url": "https://codeload.github.com/apache/kafka/tar.gz/26b251a451ce941d3d7a55e6487bcb7f16b5ad48", "sha256": "4b5a65a52cbfdabe217856b6b4eb7cad7067f250524a38592ff27ee315824ea2", "context": false},
         {"filename": "jackson-databind-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.4/jackson-databind-2.21.4.jar", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9", "context": true},
-        {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true}
+        {"filename": "jackson-core-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.21.4/jackson-core-2.21.4.jar", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d", "context": true},
+        {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true},
+        {"filename": "jetty-security-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-security/12.0.36/jetty-security-12.0.36.jar", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2", "context": true}
       ],
       "base_images": [
         {"image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837", "amd64_manifest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26"},
@@ -86,7 +88,7 @@
       ],
       "dockerfile": "kafka/Dockerfile",
       "output_repository": "dcim-development/kafka",
-      "output_tag": "4.3.1-r1",
+      "output_tag": "4.3.1-r3",
       "source_date_epoch": 1781724180,
       "patches": [
         {"finding": "CVE-2026-45186", "artifact": "runtime libexpat", "from_version": "2.7.5-r0", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
@@ -96,6 +98,8 @@
         {"finding": "CVE-2026-2100", "artifact": "runtime p11-kit", "from_version": "0.25.5-r2", "to_version": "Ubuntu 24.04 vendor-fixed", "sha256": "373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64"},
         {"finding": "CVE-2026-54512", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
         {"finding": "CVE-2026-54513", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
+        {"finding": "GHSA-r7wm-3cxj-wff9", "artifact": "jackson-core", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-security", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2"},
         {"finding": "GHSA-2r2c-cx56-8933", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"},
         {"finding": "GHSA-47qp-hqvx-6r3f", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"}
       ],
@@ -111,7 +115,8 @@
       },
       "inputs": [
         {"filename": "grafana-b309c9b.tar.gz", "url": "https://codeload.github.com/grafana/grafana/tar.gz/b309c9bb3b81a748c3a75289236a27309ed2566a", "sha256": "1de79b2f09e33e3a03fe83dc86bce3601be163bbf55098c37beb1dc11c01de86", "context": true},
-        {"filename": "tempo-4aeafc2.tar.gz", "url": "https://codeload.github.com/grafana/tempo/tar.gz/4aeafc237b8d9a8d62e45735131e8a89eb741a00", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f", "context": true}
+        {"filename": "tempo-4aeafc2.tar.gz", "url": "https://codeload.github.com/grafana/tempo/tar.gz/4aeafc237b8d9a8d62e45735131e8a89eb741a00", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f", "context": true},
+        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true}
       ],
       "base_images": [
         {"image": "grafana/grafana:13.1.0-ubuntu-slim@sha256:936197495b76734df72002e6f3ff122cffd2d7027679a1c7c4a611cf90baee05", "amd64_manifest": "sha256:e3f34c3699da4cac220ac8eae84267977d433e11d40b870a8dd9c750b32cc33f"}
@@ -121,12 +126,41 @@
       ],
       "dockerfile": "grafana/Dockerfile",
       "output_repository": "dcim-development/grafana",
-      "output_tag": "13.1.0-r1",
+      "output_tag": "13.1.0-r3",
       "source_date_epoch": 1782214211,
       "patches": [
         {"finding": "CVE-2026-21728", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
         {"finding": "CVE-2026-28377", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
+        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"},
         {"finding": "CVE-2026-39822", "artifact": "Grafana Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"}
+      ],
+      "publish": false
+    },
+    {
+      "component": "prometheus",
+      "source": {
+        "repository": "https://github.com/prometheus/prometheus",
+        "tag": "v3.13.1",
+        "commit": "73ff57ce2b8161059ac7fe5188f03f1c3d22b29a",
+        "archive_sha256": "322276709c16cb3c22a4d01d244beb91f0380a257699358d2a20ac7086d7256c"
+      },
+      "inputs": [
+        {"filename": "prometheus-73ff57c.tar.gz", "url": "https://codeload.github.com/prometheus/prometheus/tar.gz/73ff57ce2b8161059ac7fe5188f03f1c3d22b29a", "sha256": "322276709c16cb3c22a4d01d244beb91f0380a257699358d2a20ac7086d7256c", "context": true},
+        {"filename": "prometheus-web-ui-3.13.1.tar.gz", "url": "https://github.com/prometheus/prometheus/releases/download/v3.13.1/prometheus-web-ui-3.13.1.tar.gz", "sha256": "2194bfbb5d36457df2b8f480037ce89786ee32f03b5ee6ad5597989f14deafb0", "context": true},
+        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true}
+      ],
+      "base_images": [
+        {"image": "prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893", "amd64_manifest": "sha256:bd2dcadfb0d1096e2a4c21817ac7af918e2f19ff628e4bf25fd67a924c13dd80"}
+      ],
+      "build_tools": [
+        {"image": "golang:1.26.5-alpine3.24@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2", "amd64_manifest": "sha256:111d79159b2326f7e80c4a4706e1ba166acb0e2611df853955f3621828cd49e8"}
+      ],
+      "dockerfile": "prometheus/Dockerfile",
+      "output_repository": "dcim-development/prometheus",
+      "output_tag": "3.13.1-r2",
+      "source_date_epoch": 1783670627,
+      "patches": [
+        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"}
       ],
       "publish": false
     },

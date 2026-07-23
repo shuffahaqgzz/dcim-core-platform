@@ -37,7 +37,8 @@ def write_image_lock(plane: Path) -> None:
             "images": [
                 {"component": component, "image_id": f"sha256:{index:064x}"}
                 for index, component in enumerate(
-                    ("postgres", "kafka", "grafana", "postgres-exporter"), start=1,
+                    ("postgres", "kafka", "grafana", "prometheus", "postgres-exporter"),
+                    start=1,
                 )
             ],
         }),
@@ -65,12 +66,11 @@ def write_inspection_only_docker(path: Path) -> None:
                 "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                 "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                 "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
             }
             if container in derived:
                 print(derived[container] + "|synthetic-derived")
-            elif container == "dcim-build-prometheus-1":
-                print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
             elif container == "dcim-build-kafka-jmx-exporter-1":
                 print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
             else:
@@ -83,6 +83,71 @@ def write_inspection_only_docker(path: Path) -> None:
 
 
 class FoundationSmokeContractTests(unittest.TestCase):
+    def test_normal_compose_prefix_rejects_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build",
+                "DCIM_COMPOSE_OVERRIDE": str(plane / "acceptance-compose.override.yaml"),
+            }
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "prohibited"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+    def test_acceptance_compose_prefix_requires_valid_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build-acceptance-abcdef123456",
+            }
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "required"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+            environment["DCIM_COMPOSE_OVERRIDE"] = str(plane / "wrong.yaml")
+            with (
+                mock.patch.dict(os.environ, environment, clear=True),
+                self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "mismatch"),
+            ):
+                FOUNDATION_SMOKE.compose_prefix()
+
+    def test_acceptance_compose_prefix_includes_external_override(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory) / "runtime"
+            plane = runtime_root / "dev-build"
+            plane.mkdir(parents=True)
+            runtime_root.chmod(0o700)
+            plane.chmod(0o700)
+            override = plane / "acceptance-compose.override.yaml"
+            override.write_text("networks: {}\n", encoding="utf-8")
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "COMPOSE_PROJECT_NAME": "dcim-build-acceptance-abcdef123456",
+                "DCIM_COMPOSE_OVERRIDE": str(override),
+            }
+
+            with mock.patch.dict(os.environ, environment, clear=True):
+                command = FOUNDATION_SMOKE.compose_prefix()
+
+            self.assertIn(str(override), command)
+            self.assertEqual(2, command.count("-f"))
+
     def test_evidence_rejects_tampered_lock_and_nonrunning_image_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "runtime"
@@ -306,13 +371,12 @@ class FoundationSmokeContractTests(unittest.TestCase):
                             "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                             "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                             "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                            "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
                         }
                         if any("{{.Image}}" in item for item in arguments):
                             if container in derived:
                                 print(derived[container] + "|synthetic-derived")
-                            elif container == "dcim-build-prometheus-1":
-                                print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
                             elif container == "dcim-build-kafka-jmx-exporter-1":
                                 print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
                         else:
@@ -441,12 +505,11 @@ class FoundationSmokeContractTests(unittest.TestCase):
                             "dcim-build-postgres-1": "sha256:" + f"{1:064x}",
                             "dcim-build-kafka-1": "sha256:" + f"{2:064x}",
                             "dcim-build-grafana-1": "sha256:" + f"{3:064x}",
-                            "dcim-build-postgres-exporter-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-prometheus-1": "sha256:" + f"{4:064x}",
+                            "dcim-build-postgres-exporter-1": "sha256:" + f"{5:064x}",
                         }
                         if container in derived:
                             print(derived[container] + "|synthetic-derived")
-                        elif container == "dcim-build-prometheus-1":
-                            print("sha256:" + "a" * 64 + "|" + os.environ["FAKE_PROMETHEUS_IMAGE"])
                         elif container == "dcim-build-kafka-jmx-exporter-1":
                             print("sha256:" + "b" * 64 + "|" + os.environ["FAKE_JMX_IMAGE"])
                     sys.exit(0)

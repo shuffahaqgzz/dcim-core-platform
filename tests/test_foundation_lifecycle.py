@@ -220,6 +220,7 @@ class FoundationLifecycleTests(unittest.TestCase):
                     f"DCIM_POSTGRES_IMAGE={image_id}",
                     f"DCIM_KAFKA_IMAGE={image_id}",
                     f"DCIM_GRAFANA_IMAGE={image_id}",
+                    f"DCIM_PROMETHEUS_IMAGE={image_id}",
                     f"DCIM_POSTGRES_EXPORTER_IMAGE={image_id}",
                 ]) + "\n",
                 encoding="utf-8",

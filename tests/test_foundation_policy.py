@@ -8,6 +8,8 @@ import subprocess
 import tempfile
 import unittest
 
+from scripts.foundation_acceptance import write_acceptance_compose_override
+
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy/compose/dev-build/compose.yaml"
@@ -41,7 +43,9 @@ class FoundationPolicyTests(unittest.TestCase):
             "license_dispositions_sha256": disposition_sha256,
             "images": [
                 {"component": component, "image_id": image_id}
-                for component in ("postgres", "kafka", "grafana", "postgres-exporter")
+                for component in (
+                    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+                )
             ],
         }), encoding="utf-8")
         (self.runtime_root / "dev-build/images.env").write_text(
@@ -49,28 +53,48 @@ class FoundationPolicyTests(unittest.TestCase):
                 f"DCIM_POSTGRES_IMAGE={image_id}",
                 f"DCIM_KAFKA_IMAGE={image_id}",
                 f"DCIM_GRAFANA_IMAGE={image_id}",
+                f"DCIM_PROMETHEUS_IMAGE={image_id}",
                 f"DCIM_POSTGRES_EXPORTER_IMAGE={image_id}",
             ]) + "\n",
             encoding="utf-8",
         )
         self.environment = environment
 
-    def normalized_model(self) -> dict[str, object]:
+    def normalized_model(
+        self,
+        project_name: str = "dcim-build",
+        *,
+        acceptance_override: bool = False,
+    ) -> dict[str, object]:
+        environment = {**self.environment, "COMPOSE_PROJECT_NAME": project_name}
+        command = [
+            "docker", "compose", "--env-file",
+            str(self.runtime_root / "dev-build/runtime.env"),
+            "--env-file", str(self.runtime_root / "dev-build/images.env"),
+            "-f", str(COMPOSE),
+        ]
+        if acceptance_override:
+            command.extend(("-f", str(write_acceptance_compose_override(
+                self.runtime_root,
+                project_name,
+            ))))
+        command.extend(
+            ["--profile", "data", "--profile", "observability", "--profile", "smoke"],
+        )
+        command.extend(["config", "--format", "json"])
         result = subprocess.run(
-            [
-                "docker", "compose", "--env-file",
-                str(self.runtime_root / "dev-build/runtime.env"),
-                "--env-file", str(self.runtime_root / "dev-build/images.env"),
-                "-f", str(COMPOSE), "--profile", "data", "--profile",
-                "observability", "--profile", "smoke", "config", "--format", "json",
-            ],
-            cwd=ROOT, env=self.environment, capture_output=True, text=True, check=False,
+            command,
+            cwd=ROOT, env=environment, capture_output=True, text=True, check=False,
         )
         self.assertEqual(0, result.returncode, result.stderr)
         return json.loads(result.stdout)
 
     def validate(
-        self, model: dict[str, object], *, derived_lock: Path | None = None,
+        self,
+        model: dict[str, object],
+        *,
+        derived_lock: Path | None = None,
+        project_name: str = "dcim-build",
     ) -> subprocess.CompletedProcess[str]:
         model_path = Path(self.temporary.name) / "model.json"
         model_path.write_text(json.dumps(model), encoding="utf-8")
@@ -80,6 +104,7 @@ class FoundationPolicyTests(unittest.TestCase):
                 "--runtime-root", str(self.runtime_root),
                 "--derived-lock", str(derived_lock or self.image_lock),
                 "--license-dispositions", str(self.license_dispositions),
+                "--project-name", project_name,
             ],
             cwd=ROOT, capture_output=True, text=True, check=False,
         )
@@ -88,6 +113,37 @@ class FoundationPolicyTests(unittest.TestCase):
         result = self.validate(self.normalized_model())
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("policy: PASS", result.stdout)
+
+    def test_acceptance_namespace_model_passes_without_reusing_default_resources(self) -> None:
+        project = "dcim-build-acceptance-abcdef123456"
+        model = self.normalized_model(project, acceptance_override=True)
+
+        result = self.validate(model, project_name=project)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(project, model["name"])
+        self.assertEqual(f"{project}-data", model["networks"]["data"]["name"])
+        self.assertEqual(
+            {f"{project}-postgres-data", f"{project}-kafka-data", f"{project}-prometheus-data"},
+            {value["name"] for value in model["volumes"].values()},
+        )
+
+    def test_direct_compose_project_name_does_not_change_resource_names(self) -> None:
+        model = self.normalized_model("dcim-build-acceptance-abcdef123456")
+
+        self.assertEqual("dcim-build-data", model["networks"]["data"]["name"])
+        self.assertEqual("dcim-build-observability", model["networks"]["observability"]["name"])
+        self.assertEqual(
+            {"dcim-build-postgres-data", "dcim-build-kafka-data", "dcim-build-prometheus-data"},
+            {value["name"] for value in model["volumes"].values()},
+        )
+
+    def test_unallowlisted_project_name_fails_closed(self) -> None:
+        model = self.normalized_model()
+        result = self.validate(model, project_name="dcim-build-prod")
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("project name", result.stderr)
 
     def test_license_disposition_digest_mismatch_fails_closed(self) -> None:
         lock = json.loads(self.image_lock.read_text(encoding="utf-8"))

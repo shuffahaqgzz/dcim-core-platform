@@ -19,6 +19,13 @@ The Make lifecycle and workspace bootstrap resolve the same checkout-independent
 default root at `${XDG_STATE_HOME:-$HOME/.local/state}/dcim-core-platform/runtime`.
 An explicit `DCIM_RUNTIME_ROOT` override must remain paired with the state it
 bootstrapped; a new root is not a reason to reset persistent volumes.
+Issue #9 clean-runtime acceptance is the exception: use
+`make foundation-clean-acceptance DCIM_RUNTIME_ROOT=<new-protected-root>`, which
+requires a brand-new protected root under an owner/root-controlled path and an
+isolated `dcim-build-acceptance-*` Compose namespace. Normal Make lifecycle
+targets pin `COMPOSE_PROJECT_NAME=dcim-build`, and the checked-in Compose file
+uses fixed `dcim-build-*` network and volume names. Clean acceptance writes a
+validated acceptance-only override under the protected external runtime root.
 
 ## Phase 1 Capability Profiles
 
@@ -35,9 +42,9 @@ Future profile names remain reserved: `core`, `dashboard`, `workflow`,
 
 ## Non-negotiable implementation constraints
 
-- official upstream images pinned as `exact-version@sha256:digest`, or the four
-  ADR-0013 Development-only derived images selected through an external local
-  immutable image-ID lock;
+- official upstream images pinned as `exact-version@sha256:digest`, or the five
+  ADR-0013/ADR-0015 Development-only derived images selected through an external
+  local immutable image-ID lock;
 - external runtime secrets and state; no runtime material in Git;
 - isolated internal networks and service-specific named volumes;
 - only the two metrics exporters may be long-running dual-homed services, with
@@ -51,7 +58,8 @@ Future profile names remain reserved: `core`, `dashboard`, `workflow`,
 - no HA, SLA, Staging, Production, or vertical-slice claim.
 
 Plain Compose with the protected runtime and image environment files but no
-profile selects zero services. Policy binds the exact `dcim-build` project,
+profile selects zero services. Policy binds the exact `dcim-build` project, or
+the isolated `dcim-build-acceptance-*` project used only by clean acceptance, to
 network membership, service-owned stateful volumes, functional health checks,
 reviewed exporter commands, Kafka runtime settings, and Prometheus retention.
 
