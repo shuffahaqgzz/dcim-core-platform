@@ -95,6 +95,7 @@ validate-json:
 
 validate-fixtures:
 	$(PYTHON) scripts/validate_synthetic_fixtures.py
+	$(PYTHON) scripts/validate_contract_compatibility.py
 
 markdown-links:
 	$(PYTHON) scripts/check_markdown_links.py
