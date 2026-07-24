@@ -58,6 +58,16 @@ class SyntheticFixtureValidationTests(unittest.TestCase):
             fixture_validation.fixture_inventory_errors(paths),
         )
 
+    def test_p3_syslog_and_stream_event_fixtures_are_required(self) -> None:
+        required = set(fixture_validation.REQUIRED)
+        self.assertTrue(
+            {
+                "events/p3-camera-health-offline.json",
+                "events/p2-syslog-link-flap.json",
+                "events/p2-stream-metric-sample.json",
+            }.issubset(required)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
