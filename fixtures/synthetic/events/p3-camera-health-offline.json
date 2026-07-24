@@ -1,0 +1,40 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "77777777-7777-4777-8777-777777777777",
+  "occurred_at": "2026-07-16T00:30:00Z",
+  "observed_at": "2026-07-16T00:30:05Z",
+  "source": {
+    "system": "synthetic-lab",
+    "instance": "camera-001.example.invalid",
+    "connector": "isapi-fixture",
+    "transport": "rest",
+    "native_event_id": "SYNTHETIC-CAMERA-0001"
+  },
+  "event_type": "camera.health.offline",
+  "priority": "P3",
+  "correlation_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  "payload": {
+    "camera_name": "GENERIC-CAMERA-02",
+    "status": "offline",
+    "metadata_only": true,
+    "message": "Synthetic camera offline for P3 priority contract testing"
+  },
+  "enrichment": {
+    "validation_status": "accepted",
+    "lineage": [
+      {
+        "step": "fixture-load",
+        "at": "2026-07-16T00:30:05Z",
+        "result": "ok"
+      },
+      {
+        "step": "schema-validate",
+        "at": "2026-07-16T00:30:05Z",
+        "result": "accepted"
+      }
+    ],
+    "asset_identity": "ExampleVendor:SYNTHETIC-CAMERA-0001",
+    "ci_identity": "synthetic-lab:camera-001",
+    "quality_flags": []
+  }
+}

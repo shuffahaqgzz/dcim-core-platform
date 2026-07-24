@@ -1,0 +1,40 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "88888888-8888-4888-8888-888888888888",
+  "occurred_at": "2026-07-16T00:35:00Z",
+  "observed_at": "2026-07-16T00:35:02Z",
+  "source": {
+    "system": "synthetic-lab",
+    "instance": "switch-002.example.invalid",
+    "connector": "syslog-fixture",
+    "transport": "syslog",
+    "native_event_id": "SYNTHETIC-SYSLOG-0001"
+  },
+  "event_type": "network.link.flap",
+  "priority": "P2",
+  "correlation_id": "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+  "payload": {
+    "interface_alias": "synthetic-access-01",
+    "flap_count": 3,
+    "sample_window_seconds": 120,
+    "message": "Synthetic link flap observed via syslog transport"
+  },
+  "enrichment": {
+    "validation_status": "accepted",
+    "lineage": [
+      {
+        "step": "fixture-load",
+        "at": "2026-07-16T00:35:02Z",
+        "result": "ok"
+      },
+      {
+        "step": "schema-validate",
+        "at": "2026-07-16T00:35:02Z",
+        "result": "accepted"
+      }
+    ],
+    "asset_identity": "ExampleVendor:SYNTHETIC-SWITCH-0002",
+    "ci_identity": "synthetic-lab:switch-002",
+    "quality_flags": []
+  }
+}

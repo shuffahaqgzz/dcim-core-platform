@@ -1,0 +1,41 @@
+{
+  "schema_version": "0.1.0",
+  "event_id": "99999999-9999-4999-8999-999999999999",
+  "occurred_at": "2026-07-16T00:40:00Z",
+  "observed_at": "2026-07-16T00:40:01Z",
+  "source": {
+    "system": "synthetic-lab",
+    "instance": "metric-stream-001.example.invalid",
+    "connector": "stream-fixture",
+    "transport": "stream",
+    "native_event_id": "SYNTHETIC-STREAM-0001"
+  },
+  "event_type": "metric.sample.stream",
+  "priority": "P2",
+  "correlation_id": "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2",
+  "payload": {
+    "metric": "cpu_utilization_percent",
+    "value": 42.5,
+    "unit": "percent",
+    "sample_window_seconds": 15,
+    "message": "Synthetic stream metric sample for transport contract testing"
+  },
+  "enrichment": {
+    "validation_status": "accepted",
+    "lineage": [
+      {
+        "step": "fixture-load",
+        "at": "2026-07-16T00:40:01Z",
+        "result": "ok"
+      },
+      {
+        "step": "schema-validate",
+        "at": "2026-07-16T00:40:01Z",
+        "result": "accepted"
+      }
+    ],
+    "asset_identity": "ExampleVendor:SYNTHETIC-STREAM-0001",
+    "ci_identity": "synthetic-lab:metric-stream-001",
+    "quality_flags": []
+  }
+}
