@@ -14,17 +14,22 @@ ARG TEMPO_SHA256="6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d8
 ARG TEMPO_DIRECTORY="tempo-4aeafc237b8d9a8d62e45735131e8a89eb741a00"
 ARG GRPC_ARCHIVE="grpc-go-ebd8f06.tar.gz"
 ARG GRPC_SHA256="50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"
+ARG KIN_OPENAPI_ARCHIVE="kin-openapi-f0407d5.tar.gz"
+ARG KIN_OPENAPI_SHA256="80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
 
 COPY ${GRAFANA_ARCHIVE} /tmp/grafana.tar.gz
 COPY ${TEMPO_ARCHIVE} /tmp/tempo.tar.gz
 COPY ${GRPC_ARCHIVE} /tmp/grpc-go.tar.gz
+COPY ${KIN_OPENAPI_ARCHIVE} /tmp/kin-openapi.tar.gz
 RUN echo "${GRAFANA_SHA256}  /tmp/grafana.tar.gz" | sha256sum -c - \
     && echo "${TEMPO_SHA256}  /tmp/tempo.tar.gz" | sha256sum -c - \
     && echo "${GRPC_SHA256}  /tmp/grpc-go.tar.gz" | sha256sum -c - \
-    && mkdir -p /src/grafana /src/tempo /src/grpc-go \
+    && echo "${KIN_OPENAPI_SHA256}  /tmp/kin-openapi.tar.gz" | sha256sum -c - \
+    && mkdir -p /src/grafana /src/tempo /src/grpc-go /src/kin-openapi \
     && tar -xzf /tmp/grafana.tar.gz -C /src/grafana --strip-components=1 \
     && tar -xzf /tmp/tempo.tar.gz -C /src/tempo --strip-components=1 \
-    && tar -xzf /tmp/grpc-go.tar.gz -C /src/grpc-go --strip-components=1
+    && tar -xzf /tmp/grpc-go.tar.gz -C /src/grpc-go --strip-components=1 \
+    && tar -xzf /tmp/kin-openapi.tar.gz -C /src/kin-openapi --strip-components=1
 
 WORKDIR /src/grafana
 ENV GOWORK=off
@@ -33,20 +38,28 @@ RUN sed -i 's/^go 1\.26\.4$/go 1.26.5/' go.mod go.work \
     && printf '\nreplace github.com/grafana/tempo => /src/tempo\n' >> go.mod \
     && go mod edit -require=google.golang.org/grpc@v1.82.1 \
     && go mod edit -replace=google.golang.org/grpc=/src/grpc-go \
+    && go mod edit -require=github.com/getkin/kin-openapi@v0.144.0 \
+    && go mod edit -replace=github.com/getkin/kin-openapi=/src/kin-openapi \
     && grep -F 'github.com/grafana/tempo v2.10.3+incompatible' go.mod \
     && grep -F 'replace github.com/grafana/tempo => /src/tempo' go.mod \
     && grep -F 'google.golang.org/grpc v1.82.1' go.mod \
     && grep -F 'replace google.golang.org/grpc => /src/grpc-go' go.mod \
+    && grep -F 'github.com/getkin/kin-openapi v0.144.0' go.mod \
+    && grep -F 'replace github.com/getkin/kin-openapi => /src/kin-openapi' go.mod \
     && go mod vendor -e \
     && go mod edit -dropreplace=github.com/grafana/tempo \
     && go mod edit -dropreplace=google.golang.org/grpc \
+    && go mod edit -dropreplace=github.com/getkin/kin-openapi \
     && sed -i 's|^# github.com/grafana/tempo v2.10.3+incompatible => /src/tempo$|# github.com/grafana/tempo v2.10.3+incompatible|' vendor/modules.txt \
     && sed -i '/^# github\.com\/grafana\/tempo => \/src\/tempo$/d' vendor/modules.txt \
     && sed -i 's|^# google.golang.org/grpc v1.82.1 => /src/grpc-go$|# google.golang.org/grpc v1.82.1|' vendor/modules.txt \
     && sed -i '/^# google\.golang\.org\/grpc => \/src\/grpc-go$/d' vendor/modules.txt \
-    && go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc \
+    && sed -i 's|^# github.com/getkin/kin-openapi v0.144.0 => /src/kin-openapi$|# github.com/getkin/kin-openapi v0.144.0|' vendor/modules.txt \
+    && sed -i '/^# github\.com\/getkin\/kin-openapi => \/src\/kin-openapi$/d' vendor/modules.txt \
+    && go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc github.com/getkin/kin-openapi \
     && grep -Fx '# github.com/grafana/tempo v2.10.3+incompatible' vendor/modules.txt \
-    && grep -Fx '# google.golang.org/grpc v1.82.1' vendor/modules.txt
+    && grep -Fx '# google.golang.org/grpc v1.82.1' vendor/modules.txt \
+    && grep -Fx '# github.com/getkin/kin-openapi v0.144.0' vendor/modules.txt
 RUN --network=none CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -mod=vendor -buildvcs=false -trimpath -tags oss \
     -ldflags='-s -w -X main.version=13.1.0 -X main.commit=b309c9bb3b81a748c3a75289236a27309ed2566a -X main.buildBranch=main -X main.buildstamp=1782214211' \
@@ -59,12 +72,13 @@ ARG SOURCE_DATE="2026-06-23T11:30:11Z"
 LABEL org.opencontainers.image.created="${SOURCE_DATE}" \
       org.opencontainers.image.source="https://github.com/grafana/grafana" \
       org.opencontainers.image.revision="b309c9bb3b81a748c3a75289236a27309ed2566a" \
-      org.opencontainers.image.version="13.1.0-dcim.3" \
+      org.opencontainers.image.version="13.1.0-dcim.4" \
       org.opencontainers.image.vendor="DCIM Development derivative" \
       io.dcim.derivative="true" \
-      io.dcim.recipe.revision="3" \
+      io.dcim.recipe.revision="4" \
       io.dcim.remediation.go="1.26.5" \
       io.dcim.remediation.tempo="2.10.3" \
-      io.dcim.remediation.grpc-go="1.82.1"
+      io.dcim.remediation.grpc-go="1.82.1" \
+      io.dcim.remediation.kin-openapi="0.144.0"
 
 COPY --from=grafana-build --chown=472:0 /out/grafana /usr/share/grafana/bin/grafana
