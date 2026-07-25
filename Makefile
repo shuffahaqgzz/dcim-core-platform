@@ -21,7 +21,7 @@ help:
 	  'compile         Compile-check Python sources' \
 	  'public-safety   Scan tracked files for prohibited public-repo content' \
 	  'validate-json   Parse schemas and validate synthetic event fixtures' \
-	  'validate-fixtures Validate mandatory synthetic fixture inventory' \
+	  'validate-fixtures Validate synthetic fixtures and contract compatibility' \
 	  'markdown-links  Check repository-local Markdown links' \
 	  'test            Run standard-library tests' \
 	  'phase0-check    Run all Phase 0 gates' \

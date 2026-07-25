@@ -133,7 +133,13 @@ class ContextContractTests(unittest.TestCase):
             ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002"],
             collision_candidates,
         )
-        self.assertEqual("ambiguous", "ambiguous" if len(collision_candidates) > 1 else "accepted")
+        self.assertGreater(
+            len(collision_candidates),
+            1,
+            "collision corpus must list more than one asset for the shared hostname",
+        )
+        disposition = "ambiguous" if len(collision_candidates) > 1 else "accepted"
+        self.assertEqual("ambiguous", disposition)
 
 
 if __name__ == "__main__":
