@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public kin-openapi source archive checksum"
+paths = ['''deploy/compose/derived-images/grafana/Dockerfile''']
+regexes = ['''ARG KIN_OPENAPI_SHA256="[0-9a-f]{64}"''']
