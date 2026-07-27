@@ -1,7 +1,12 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
 description = "Public kin-openapi source archive checksum"
+condition = "AND"
+regexTarget = "line"
 paths = ['''deploy/compose/derived-images/grafana/Dockerfile''']
-regexes = ['''ARG KIN_OPENAPI_SHA256="[0-9a-f]{64}"''']
+regexes = ['''ARG KIN_OPENAPI_SHA256="80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"''']
