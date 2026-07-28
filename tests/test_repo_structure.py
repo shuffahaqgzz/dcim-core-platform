@@ -42,6 +42,10 @@ class RepositoryStructureTests(unittest.TestCase):
             "docs/phase0/evidence-index.md", "docs/phase0/staging-handover-contract.md",
             "scripts/sanitize_demo_data.py", "scripts/check_public_repo_safety.py",
             "tests/test_sanitize_demo_data.py", "tests/test_check_public_repo_safety.py",
+            "docs/adr/0024-python-fastapi-service-language-baseline.md",
+            "docs/adr/0025-automation-execution-preconditions.md",
+            "docs/adr/0026-program-technology-version-baseline.md",
+            "docs/adr/0027-private-llm-serving-baseline.md",
             ".github/workflows/ci.yml", ".github/workflows/security-scan.yml",
         ]
         for relative in required:
