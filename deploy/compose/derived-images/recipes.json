@@ -116,7 +116,8 @@
       "inputs": [
         {"filename": "grafana-b309c9b.tar.gz", "url": "https://codeload.github.com/grafana/grafana/tar.gz/b309c9bb3b81a748c3a75289236a27309ed2566a", "sha256": "1de79b2f09e33e3a03fe83dc86bce3601be163bbf55098c37beb1dc11c01de86", "context": true},
         {"filename": "tempo-4aeafc2.tar.gz", "url": "https://codeload.github.com/grafana/tempo/tar.gz/4aeafc237b8d9a8d62e45735131e8a89eb741a00", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f", "context": true},
-        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true}
+        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true},
+        {"filename": "kin-openapi-f0407d5.tar.gz", "url": "https://codeload.github.com/getkin/kin-openapi/tar.gz/f0407d53b0730280266f454b755010e7eeb985da", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c", "context": true}
       ],
       "base_images": [
         {"image": "grafana/grafana:13.1.0-ubuntu-slim@sha256:936197495b76734df72002e6f3ff122cffd2d7027679a1c7c4a611cf90baee05", "amd64_manifest": "sha256:e3f34c3699da4cac220ac8eae84267977d433e11d40b870a8dd9c750b32cc33f"}
@@ -126,13 +127,14 @@
       ],
       "dockerfile": "grafana/Dockerfile",
       "output_repository": "dcim-development/grafana",
-      "output_tag": "13.1.0-r3",
+      "output_tag": "13.1.0-r4",
       "source_date_epoch": 1782214211,
       "patches": [
         {"finding": "CVE-2026-21728", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
         {"finding": "CVE-2026-28377", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
         {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"},
-        {"finding": "CVE-2026-39822", "artifact": "Grafana Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"}
+        {"finding": "CVE-2026-39822", "artifact": "Grafana Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"},
+        {"finding": "GHSA-r277-6w6q-xmqw", "artifact": "github.com/getkin/kin-openapi", "from_version": "v0.140.0", "to_version": "0.144.0", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"}
       ],
       "publish": false
     },
