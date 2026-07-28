@@ -1,0 +1,14 @@
+[project]
+name = "dcim-asset-repository"
+version = "0.1.0"
+description = "Stable physical/logical asset identity and lifecycle service."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.0",
+    "pydantic==2.9.2",
+    "uvicorn[standard]==0.30.6",
+]
+# Pins are verified at first install in Phase 2; dependencies are declared but not installed in Phase 0.
+
+[tool.ruff]
+extend = "../../ruff.toml"
