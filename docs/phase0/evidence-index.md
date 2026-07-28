@@ -10,6 +10,7 @@ Evidence harus public-safe, reproducible, dan tidak berisi raw scanner finding/v
 | Fixture inventory/provenance | `make validate-fixtures` | PASS closure candidate, 9 mandatory fixtures |
 | Public safety | `make public-safety` | PASS closure candidate, 124 files; violations selalu redacted |
 | Markdown local links | `make markdown-links` | PASS closure candidate, 37 links |
+| Phase 0 decision lock | [Phase 0 decision lock record](../evidence/2026-07-28-phase0-decision-lock.md) | PASS with 1 pre-existing bare-clone test error; Docker gates not run in session |
 | Aggregate preflight | `/usr/bin/time -f wall_seconds=%e make preflight` | PASS closure candidate in 0.95 seconds wall time; remote closure-PR exact-head result required sebelum merge |
 | PR secret scan | `.github/workflows/security-scan.yml` pada `pull_request` | Revision range PR; bukan full-history claim |
 | Secret history | workflow `workflow_dispatch` pada `main` dengan full checkout | PASS: [run 29716219940](https://github.com/shuffahaqgzz/dcim-core-platform/actions/runs/29716219940), target `4ea16f287864e2c44044fcb12c0c1e2fd450b85c` |
