@@ -36,6 +36,7 @@ class RepositoryStructureTests(unittest.TestCase):
             "docs/security/demo-sanitization-policy.md",
             "docs/security/threat-model-phase0.md",
             "docs/security/automation-safety-boundary.md",
+            "docs/security/credential-rotation-procedure.md",
             "docs/templates/private-source-authorization-register.template.md",
             "docs/templates/source-inventory.template.md",
             "docs/phase0/repository-preflight-report.md",
