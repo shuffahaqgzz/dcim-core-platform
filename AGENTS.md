@@ -35,19 +35,13 @@ Do not silently resolve an item listed in `docs/governance/OPEN-DECISIONS.md`. D
 
 ## 4. Required quality gates
 
-At minimum, changes must preserve:
+Local per-change verification entry point: `make phase0-check` (compile, public-safety scan, JSON/fixture validation, markdown links, unit tests). This single command is the agent gate — do not re-enumerate individual checks per task.
 
-- formatting/lint checks appropriate to the affected component;
-- unit tests;
-- schema/contract tests;
-- integration tests where a boundary changes;
-- one end-to-end synthetic path for milestone claims;
-- secret/public-safety scan;
-- dependency and license review;
-- migration check for persistent data changes;
-- reproducible evidence.
+An optional `make lint` target runs `ruff check` when ruff is installed; it is not part of `phase0-check` in Phase 0 because dependencies are not installed by the gate.
 
-A critical failure is a NO-GO, not a warning to ignore.
+Docker-dependent gates (`make preflight` and the `foundation-*` targets: image qualification, supply-chain scan, recovery smoke) run in CI or at milestone acceptance on a host with Docker — not in a sandboxed agent session.
+
+For milestone claims, the Development baseline's full gate list applies. A critical failure is a NO-GO, not a warning to ignore.
 
 ## 5. Codex behavior
 

@@ -1,4 +1,4 @@
-.PHONY: help bootstrap compile public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance
+.PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance
 
 PYTHON ?= python3
 DCIM_STATE_HOME := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)
@@ -19,6 +19,7 @@ help:
 	@printf '%s\n' \
 	  'bootstrap       Prepare a public-safe local workspace' \
 	  'compile         Compile-check Python sources' \
+	  'lint            Run ruff check if installed (optional, not part of phase0-check)' \
 	  'public-safety   Scan tracked files for prohibited public-repo content' \
 	  'validate-json   Parse schemas and validate synthetic event fixtures' \
 	  'validate-fixtures Validate mandatory synthetic fixture inventory' \
@@ -86,6 +87,9 @@ foundation-clean-acceptance:
 
 compile:
 	$(PYTHON) -m compileall -q scripts tests
+
+lint:
+	@command -v ruff >/dev/null 2>&1 && ruff check || echo "ruff not installed; skipping optional lint"
 
 public-safety:
 	$(PYTHON) scripts/check_public_repo_safety.py
