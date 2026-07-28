@@ -91,8 +91,8 @@ All P0-T1 through P0-T5 are done; P0-T6 and P0-T7 are next actionable outside th
 |---|---|---|
 | P1-C1 | Merge PR #22 and close #20 | `make preflight` PASS on `main`; fresh image evidence clean |
 | P1-C2 | Stabilize Phase 2 vertical slice branch | Rebase `feat/phase2-first-vertical-slice` onto clean `main`; ≤5 focused commits; backup branches archived/deleted |
-| P1-C3 | Update Compose resource limits per ADR-0021 | `deploy/compose/dev-build/compose.yaml` caps match ADR-0021; `foundation_policy.py` passes |
-| P1-C4 | Add demo profile skeleton | `deploy/compose/demo/compose.yaml` runs synthetic P1 flow; C-05 closed |
+| P1-C3 | Update Compose resource limits per ADR-0021 ✅ done 2026-07-28 | `deploy/compose/dev-build/compose.yaml` caps match ADR-0021; `foundation_policy.py` passes |
+| P1-C4 | Add demo profile skeleton ✅ skeleton done 2026-07-28 (Docker acceptance pending; C-05 open) | `deploy/compose/demo/compose.yaml` runs synthetic P1 flow; C-05 closed |
 
 #### Data Ingestion
 
@@ -118,7 +118,7 @@ All P0-T1 through P0-T5 are done; P0-T6 and P0-T7 are next actionable outside th
 | ID | Task | Acceptance Criteria |
 |---|---|---|
 | P1-W1 | Suspend service-restart workflow | Workflow disabled until hardened |
-| P1-W2 | Add safety gate design doc | `docs/workflow-safety-gates.md` with dry-run/approval/blast-radius/rollback/audit spec |
+| P1-W2 | Add safety gate design doc ✅ done 2026-07-28 | `docs/workflow-safety-gates.md` with dry-run/approval/blast-radius/rollback/audit spec |
 | P1-S1 | Add CI to SIEM repo | Public-safety scan + Wazuh config syntax check |
 | P1-O1 | Add CI to SOAR repo | Public-safety scan + JSON workflow lint |
 
@@ -306,7 +306,7 @@ flowchart TD
 |---|---|---|
 | Optimistic | 2.5 bulan | Owner decisions in 2 days; no new image findings |
 | Realistic | 3.5–4 bulan | Decisions in 1 week; 1–2 remediation cycles per phase |
-| Pessimistic | 5–6 bulan | OD-01/OD-07 decisions reversed; major security incident requires re-architecture |
+| Pessimistic | 5–6 bulan | Satellite repo access delayed; major security incident requires re-architecture |
 
 ---
 

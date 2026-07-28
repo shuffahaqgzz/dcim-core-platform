@@ -318,7 +318,7 @@ The open questions below were confirmed by the owner. The table summarizes the d
 **Recommendation:** Refactor menjadi generic CMDB adapter yang dapat mengarah ke custom CMDB API; iTop sebagai discovery source.
 
 ### Q7 — AI Model Serving
-**Question:** Apakah model LLM akan di-host secara private (2×RTX 3070 Ti dengan Ollama/llama.cpp) atau menggunakan managed API?  
+**Question:** Apakah model LLM akan di-host secara private (2×RTX 3070 Ti dengan Ollama/llama.cpp) atau menggunakan managed API? *(hardware final: 2×RTX A5000 24 GB — ADR-0027)*  
 **Why it matters:** Hardware sizing dan API design bergantung pada keputusan ini. Evidence: `(MT-023) Private LLM Platform.md` (private host), `api/routers/llm.py` (stub).  
 **Recommendation:** Private host untuk data sovereignty; buat abstraction layer sehingga dapat fallback ke managed API jika GPU tidak tersedia.
 
