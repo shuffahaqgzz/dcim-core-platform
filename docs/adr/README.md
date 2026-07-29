@@ -30,5 +30,6 @@ Nomor ADR existing dipertahankan agar accepted history dan ADR 0007 milik owner 
 | Automation execution preconditions (PRD Q4) | [ADR-0025](0025-automation-execution-preconditions.md) |
 | Program technology version baseline (PRD Q8) | [ADR-0026](0026-program-technology-version-baseline.md) |
 | Private LLM serving baseline (PRD Q7) | [ADR-0027](0027-private-llm-serving-baseline.md) |
+| Duplicate disposition and deterministic identity | [ADR-0028](0028-duplicate-disposition-and-deterministic-identity.md) |
 
 ADR-0007 adalah keputusan OD-01 yang diterima (Accepted 2026-07-28). ADR-0022 tetap dicadangkan dan tidak digunakan.
