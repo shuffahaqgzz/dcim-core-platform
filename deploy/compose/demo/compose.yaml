@@ -1,0 +1,123 @@
+# Synthetic P1 flow: Redfish fixture -> Kafka -> normalized -> enriched -> dashboard placeholder.
+
+x-long-running: &long-running
+  restart: "on-failure:3"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  read_only: true
+  init: true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-healthcheck: &healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 20s
+
+services:
+  postgres:
+    <<: *long-running
+    image: ${DCIM_POSTGRES_IMAGE:?run make foundation-images-qualify}
+    profiles: [data]
+    user: "999:999"
+    environment:
+      POSTGRES_DB: dcim_demo
+      POSTGRES_USER: dcim_demo
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets: [postgres-password]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/run/postgresql:size=16m,uid=999,gid=999,mode=0775
+    networks: [data]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "pg_isready -U dcim_demo -d dcim_demo"]
+
+  kafka:
+    <<: *long-running
+    image: ${DCIM_KAFKA_IMAGE:?run make foundation-images-qualify}
+    profiles: [data]
+    user: "1000:1000"
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:?run make foundation-bootstrap}
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_MESSAGE_MAX_BYTES: "1048576"
+      KAFKA_REPLICA_FETCH_MAX_BYTES: "1048576"
+      KAFKA_LOG_RETENTION_HOURS: "24"
+      KAFKA_LOG_SEGMENT_BYTES: "268435456"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /opt/kafka/config:size=32m,uid=1000,gid=1000,mode=0750
+      - /opt/kafka/logs:size=256m,uid=1000,gid=1000,mode=0750
+    networks: [data]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "/opt/kafka/bin/kafka-metadata-quorum.sh --bootstrap-server localhost:9092 describe --status >/dev/null"]
+      start_period: 40s
+
+  redfish-fixture:
+    image: ${DCIM_PROMETHEUS_IMAGE:?run make foundation-images-qualify}
+    profiles: [p1-demo]
+    command: ["/fixtures/synthetic/events/p1-redfish-health.json"]
+    volumes:
+      - ../../../fixtures/synthetic/events/p1-redfish-health.json:/fixtures/synthetic/events/p1-redfish-health.json:ro
+    networks: [data]
+    depends_on:
+      kafka: {condition: service_healthy}
+
+  normalized:
+    image: ${DCIM_PROMETHEUS_IMAGE:?run make foundation-images-qualify}
+    profiles: [p1-demo]
+    command: ["normalized-stage-placeholder"]
+    networks: [data]
+    depends_on: [kafka]
+
+  enriched:
+    image: ${DCIM_PROMETHEUS_IMAGE:?run make foundation-images-qualify}
+    profiles: [p1-demo]
+    command: ["enriched-stage-placeholder"]
+    networks: [data]
+    depends_on: [normalized]
+
+  dashboard-placeholder:
+    image: ${DCIM_PROMETHEUS_IMAGE:?run make foundation-images-qualify}
+    profiles: [p1-demo]
+    command: ["dashboard-stage-placeholder"]
+    networks: [data]
+    depends_on: [enriched]
+
+networks:
+  data:
+    name: dcim-demo-data
+    internal: true
+
+volumes:
+  postgres-data:
+    name: dcim-demo-postgres-data
+  kafka-data:
+    name: dcim-demo-kafka-data
+
+secrets:
+  postgres-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/demo/secrets/postgres-password
