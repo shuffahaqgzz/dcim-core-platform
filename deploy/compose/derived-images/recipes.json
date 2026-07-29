@@ -169,7 +169,8 @@
       "inputs": [
         {"filename": "prometheus-73ff57c.tar.gz", "url": "https://codeload.github.com/prometheus/prometheus/tar.gz/73ff57ce2b8161059ac7fe5188f03f1c3d22b29a", "sha256": "322276709c16cb3c22a4d01d244beb91f0380a257699358d2a20ac7086d7256c", "context": true},
         {"filename": "prometheus-web-ui-3.13.1.tar.gz", "url": "https://github.com/prometheus/prometheus/releases/download/v3.13.1/prometheus-web-ui-3.13.1.tar.gz", "sha256": "2194bfbb5d36457df2b8f480037ce89786ee32f03b5ee6ad5597989f14deafb0", "context": true},
-        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true}
+        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true},
+        {"filename": "x-text-0.39.0.tar.gz", "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0", "context": true}
       ],
       "base_images": [
         {"image": "prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893", "amd64_manifest": "sha256:bd2dcadfb0d1096e2a4c21817ac7af918e2f19ff628e4bf25fd67a924c13dd80"}
@@ -179,10 +180,11 @@
       ],
       "dockerfile": "prometheus/Dockerfile",
       "output_repository": "dcim-development/prometheus",
-      "output_tag": "3.13.1-r2",
+      "output_tag": "3.13.1-r3",
       "source_date_epoch": 1783670627,
       "patches": [
-        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"}
+        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"},
+        {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.38.0", "to_version": "0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
     },
@@ -195,7 +197,8 @@
         "archive_sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"
       },
       "inputs": [
-        {"filename": "postgres-exporter-867fbca.tar.gz", "url": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/867fbcac31cd18c143e244190ea9168cca069827", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501", "context": true}
+        {"filename": "postgres-exporter-867fbca.tar.gz", "url": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/867fbcac31cd18c143e244190ea9168cca069827", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501", "context": true},
+        {"filename": "x-text-0.39.0.tar.gz", "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0", "context": true}
       ],
       "base_images": [
         {"image": "prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e", "amd64_manifest": "sha256:4f3d82803c1f99ea5e767890de3557d2479ebbc711f63f2e04c663daa840057a"}
@@ -205,10 +208,11 @@
       ],
       "dockerfile": "postgres-exporter/Dockerfile",
       "output_repository": "dcim-development/postgres-exporter",
-      "output_tag": "0.20.1-r1",
+      "output_tag": "0.20.1-r2",
       "source_date_epoch": 1783475125,
       "patches": [
-        {"finding": "CVE-2026-39822", "artifact": "postgres_exporter Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"}
+        {"finding": "CVE-2026-39822", "artifact": "postgres_exporter Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"},
+        {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.38.0", "to_version": "0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
     }
