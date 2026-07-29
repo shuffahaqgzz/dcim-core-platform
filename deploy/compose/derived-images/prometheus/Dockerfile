@@ -12,30 +12,45 @@ ARG UI_ARCHIVE="prometheus-web-ui-3.13.1.tar.gz"
 ARG UI_SHA256="2194bfbb5d36457df2b8f480037ce89786ee32f03b5ee6ad5597989f14deafb0"
 ARG GRPC_ARCHIVE="grpc-go-ebd8f06.tar.gz"
 ARG GRPC_SHA256="50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"
+ARG X_TEXT_ARCHIVE="x-text-0.39.0.tar.gz"
+ARG X_TEXT_SHA256="c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"
 
 COPY ${PROMETHEUS_ARCHIVE} /tmp/prometheus.tar.gz
 COPY ${UI_ARCHIVE} /tmp/prometheus-ui.tar.gz
 COPY ${GRPC_ARCHIVE} /tmp/grpc-go.tar.gz
+COPY ${X_TEXT_ARCHIVE} /tmp/x-text.tar.gz
 RUN echo "${PROMETHEUS_SHA256}  /tmp/prometheus.tar.gz" | sha256sum -c - \
     && echo "${UI_SHA256}  /tmp/prometheus-ui.tar.gz" | sha256sum -c - \
     && echo "${GRPC_SHA256}  /tmp/grpc-go.tar.gz" | sha256sum -c - \
-    && mkdir -p /src/prometheus /src/prebuilt-ui /src/grpc-go \
+    && echo "${X_TEXT_SHA256}  /tmp/x-text.tar.gz" | sha256sum -c - \
+    && mkdir -p /src/prometheus /src/prebuilt-ui /src/grpc-go /src/x-text \
     && tar -xzf /tmp/prometheus.tar.gz -C /src/prometheus --strip-components=1 \
     && tar -xzf /tmp/prometheus-ui.tar.gz -C /src/prebuilt-ui \
-    && tar -xzf /tmp/grpc-go.tar.gz -C /src/grpc-go --strip-components=1
+    && tar -xzf /tmp/grpc-go.tar.gz -C /src/grpc-go --strip-components=1 \
+    && tar -xzf /tmp/x-text.tar.gz -C /src/x-text --strip-components=1
 
 WORKDIR /src/prometheus
 ENV GOWORK=off
 RUN go mod edit -require=google.golang.org/grpc@v1.82.1 \
     && go mod edit -replace=google.golang.org/grpc=/src/grpc-go \
+    && go mod edit -require=golang.org/x/text@v0.39.0 \
+    && go mod edit -replace=golang.org/x/text=/src/x-text \
     && grep -F 'google.golang.org/grpc v1.82.1' go.mod \
     && grep -F 'replace google.golang.org/grpc => /src/grpc-go' go.mod \
+    && grep -F 'golang.org/x/text v0.39.0' go.mod \
+    && grep -F 'replace golang.org/x/text => /src/x-text' go.mod \
+    && go mod download all \
     && go mod vendor \
     && go mod edit -dropreplace=google.golang.org/grpc \
+    && go mod edit -dropreplace=golang.org/x/text \
     && sed -i 's|^# google.golang.org/grpc v1.82.1 => /src/grpc-go$|# google.golang.org/grpc v1.82.1|' vendor/modules.txt \
     && sed -i '/^# google\.golang\.org\/grpc => \/src\/grpc-go$/d' vendor/modules.txt \
+    && sed -i 's|^# golang.org/x/text v0.39.0 => /src/x-text$|# golang.org/x/text v0.39.0|' vendor/modules.txt \
+    && sed -i '/^# golang\.org\/x\/text => \/src\/x-text$/d' vendor/modules.txt \
     && go list -mod=vendor -m google.golang.org/grpc \
-        | grep -Fx 'google.golang.org/grpc v1.82.1'
+        | grep -Fx 'google.golang.org/grpc v1.82.1' \
+    && go list -mod=vendor -m golang.org/x/text \
+        | grep -Fx 'golang.org/x/text v0.39.0'
 RUN mkdir -p web/ui/static \
     && find /src/prebuilt-ui/static -type f -print | sort | while IFS= read -r file; do \
         relative="${file#/src/prebuilt-ui/static/}"; \
@@ -64,8 +79,9 @@ LABEL org.opencontainers.image.created="${SOURCE_DATE}" \
       org.opencontainers.image.version="3.13.1-dcim.2" \
       org.opencontainers.image.vendor="DCIM Development derivative" \
       io.dcim.derivative="true" \
-      io.dcim.recipe.revision="2" \
-      io.dcim.remediation.grpc-go="1.82.1"
+      io.dcim.recipe.revision="3" \
+      io.dcim.remediation.grpc-go="1.82.1" \
+      io.dcim.remediation.x-text="0.39.0"
 
 COPY --from=build --chown=65534:65534 /out/prometheus /bin/prometheus
 COPY --from=build --chown=65534:65534 /out/promtool /bin/promtool

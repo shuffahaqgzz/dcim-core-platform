@@ -77,7 +77,16 @@
         {"filename": "jackson-databind-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.4/jackson-databind-2.21.4.jar", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9", "context": true},
         {"filename": "jackson-core-2.21.4.jar", "url": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.21.4/jackson-core-2.21.4.jar", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d", "context": true},
         {"filename": "jline-4.2.1.jar", "url": "https://repo.maven.apache.org/maven2/org/jline/jline/4.2.1/jline-4.2.1.jar", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535", "context": true},
-        {"filename": "jetty-security-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-security/12.0.36/jetty-security-12.0.36.jar", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2", "context": true}
+        {"filename": "jetty-alpn-client-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-alpn-client/12.0.36/jetty-alpn-client-12.0.36.jar", "sha256": "6b0e03b545fa49fc82cf3149dafb3849e6e0827b3756c31b0e1f5324d86816d2", "context": true},
+        {"filename": "jetty-client-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-client/12.0.36/jetty-client-12.0.36.jar", "sha256": "1e188b18e8ff6b60ca743e9c9cc39c35f8b6b1b6a7dc07cbdd06800672a1ee02", "context": true},
+        {"filename": "jetty-http-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-http/12.0.36/jetty-http-12.0.36.jar", "sha256": "2b5c6ee1303aa979b99afb27e3c602096c344e06da9bdc0057938d1c47f8f1f2", "context": true},
+        {"filename": "jetty-io-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-io/12.0.36/jetty-io-12.0.36.jar", "sha256": "b191d45e3c48711cc784d509a8dec50112816af392b2b7c76d9e42324b5064da", "context": true},
+        {"filename": "jetty-security-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-security/12.0.36/jetty-security-12.0.36.jar", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2", "context": true},
+        {"filename": "jetty-server-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-server/12.0.36/jetty-server-12.0.36.jar", "sha256": "f0eb8d1e71d67d0f937c45752546cf479ba55ad3135cf600d3bf723f52cd53fe", "context": true},
+        {"filename": "jetty-session-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-session/12.0.36/jetty-session-12.0.36.jar", "sha256": "5b6dc693b9e3d87d309027a5f506b57225b6450444a3f276d9089f2c663cbcc4", "context": true},
+        {"filename": "jetty-util-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/jetty-util/12.0.36/jetty-util-12.0.36.jar", "sha256": "e16c145dd761168133d1505b6f7cf05343f5e3e3ff03333757c8a6312896ab48", "context": true},
+        {"filename": "jetty-ee10-servlet-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/ee10/jetty-ee10-servlet/12.0.36/jetty-ee10-servlet-12.0.36.jar", "sha256": "64d42fc2e1c3fd6b7e7a77c1165626bce3a52ef3ed89a7cf00163d11b42201c8", "context": true},
+        {"filename": "jetty-ee10-servlets-12.0.36.jar", "url": "https://repo.maven.apache.org/maven2/org/eclipse/jetty/ee10/jetty-ee10-servlets/12.0.36/jetty-ee10-servlets-12.0.36.jar", "sha256": "e4bc43fbe7ddb1f7658a935b9ad0329d9cf4eae446533bfed7822e6183fe933e", "context": true}
       ],
       "base_images": [
         {"image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837", "amd64_manifest": "sha256:ccd1314e47ec76909e01f86308b4dcf2064f19f7c89759234322314b0e319e26"},
@@ -99,9 +108,18 @@
         {"finding": "CVE-2026-54512", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
         {"finding": "CVE-2026-54513", "artifact": "jackson-databind", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "3888e9e69ab66fbacaacc9aea0e9ffbf15368288e4aca468b024dba11c09fbf9"},
         {"finding": "GHSA-r7wm-3cxj-wff9", "artifact": "jackson-core", "from_version": "2.21.2", "to_version": "2.21.4", "sha256": "4b40a06396f239f8de2da57419adde6e94e5edc18a2171d471ea05eeed4e5c2d"},
-        {"finding": "CVE-2026-10050", "artifact": "jetty-security", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2"},
         {"finding": "GHSA-2r2c-cx56-8933", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"},
-        {"finding": "GHSA-47qp-hqvx-6r3f", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"}
+        {"finding": "GHSA-47qp-hqvx-6r3f", "artifact": "jline-remote-telnet", "from_version": "3.30.4", "to_version": "4.2.1", "sha256": "bdbe3b7b276ee609c28f11f704be11fdebe7375eb1a7d10a489086225cdbc535"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-security", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e6fb70974291312c58ac84d8bf28c909d1800d1b3104020e7cd4db77391f9fb2"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-alpn-client", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "6b0e03b545fa49fc82cf3149dafb3849e6e0827b3756c31b0e1f5324d86816d2"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-client", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "1e188b18e8ff6b60ca743e9c9cc39c35f8b6b1b6a7dc07cbdd06800672a1ee02"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-http", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "2b5c6ee1303aa979b99afb27e3c602096c344e06da9bdc0057938d1c47f8f1f2"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-io", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "b191d45e3c48711cc784d509a8dec50112816af392b2b7c76d9e42324b5064da"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-server", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "f0eb8d1e71d67d0f937c45752546cf479ba55ad3135cf600d3bf723f52cd53fe"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-session", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "5b6dc693b9e3d87d309027a5f506b57225b6450444a3f276d9089f2c663cbcc4"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-util", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e16c145dd761168133d1505b6f7cf05343f5e3e3ff03333757c8a6312896ab48"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-ee10-servlet", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "64d42fc2e1c3fd6b7e7a77c1165626bce3a52ef3ed89a7cf00163d11b42201c8"},
+        {"finding": "CVE-2026-10050", "artifact": "jetty-ee10-servlets", "from_version": "12.0.34", "to_version": "12.0.36", "sha256": "e4bc43fbe7ddb1f7658a935b9ad0329d9cf4eae446533bfed7822e6183fe933e"}
       ],
       "publish": false
     },
@@ -117,7 +135,8 @@
         {"filename": "grafana-b309c9b.tar.gz", "url": "https://codeload.github.com/grafana/grafana/tar.gz/b309c9bb3b81a748c3a75289236a27309ed2566a", "sha256": "1de79b2f09e33e3a03fe83dc86bce3601be163bbf55098c37beb1dc11c01de86", "context": true},
         {"filename": "tempo-4aeafc2.tar.gz", "url": "https://codeload.github.com/grafana/tempo/tar.gz/4aeafc237b8d9a8d62e45735131e8a89eb741a00", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f", "context": true},
         {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true},
-        {"filename": "kin-openapi-f0407d5.tar.gz", "url": "https://codeload.github.com/getkin/kin-openapi/tar.gz/f0407d53b0730280266f454b755010e7eeb985da", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c", "context": true}
+        {"filename": "kin-openapi-f0407d5.tar.gz", "url": "https://codeload.github.com/getkin/kin-openapi/tar.gz/f0407d53b0730280266f454b755010e7eeb985da", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c", "context": true},
+        {"filename": "x-text-0.39.0.tar.gz", "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0", "context": true}
       ],
       "base_images": [
         {"image": "grafana/grafana:13.1.0-ubuntu-slim@sha256:936197495b76734df72002e6f3ff122cffd2d7027679a1c7c4a611cf90baee05", "amd64_manifest": "sha256:e3f34c3699da4cac220ac8eae84267977d433e11d40b870a8dd9c750b32cc33f"}
@@ -127,14 +146,15 @@
       ],
       "dockerfile": "grafana/Dockerfile",
       "output_repository": "dcim-development/grafana",
-      "output_tag": "13.1.0-r4",
+      "output_tag": "13.1.0-r5",
       "source_date_epoch": 1782214211,
       "patches": [
         {"finding": "CVE-2026-21728", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
         {"finding": "CVE-2026-28377", "artifact": "github.com/grafana/tempo", "from_version": "v1.5.1-0.20260427112133-525d1bab07e0", "to_version": "2.10.3", "sha256": "6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d81f"},
         {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"},
         {"finding": "CVE-2026-39822", "artifact": "Grafana Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"},
-        {"finding": "GHSA-r277-6w6q-xmqw", "artifact": "github.com/getkin/kin-openapi", "from_version": "v0.140.0", "to_version": "0.144.0", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"}
+        {"finding": "GHSA-r277-6w6q-xmqw", "artifact": "github.com/getkin/kin-openapi", "from_version": "v0.140.0", "to_version": "0.144.0", "sha256": "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"},
+        {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.37.0", "to_version": "v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
     },
@@ -149,7 +169,8 @@
       "inputs": [
         {"filename": "prometheus-73ff57c.tar.gz", "url": "https://codeload.github.com/prometheus/prometheus/tar.gz/73ff57ce2b8161059ac7fe5188f03f1c3d22b29a", "sha256": "322276709c16cb3c22a4d01d244beb91f0380a257699358d2a20ac7086d7256c", "context": true},
         {"filename": "prometheus-web-ui-3.13.1.tar.gz", "url": "https://github.com/prometheus/prometheus/releases/download/v3.13.1/prometheus-web-ui-3.13.1.tar.gz", "sha256": "2194bfbb5d36457df2b8f480037ce89786ee32f03b5ee6ad5597989f14deafb0", "context": true},
-        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true}
+        {"filename": "grpc-go-ebd8f06.tar.gz", "url": "https://codeload.github.com/grpc/grpc-go/tar.gz/ebd8f06a09426fbece97157c95c3917abff28f4e", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582", "context": true},
+        {"filename": "x-text-0.39.0.tar.gz", "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0", "context": true}
       ],
       "base_images": [
         {"image": "prom/prometheus:v3.13.1@sha256:3c42b892cf723fa54d2f262c37a0e1f80aa8c8ddb1da7b9b0df9455a35a7f893", "amd64_manifest": "sha256:bd2dcadfb0d1096e2a4c21817ac7af918e2f19ff628e4bf25fd67a924c13dd80"}
@@ -159,10 +180,11 @@
       ],
       "dockerfile": "prometheus/Dockerfile",
       "output_repository": "dcim-development/prometheus",
-      "output_tag": "3.13.1-r2",
+      "output_tag": "3.13.1-r3",
       "source_date_epoch": 1783670627,
       "patches": [
-        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"}
+        {"finding": "GHSA-hrxh-6v49-42gf", "artifact": "google.golang.org/grpc", "from_version": "1.81.1", "to_version": "1.82.1", "sha256": "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"},
+        {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.38.0", "to_version": "0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
     },
@@ -175,7 +197,8 @@
         "archive_sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"
       },
       "inputs": [
-        {"filename": "postgres-exporter-867fbca.tar.gz", "url": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/867fbcac31cd18c143e244190ea9168cca069827", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501", "context": true}
+        {"filename": "postgres-exporter-867fbca.tar.gz", "url": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/867fbcac31cd18c143e244190ea9168cca069827", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501", "context": true},
+        {"filename": "x-text-0.39.0.tar.gz", "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0", "context": true}
       ],
       "base_images": [
         {"image": "prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e", "amd64_manifest": "sha256:4f3d82803c1f99ea5e767890de3557d2479ebbc711f63f2e04c663daa840057a"}
@@ -185,10 +208,11 @@
       ],
       "dockerfile": "postgres-exporter/Dockerfile",
       "output_repository": "dcim-development/postgres-exporter",
-      "output_tag": "0.20.1-r1",
+      "output_tag": "0.20.1-r2",
       "source_date_epoch": 1783475125,
       "patches": [
-        {"finding": "CVE-2026-39822", "artifact": "postgres_exporter Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"}
+        {"finding": "CVE-2026-39822", "artifact": "postgres_exporter Go stdlib", "from_version": "1.26.4", "to_version": "1.26.5", "sha256": "68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"},
+        {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.38.0", "to_version": "0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
     }

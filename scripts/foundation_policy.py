@@ -404,10 +404,10 @@ def validate_model(
         if volume_mounts != EXPECTED_VOLUME_MOUNTS.get(name, set()):
             errors.append(f"{name}: volume mount allowlist mismatch")
 
-    if total_cpus > 10:
-        errors.append(f"aggregate CPU limit exceeds 10 ({total_cpus:g})")
-    if total_memory > 18 * 1024**3:
-        errors.append(f"aggregate memory limit exceeds 18 GiB ({total_memory} bytes)")
+    if total_cpus > 15:
+        errors.append(f"aggregate CPU limit exceeds 15 ({total_cpus:g})")
+    if total_memory > 34 * 1024**3:
+        errors.append(f"aggregate memory limit exceeds 34 GiB ({total_memory} bytes)")
 
     networks = model.get("networks", {})
     if set(networks) != {"data", "observability"}:

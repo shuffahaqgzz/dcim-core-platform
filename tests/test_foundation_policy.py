@@ -283,7 +283,7 @@ class FoundationPolicyTests(unittest.TestCase):
     def test_aggregate_resource_budget_fails_closed(self) -> None:
         model = self.normalized_model()
         model["services"]["grafana"]["deploy"]["resources"]["limits"]["cpus"] = 2
-        model["services"]["grafana"]["deploy"]["resources"]["limits"]["memory"] = str(2 * 1024**3)
+        model["services"]["grafana"]["deploy"]["resources"]["limits"]["memory"] = str(4 * 1024**3)
         result = self.validate(model)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("aggregate CPU limit", result.stderr)

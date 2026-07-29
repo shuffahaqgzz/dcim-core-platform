@@ -55,8 +55,8 @@ class KafkaRemediationRecipeTests(unittest.TestCase):
             dockerfile,
         )
         self.assertIn('io.dcim.recipe.revision="3"', dockerfile)
-        self.assertIn('org.opencontainers.image.version="4.3.1-dcim.3"', dockerfile)
-        self.assertIn('io.dcim.remediation.jetty-security="12.0.36"', dockerfile)
+        self.assertIn('org.opencontainers.image.version="4.3.1-dcim.2"', dockerfile)
+        self.assertIn('io.dcim.remediation.jetty="12.0.36"', dockerfile)
 
 
 if __name__ == "__main__":

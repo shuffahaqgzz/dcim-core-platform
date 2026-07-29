@@ -10,7 +10,7 @@ merge. The complete design and acceptance contract are in
 - `dev-build/`: executable `dcim-build` Compose project, synthetic only;
 - `integration-ro/`: contract and README only during Phase 1; no runnable
   manifest, credential, connector, or route;
-- `demo/`: contract and README only during Phase 1; no runnable manifest.
+- `demo/`: P1-C4 synthetic demo skeleton (`compose.yaml` placeholder stages plus README); no real stage images, Docker acceptance pending (C-05 open).
 
 Runtime Planes require separate project names, networks, volumes, runtime
 configuration, credentials, and promotion lifecycles. Compose profiles are

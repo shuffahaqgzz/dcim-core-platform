@@ -9,14 +9,23 @@ ARG SOURCE_DATE_EPOCH
 ARG SOURCE_ARCHIVE="postgres-exporter-867fbca.tar.gz"
 ARG SOURCE_SHA256="68a1bbc1a83ec17996d7d49bbad1457bb4b248e8071ccd497db48e8346564501"
 ARG SOURCE_DIRECTORY="postgres_exporter-867fbcac31cd18c143e244190ea9168cca069827"
+ARG X_TEXT_ARCHIVE="x-text-0.39.0.tar.gz"
+ARG X_TEXT_SHA256="c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"
 
 COPY ${SOURCE_ARCHIVE} /tmp/source.tar.gz
-RUN echo "${SOURCE_SHA256}  /tmp/source.tar.gz" | sha256sum -c -
-RUN mkdir /src && tar -xzf /tmp/source.tar.gz -C /src
+COPY ${X_TEXT_ARCHIVE} /tmp/x-text.tar.gz
+RUN echo "${SOURCE_SHA256}  /tmp/source.tar.gz" | sha256sum -c - \
+    && echo "${X_TEXT_SHA256}  /tmp/x-text.tar.gz" | sha256sum -c - \
+    && mkdir /src && tar -xzf /tmp/source.tar.gz -C /src \
+    && mkdir -p /src/x-text && tar -xzf /tmp/x-text.tar.gz -C /src/x-text --strip-components=1
 WORKDIR /src/${SOURCE_DIRECTORY}
 
 # go.sum locks fetched module content. Compilation itself has no network access.
-RUN go mod download
+RUN go mod edit -require=golang.org/x/text@v0.39.0 \
+    && go mod edit -replace=golang.org/x/text=/src/x-text \
+    && grep -F 'golang.org/x/text v0.39.0' go.mod \
+    && grep -F 'replace golang.org/x/text => /src/x-text' go.mod \
+    && go mod download
 RUN --network=none CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath \
     -ldflags="-s -w -X github.com/prometheus/common/version.Version=0.20.1 -X github.com/prometheus/common/version.Revision=867fbcac31cd18c143e244190ea9168cca069827" \
@@ -32,6 +41,8 @@ LABEL org.opencontainers.image.created="${SOURCE_DATE}" \
       org.opencontainers.image.version="0.20.1-dcim.1" \
       org.opencontainers.image.vendor="DCIM Development derivative" \
       io.dcim.derivative="true" \
-      io.dcim.recipe.revision="1"
+      io.dcim.recipe.revision="2" \
+      io.dcim.remediation.go="1.26.5" \
+      io.dcim.remediation.x-text="0.39.0"
 
 COPY --from=build /out/postgres_exporter /bin/postgres_exporter

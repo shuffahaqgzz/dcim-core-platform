@@ -96,7 +96,7 @@
 
 | ID | Requirement | Implemented | Severity | Evidence |
 |---|---|---|---|---|
-| DB-01 | Vue 3 frontend scaffold | ❌ No code | P1 | `web/README.md` placeholder |
+| DB-01 | React frontend scaffold (ADR-0017) | ❌ No code | P1 | `web/README.md` placeholder |
 | DB-02 | 7 views (NOC/SOC/Facilities/CMDB/SLA/Logs/Tasks) | ❌ No code | P1 | — |
 | DB-03 | API Gateway + RBAC/SSO | ❌ No code | P1 | — |
 | DB-04 | WebSocket real-time | ❌ No code | P2 | — |
@@ -130,7 +130,7 @@
 | AI-07 | Capacity forecasting API | ❌ Stub `501` | P2 | `api/routers/capacity.py` |
 | AI-08 | Energy / PUE optimization API | ❌ Stub `501` | P2 | `api/routers/energy.py` |
 | AI-09 | LLM/RAG inference service API | ❌ Stub `501` | P1 | `api/routers/llm.py` |
-| AI-10 | Fine-tuned model weights | ❌ `llm/models/` empty | P1 | — |
+| AI-10 | Fine-tuned model weights | ❌ `llm/models/` empty | P3 (Phase 4 — ADR-0027) | — |
 | AI-11 | RAG system v2 | ❌ Empty directory | P2 | `dcim_ai_v2_rag/rag/` |
 | AI-12 | 26 use cases | ⚠️ Partial | P2 | `technical-requirements/analytics-ai-use-case-analysis-final-v2.md` |
 | AI-13 | Async queue worker + retry | ❌ Documented only | P2 | `task_objective/MT-023_LLM_Inference_Service_Revised.md` |

@@ -12,11 +12,11 @@
 
 | Block | Nama | Fungsi utama | Teknologi target |
 |---|---|---|---|
-| B1 | Infrastructure Provisioning | Foundation runtime: DB, cache, message bus, data flow, search, monitoring, secret management | PostgreSQL 16, Redis 7, Kafka 3.x KRaft, NiFi 1.x, Elasticsearch 8.x, Prometheus, Grafana, Vault, Docker Compose/K8s |
+| B1 | Infrastructure Provisioning | Foundation runtime: DB, cache, message bus, data flow, search, monitoring, secret management | PostgreSQL 17.x (16 minimum floor), Redis 7, Kafka 3.x KRaft, NiFi 1.x, Elasticsearch 9.x, Prometheus, Grafana, Vault, Docker Compose (K8s deferred) — ADR-0026 |
 | B2 | Data Ingestion & Integration | Gateway semua data masuk: protocol adapters, normalizer, validator, DLQ, lineage | NiFi, Kafka, Schema Registry, Avro |
 | B3 | Asset Repository | SSOT aset fisik, finansial, kontrak | PostgreSQL, CRUD API, Redis cache, bulk import |
 | B4 | CMDB | SSOT Configuration Items, relationships, topology, impact | PostgreSQL, topology engine, reconciliation |
-| B5 | Web Dashboard | NOC/SOC/Facilities/CMDB/SLA/Logs/Tasks views | Vue 3, Pinia, ECharts, Tailwind, WebSocket |
+| B5 | Web Dashboard | NOC/SOC/Facilities/CMDB/SLA/Logs/Tasks views | React 18 + TypeScript + Vite, TanStack Query, ECharts, Tailwind, WebSocket — ADR-0017 |
 | B6 | SIEM/SOC | Security event ingestion, correlation, incident response, compliance | Wazuh, Elasticsearch, correlation engine, SOC API |
 | B7 | Analytics & AI Engine | Time-series, anomaly detection, predictive maintenance, RCA, capacity, energy, LLM/RAG | TimescaleDB, scikit-learn, Prophet, LSTM, Ollama/llama.cpp, QLoRA |
 | B8 | Workflow Automation | State machine, approval, runbook, remediation, escalation | n8n, Temporal |
@@ -80,7 +80,7 @@ flowchart TB
     end
 
     subgraph B5["B5 Web Dashboard"]
-        UI[Vue 3 Frontend]
+        UI[React Frontend]
         GW[API Gateway]
     end
 

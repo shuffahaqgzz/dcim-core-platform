@@ -124,7 +124,7 @@ class FoundationImagesTests(unittest.TestCase):
         ui_sha256 = (
             "2194bfbb5d36457df2b8f480037ce89786ee32f03b5ee6ad5597989f14deafb0"
         )
-        self.assertEqual("3.13.1-r2", prometheus["output_tag"])
+        self.assertEqual("3.13.1-r3", prometheus["output_tag"])
         self.assertEqual(source_sha256, prometheus["source"]["archive_sha256"])
         self.assertIn(
             {
@@ -160,6 +160,28 @@ class FoundationImagesTests(unittest.TestCase):
             },
             prometheus["patches"],
         )
+        x_text_sha256 = (
+            "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"
+        )
+        self.assertIn(
+            {
+                "filename": "x-text-0.39.0.tar.gz",
+                "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0",
+                "sha256": x_text_sha256,
+                "context": True,
+            },
+            prometheus["inputs"],
+        )
+        self.assertIn(
+            {
+                "finding": "CVE-2026-56852",
+                "artifact": "golang.org/x/text",
+                "from_version": "v0.38.0",
+                "to_version": "0.39.0",
+                "sha256": x_text_sha256,
+            },
+            prometheus["patches"],
+        )
         dockerfile = (MANIFEST.parent / prometheus["dockerfile"]).read_text(
             encoding="utf-8",
         )
@@ -174,8 +196,52 @@ class FoundationImagesTests(unittest.TestCase):
             dockerfile,
         )
         self.assertIn("go list -mod=vendor -m google.golang.org/grpc", dockerfile)
+        self.assertIn("go list -mod=vendor -m golang.org/x/text", dockerfile)
         self.assertEqual(2, dockerfile.count("go build -mod=vendor"))
         self.assertIn('io.dcim.remediation.grpc-go="1.82.1"', dockerfile)
+        self.assertIn('io.dcim.remediation.x-text="0.39.0"', dockerfile)
+        self.assertIn('io.dcim.recipe.revision="3"', dockerfile)
+
+    def test_postgres_exporter_recipe_remediates_fixable_x_text_high(self) -> None:
+        repository_manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        exporter = next(
+            item for item in repository_manifest["recipes"]
+            if item["component"] == "postgres-exporter"
+        )
+        x_text_sha256 = (
+            "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"
+        )
+        self.assertEqual("0.20.1-r2", exporter["output_tag"])
+        self.assertIn(
+            {
+                "filename": "x-text-0.39.0.tar.gz",
+                "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0",
+                "sha256": x_text_sha256,
+                "context": True,
+            },
+            exporter["inputs"],
+        )
+        self.assertIn(
+            {
+                "finding": "CVE-2026-56852",
+                "artifact": "golang.org/x/text",
+                "from_version": "v0.38.0",
+                "to_version": "0.39.0",
+                "sha256": x_text_sha256,
+            },
+            exporter["patches"],
+        )
+        dockerfile = (MANIFEST.parent / exporter["dockerfile"]).read_text(
+            encoding="utf-8",
+        )
+        self.assertIn("ARG X_TEXT_ARCHIVE=\"x-text-0.39.0.tar.gz\"", dockerfile)
+        self.assertIn(
+            "replace golang.org/x/text => /src/x-text",
+            dockerfile,
+        )
+        self.assertIn("go mod edit -require=golang.org/x/text@v0.39.0", dockerfile)
+        self.assertIn('io.dcim.remediation.x-text="0.39.0"', dockerfile)
+        self.assertIn('io.dcim.recipe.revision="2"', dockerfile)
 
     def test_grafana_recipe_remediates_fixable_grpc_high(self) -> None:
         repository_manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -186,7 +252,7 @@ class FoundationImagesTests(unittest.TestCase):
         expected_sha256 = (
             "50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"
         )
-        self.assertEqual("13.1.0-r4", grafana["output_tag"])
+        self.assertEqual("13.1.0-r5", grafana["output_tag"])
         self.assertIn(
             {
                 "filename": "grpc-go-ebd8f06.tar.gz",
@@ -209,6 +275,53 @@ class FoundationImagesTests(unittest.TestCase):
             },
             grafana["patches"],
         )
+        kin_openapi_sha256 = (
+            "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
+        )
+        self.assertIn(
+            {
+                "filename": "kin-openapi-f0407d5.tar.gz",
+                "url": (
+                    "https://codeload.github.com/getkin/kin-openapi/tar.gz/"
+                    "f0407d53b0730280266f454b755010e7eeb985da"
+                ),
+                "sha256": kin_openapi_sha256,
+                "context": True,
+            },
+            grafana["inputs"],
+        )
+        self.assertIn(
+            {
+                "finding": "GHSA-r277-6w6q-xmqw",
+                "artifact": "github.com/getkin/kin-openapi",
+                "from_version": "v0.140.0",
+                "to_version": "0.144.0",
+                "sha256": kin_openapi_sha256,
+            },
+            grafana["patches"],
+        )
+        x_text_sha256 = (
+            "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"
+        )
+        self.assertIn(
+            {
+                "filename": "x-text-0.39.0.tar.gz",
+                "url": "https://codeload.github.com/golang/text/tar.gz/v0.39.0",
+                "sha256": x_text_sha256,
+                "context": True,
+            },
+            grafana["inputs"],
+        )
+        self.assertIn(
+            {
+                "finding": "CVE-2026-56852",
+                "artifact": "golang.org/x/text",
+                "from_version": "v0.37.0",
+                "to_version": "v0.39.0",
+                "sha256": x_text_sha256,
+            },
+            grafana["patches"],
+        )
         dockerfile = (MANIFEST.parent / grafana["dockerfile"]).read_text(
             encoding="utf-8",
         )
@@ -227,62 +340,22 @@ class FoundationImagesTests(unittest.TestCase):
             dockerfile,
         )
         self.assertIn(
-            "go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc github.com/getkin/kin-openapi",
+            "go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc",
             dockerfile,
         )
         self.assertEqual(1, dockerfile.count("go build -mod=vendor"))
         self.assertIn('io.dcim.remediation.grpc-go="1.82.1"', dockerfile)
-
-    def test_grafana_recipe_remediates_critical_kin_openapi(self) -> None:
-        repository_manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        grafana = next(
-            item for item in repository_manifest["recipes"]
-            if item["component"] == "grafana"
-        )
-        expected_sha256 = (
-            "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
-        )
-        self.assertIn(
-            {
-                "filename": "kin-openapi-f0407d5.tar.gz",
-                "url": (
-                    "https://codeload.github.com/getkin/kin-openapi/tar.gz/"
-                    "f0407d53b0730280266f454b755010e7eeb985da"
-                ),
-                "sha256": expected_sha256,
-                "context": True,
-            },
-            grafana["inputs"],
-        )
-        self.assertIn(
-            {
-                "finding": "GHSA-r277-6w6q-xmqw",
-                "artifact": "github.com/getkin/kin-openapi",
-                "from_version": "v0.140.0",
-                "to_version": "0.144.0",
-                "sha256": expected_sha256,
-            },
-            grafana["patches"],
-        )
-        dockerfile = (MANIFEST.parent / grafana["dockerfile"]).read_text(
-            encoding="utf-8",
-        )
-        self.assertIn(
-            "ARG KINOPENAPI_ARCHIVE=\"kin-openapi-f0407d5.tar.gz\"", dockerfile,
-        )
-        self.assertIn(
-            "replace github.com/getkin/kin-openapi => /src/kin-openapi",
-            dockerfile,
-        )
         self.assertIn(
             "go mod edit -dropreplace=github.com/getkin/kin-openapi",
             dockerfile,
         )
+        self.assertIn('io.dcim.remediation.kin-openapi="0.144.0"', dockerfile)
         self.assertIn(
-            "grep -Fx '# github.com/getkin/kin-openapi v0.144.0' vendor/modules.txt",
+            "go mod edit -dropreplace=golang.org/x/text",
             dockerfile,
         )
-        self.assertIn('io.dcim.remediation.kin-openapi="0.144.0"', dockerfile)
+        self.assertIn('io.dcim.remediation.x-text="0.39.0"', dockerfile)
+        self.assertIn('io.dcim.recipe.revision="5"', dockerfile)
 
     def test_kafka_recipe_remediates_fixable_jackson_core_high(self) -> None:
         repository_manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
