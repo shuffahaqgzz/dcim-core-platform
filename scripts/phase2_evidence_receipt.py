@@ -379,7 +379,7 @@ class SubjectState:
 def _git_output(subject_dir: Path, arguments: list[str]) -> str:
     try:
         result = subprocess.run(
-            ["git", "-C", str(subject_dir), *arguments],
+            ["git", "-C", str(subject_dir), f"--work-tree={subject_dir}", *arguments],
             capture_output=True,
             text=True,
             timeout=30,

@@ -638,6 +638,7 @@ class Phase2EvidenceReceiptTests(unittest.TestCase):
             self.assertIsNone(observation)
 
     def test_generate_without_approved_attestation_fails_closed(self) -> None:
+        """Regression: Git subject capture must not preempt this fail-closed attestation result."""
         with tempfile.TemporaryDirectory() as directory:
             plan_path = Path(directory) / "plan.md"
             plan_path.write_bytes(self.plan_bytes)
