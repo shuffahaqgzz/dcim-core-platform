@@ -14,17 +14,17 @@ ARG TEMPO_SHA256="6159f130af77216215137a1033e3f573cc83e7aba69a19d618b521b7ab41d8
 ARG TEMPO_DIRECTORY="tempo-4aeafc237b8d9a8d62e45735131e8a89eb741a00"
 ARG GRPC_ARCHIVE="grpc-go-ebd8f06.tar.gz"
 ARG GRPC_SHA256="50947ea17daeccbfcc031e7d7b93dd3293da79ed0573352d8ea3d324c8326582"
-ARG KINOPENAPI_ARCHIVE="kin-openapi-f0407d5.tar.gz"
-ARG KINOPENAPI_SHA256="80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
+ARG KIN_OPENAPI_ARCHIVE="kin-openapi-f0407d5.tar.gz"
+ARG KIN_OPENAPI_SHA256="80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
 
 COPY ${GRAFANA_ARCHIVE} /tmp/grafana.tar.gz
 COPY ${TEMPO_ARCHIVE} /tmp/tempo.tar.gz
 COPY ${GRPC_ARCHIVE} /tmp/grpc-go.tar.gz
-COPY ${KINOPENAPI_ARCHIVE} /tmp/kin-openapi.tar.gz
+COPY ${KIN_OPENAPI_ARCHIVE} /tmp/kin-openapi.tar.gz
 RUN echo "${GRAFANA_SHA256}  /tmp/grafana.tar.gz" | sha256sum -c - \
     && echo "${TEMPO_SHA256}  /tmp/tempo.tar.gz" | sha256sum -c - \
     && echo "${GRPC_SHA256}  /tmp/grpc-go.tar.gz" | sha256sum -c - \
-    && echo "${KINOPENAPI_SHA256}  /tmp/kin-openapi.tar.gz" | sha256sum -c - \
+    && echo "${KIN_OPENAPI_SHA256}  /tmp/kin-openapi.tar.gz" | sha256sum -c - \
     && mkdir -p /src/grafana /src/tempo /src/grpc-go /src/kin-openapi \
     && tar -xzf /tmp/grafana.tar.gz -C /src/grafana --strip-components=1 \
     && tar -xzf /tmp/tempo.tar.gz -C /src/tempo --strip-components=1 \

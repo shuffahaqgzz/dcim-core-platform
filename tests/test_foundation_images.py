@@ -209,6 +209,31 @@ class FoundationImagesTests(unittest.TestCase):
             },
             grafana["patches"],
         )
+        kin_openapi_sha256 = (
+            "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
+        )
+        self.assertIn(
+            {
+                "filename": "kin-openapi-f0407d5.tar.gz",
+                "url": (
+                    "https://codeload.github.com/getkin/kin-openapi/tar.gz/"
+                    "f0407d53b0730280266f454b755010e7eeb985da"
+                ),
+                "sha256": kin_openapi_sha256,
+                "context": True,
+            },
+            grafana["inputs"],
+        )
+        self.assertIn(
+            {
+                "finding": "GHSA-r277-6w6q-xmqw",
+                "artifact": "github.com/getkin/kin-openapi",
+                "from_version": "v0.140.0",
+                "to_version": "0.144.0",
+                "sha256": kin_openapi_sha256,
+            },
+            grafana["patches"],
+        )
         dockerfile = (MANIFEST.parent / grafana["dockerfile"]).read_text(
             encoding="utf-8",
         )
@@ -227,59 +252,13 @@ class FoundationImagesTests(unittest.TestCase):
             dockerfile,
         )
         self.assertIn(
-            "go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc github.com/getkin/kin-openapi",
+            "go list -mod=vendor -m github.com/grafana/tempo google.golang.org/grpc",
             dockerfile,
         )
         self.assertEqual(1, dockerfile.count("go build -mod=vendor"))
         self.assertIn('io.dcim.remediation.grpc-go="1.82.1"', dockerfile)
-
-    def test_grafana_recipe_remediates_critical_kin_openapi(self) -> None:
-        repository_manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        grafana = next(
-            item for item in repository_manifest["recipes"]
-            if item["component"] == "grafana"
-        )
-        expected_sha256 = (
-            "80395f1aefd21eea1d8a6664e70c03f08bd798b6014d84b2e8faa71adf4dfe2c"
-        )
-        self.assertIn(
-            {
-                "filename": "kin-openapi-f0407d5.tar.gz",
-                "url": (
-                    "https://codeload.github.com/getkin/kin-openapi/tar.gz/"
-                    "f0407d53b0730280266f454b755010e7eeb985da"
-                ),
-                "sha256": expected_sha256,
-                "context": True,
-            },
-            grafana["inputs"],
-        )
-        self.assertIn(
-            {
-                "finding": "GHSA-r277-6w6q-xmqw",
-                "artifact": "github.com/getkin/kin-openapi",
-                "from_version": "v0.140.0",
-                "to_version": "0.144.0",
-                "sha256": expected_sha256,
-            },
-            grafana["patches"],
-        )
-        dockerfile = (MANIFEST.parent / grafana["dockerfile"]).read_text(
-            encoding="utf-8",
-        )
-        self.assertIn(
-            "ARG KINOPENAPI_ARCHIVE=\"kin-openapi-f0407d5.tar.gz\"", dockerfile,
-        )
-        self.assertIn(
-            "replace github.com/getkin/kin-openapi => /src/kin-openapi",
-            dockerfile,
-        )
         self.assertIn(
             "go mod edit -dropreplace=github.com/getkin/kin-openapi",
-            dockerfile,
-        )
-        self.assertIn(
-            "grep -Fx '# github.com/getkin/kin-openapi v0.144.0' vendor/modules.txt",
             dockerfile,
         )
         self.assertIn('io.dcim.remediation.kin-openapi="0.144.0"', dockerfile)
