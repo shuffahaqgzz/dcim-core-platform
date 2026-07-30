@@ -1,0 +1,239 @@
+{
+  "$id": "https://shuffahaqgzz.github.io/dcim-core-platform/schemas/phase2-evidence-receipt.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "requirement_id",
+    "launcher_nonce",
+    "receipt_id",
+    "attempt_epoch_id",
+    "base_sha",
+    "subject_commit_sha",
+    "subject_tree_sha",
+    "subject_parent_shas",
+    "plan_sha256",
+    "authority_block_sha256",
+    "oracle_contract_sha256",
+    "executor_material_sha256",
+    "toolchain_identity_sha256",
+    "argv",
+    "argv_sha256",
+    "environment_allowlist_sha256",
+    "started_at_utc",
+    "finished_at_utc",
+    "duration_monotonic_ms",
+    "timeout_ms",
+    "process_outcome",
+    "exit_code",
+    "signal",
+    "spawn_error_class",
+    "stdout_bytes",
+    "stdout_sha256",
+    "stderr_bytes",
+    "stderr_sha256",
+    "runtime_binding_digest",
+    "pass_marker_observations",
+    "no_go_marker_observations",
+    "artifact_sha256",
+    "computed_disposition",
+    "branch_ref_before",
+    "branch_ref_after",
+    "dirty_state_before_sha256",
+    "dirty_state_after_sha256"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "requirement_id": {
+      "type": "string",
+      "enum": [
+        "AUTHORITY_BOOTSTRAP",
+        "RECONCILIATION_SCOPE",
+        "LOCAL_PHASE0",
+        "LOCAL_PHASE2",
+        "LOCAL_PHASE1_FOCUSED",
+        "LOCAL_RECEIPT_TESTS",
+        "LOCAL_PUBLIC_SAFETY",
+        "LOCAL_MARKDOWN_LINKS",
+        "LOCAL_GATE_AGGREGATE",
+        "FOUNDATION_PREFLIGHT",
+        "F3_QUALIFICATION",
+        "PYTHON_CAUSAL_COVERAGE",
+        "REVIEW_F1",
+        "REVIEW_F2",
+        "REVIEW_F3",
+        "REVIEW_F4",
+        "REVIEW_F5",
+        "REVIEW_JOIN",
+        "FINAL_HANDOFF"
+      ]
+    },
+    "launcher_nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32,}$"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32,}$"
+    },
+    "attempt_epoch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "subject_commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "subject_tree_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "subject_parent_shas": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}$"
+      }
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_block_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "oracle_contract_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "executor_material_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "toolchain_identity_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "argv_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "environment_allowlist_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "started_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_monotonic_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "process_outcome": {
+      "type": "string",
+      "enum": ["exited", "signaled", "timed_out", "spawn_error"]
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "signal": {
+      "type": ["integer", "null"]
+    },
+    "spawn_error_class": {
+      "type": ["string", "null"]
+    },
+    "stdout_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "stdout_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stderr_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "stderr_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "runtime_binding_digest": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pass_marker_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["marker", "channel", "line"],
+        "additionalProperties": false,
+        "properties": {
+          "marker": {"type": "string"},
+          "channel": {"type": "string", "enum": ["stdout", "stderr"]},
+          "line": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "no_go_marker_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["marker", "channel", "line"],
+        "additionalProperties": false,
+        "properties": {
+          "marker": {"type": "string"},
+          "channel": {"type": "string", "enum": ["stdout", "stderr"]},
+          "line": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "computed_disposition": {
+      "type": "string",
+      "enum": ["LOCAL_PASS", "NO-GO_PLAN_AUTHORITY", "NO-GO_TOCTOU", "NO-GO_TOOLCHAIN_IDENTITY", "NO-GO_RECEIPT_PROVENANCE", "NO-GO_PROCESS_OUTCOME", "NO-GO_HEAD_DRIFT", "NO-GO_SCOPE_AUTHORITY", "NO-GO_TRACKED_FIXED_POINT", "NO-GO_LEGACY_EVIDENCE", "NO-GO_TEST_CAUSALITY", "NO-GO_F3_INCOMPLETE_BINDING", "NO-GO_DOCKER_REQUIRED_FOR_HANDOFF", "NO-GO_F3_CLEANUP", "NO-GO_REVIEW_PROVENANCE", "NO-GO_OWNER_BOUNDARY"]
+    },
+    "branch_ref_before": {
+      "type": ["string", "null"]
+    },
+    "branch_ref_after": {
+      "type": ["string", "null"]
+    },
+    "dirty_state_before_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "dirty_state_after_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
