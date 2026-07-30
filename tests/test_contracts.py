@@ -38,6 +38,18 @@ class ContractTests(unittest.TestCase):
         event["occurred_at"] = "2026-07-16T07:00:00+07:00"
         self.assertTrue(any("occurred_at" in error for error in self.validate(event)))
 
+    def test_duplicate_validation_status_is_valid(self) -> None:
+        event = deepcopy(self.fixture)
+        event["enrichment"]["validation_status"] = "duplicate"
+        self.assertEqual([], self.validate(event))
+
+    def test_unknown_validation_status_is_rejected(self) -> None:
+        event = deepcopy(self.fixture)
+        event["enrichment"]["validation_status"] = "bogus"
+        self.assertTrue(
+            any("invalid validation_status" in error for error in self.validate(event))
+        )
+
     def test_ip_is_not_used_as_identity(self) -> None:
         enrichment = self.fixture["enrichment"]
         self.assertNotRegex(enrichment["asset_identity"], r"^(?:\d{1,3}\.){3}\d{1,3}$")

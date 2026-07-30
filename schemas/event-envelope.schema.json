@@ -105,7 +105,8 @@
           "type": "string",
           "enum": [
             "accepted",
-            "quarantined"
+            "quarantined",
+            "duplicate"
           ]
         },
         "lineage": {

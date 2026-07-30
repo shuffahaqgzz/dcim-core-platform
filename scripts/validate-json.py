@@ -71,7 +71,11 @@ def validate_event(data: object, path: Path, required: set[str], errors: list[st
     enrichment = data.get("enrichment")
     require(isinstance(enrichment, dict), f"{rel}: enrichment must be an object", errors)
     if isinstance(enrichment, dict):
-        require(enrichment.get("validation_status") in {"accepted", "quarantined"}, f"{rel}: invalid validation_status", errors)
+        require(
+            enrichment.get("validation_status") in {"accepted", "quarantined", "duplicate"},
+            f"{rel}: invalid validation_status",
+            errors,
+        )
         lineage = enrichment.get("lineage")
         require(isinstance(lineage, list) and len(lineage) > 0, f"{rel}: lineage must be non-empty", errors)
         if isinstance(lineage, list):
