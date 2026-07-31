@@ -11,7 +11,7 @@ from typing import Literal
 import unittest
 
 from contracts.python.dcim_contracts.disposition import JsonObject
-from scripts.phase2.errors import SilentLossError
+from scripts.phase2.errors import DispositionImbalanceError
 from scripts.phase2.ledger import DispositionLedger
 from scripts.phase2.validate import DispositionEngine
 
@@ -82,7 +82,7 @@ class Phase2DispositionEngineTests(unittest.TestCase):
         self.engine = DispositionEngine(store=self.store, ledger=self.ledger)
 
     def assert_balanced(self, expected: dict[str, int]) -> None:
-        self.ledger.assert_zero_silent_loss()
+        self.ledger.assert_balanced()
         self.assertEqual(expected, self.ledger.to_json())
 
     def test_six_fixtures_then_replay_balances_ledger(self) -> None:
@@ -282,8 +282,8 @@ class Phase2DispositionEngineTests(unittest.TestCase):
             {"received": 1, "accepted": 0, "quarantined": 0, "duplicate": 0},
             ledger.to_json(),
         )
-        with self.assertRaises(SilentLossError):
-            ledger.assert_zero_silent_loss()
+        with self.assertRaises(DispositionImbalanceError):
+            ledger.assert_balanced()
 
     def test_golden_hashes_in_fresh_python_process(self) -> None:
         # Given: six pinned vectors and a fresh interpreter command.
