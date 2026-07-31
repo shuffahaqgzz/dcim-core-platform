@@ -61,9 +61,10 @@ from scripts.phase2.validate import DispositionEngine  # noqa: E402
 
 
 DURABILITY_GUARANTEE: Final = (
-    "durable per input from the moment its claim transaction begins; "
-    "pre-transaction loss is detectable via manifest source_count vs "
-    "persisted disposition count"
+    "durable per input from the moment its disposition transaction is "
+    "acknowledged; loss before that point is detectable by reconciling "
+    "manifest source_count against persisted dispositions per execution "
+    "(scripts/phase2/reconcile.py)"
 )
 
 

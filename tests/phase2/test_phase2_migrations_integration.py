@@ -120,6 +120,13 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         self.assertEqual(0, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, inventory)
 
+    def test_verify_when_schema_is_fully_migrated_passes(self) -> None:
+        # Given / When
+        inventory = migrate.verify()
+
+        # Then
+        self.assertEqual(migrate.EXPECTED_TABLES, inventory)
+
     def test_schema_when_introspected_has_exact_columns(self) -> None:
         # Given / When
         rows = db.query_json(

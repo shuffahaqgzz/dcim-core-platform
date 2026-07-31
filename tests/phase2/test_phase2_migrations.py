@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts.phase2 import db, migrate
-from scripts.phase2.identity_sql import literal
+from scripts.phase2.db import literal
 from scripts.phase2.migrations import m0001_phase2_core
 
 
@@ -205,6 +205,97 @@ class DatabaseCommandTests(unittest.TestCase):
 
 
 class MigrationSqlTests(unittest.TestCase):
+    @staticmethod
+    def _verified_schema_rows() -> list[list[dict[str, object]]]:
+        return [
+            [{"table_name": name} for name in sorted(migrate.EXPECTED_TABLES)],
+            [
+                {
+                    "table_name": "dispositions",
+                    "column_name": "execution_sequence",
+                    "data_type": "bigint",
+                    "is_nullable": "NO",
+                },
+                {
+                    "table_name": "dispositions",
+                    "column_name": "input_ordinal",
+                    "data_type": "integer",
+                    "is_nullable": "NO",
+                },
+                {
+                    "table_name": "run_manifests",
+                    "column_name": "last_execution_sequence",
+                    "data_type": "bigint",
+                    "is_nullable": "NO",
+                },
+            ],
+            [
+                {
+                    "table_name": "dispositions",
+                    "constraint_name": "dispositions_execution_input_unique",
+                    "constraint_type": "UNIQUE",
+                    "columns": ["run_id", "execution_sequence", "input_ordinal"],
+                },
+                {
+                    "table_name": "dispositions",
+                    "constraint_name": "dispositions_execution_sequence_nonnegative",
+                    "constraint_type": "CHECK",
+                    "columns": [],
+                },
+                {
+                    "table_name": "dispositions",
+                    "constraint_name": "dispositions_input_ordinal_nonnegative",
+                    "constraint_type": "CHECK",
+                    "columns": [],
+                },
+                {
+                    "table_name": "run_manifests",
+                    "constraint_name": "run_manifests_execution_sequence_nonnegative",
+                    "constraint_type": "CHECK",
+                    "columns": [],
+                },
+            ],
+        ]
+
+    def test_verify_when_required_column_is_missing_names_column(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[1] = rows[1][1:]
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "execution_sequence"),
+        ):
+            migrate.verify()
+
+    def test_verify_when_required_column_type_is_wrong_names_column(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[1][0]["data_type"] = "integer"
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "execution_sequence.*data type"),
+        ):
+            migrate.verify()
+
+    def test_verify_when_required_column_is_nullable_names_column(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[1][1]["is_nullable"] = "YES"
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "input_ordinal.*NOT NULL"),
+        ):
+            migrate.verify()
+
+    def test_verify_when_named_constraint_is_missing_names_constraint(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[2] = rows[2][1:]
+        with (
+            patch.object(migrate, "query_json", side_effect=rows) as query_json,
+            self.assertRaisesRegex(
+                migrate.MigrationError, "dispositions_execution_input_unique"
+            ),
+        ):
+            migrate.verify()
+        self.assertIn("ORDER BY", query_json.call_args_list[2].args[0])
+
     def test_migration_id_when_rendered_is_quoted_at_every_sql_boundary(self) -> None:
         # Given
         migration_id = "m0001'; DROP TABLE phase2.events; --"

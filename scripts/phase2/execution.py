@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import TypedDict
 
 from . import db
+from .db import JsonObject, literal
 from .errors import ManifestDriftError, Phase2Error
-from .identity_sql import JsonObject, literal
 from .manifest import RunManifest
 
 

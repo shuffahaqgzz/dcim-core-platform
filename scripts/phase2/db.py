@@ -15,6 +15,8 @@ from scripts.protected_runtime import (
     validate_compose_project_name,
 )
 
+from .errors import SqlRenderError
+
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -188,6 +190,19 @@ def psql_file(path: Path, database: str = DEFAULT_DATABASE) -> str:
     except OSError as error:
         raise DatabaseCommandError(f"SQL input file is unavailable: {path.name}") from error
     return psql(sql, database)
+
+
+def literal(value: str) -> str:
+    """Quote one text value as a PostgreSQL string literal.
+
+    Lives here, not in identity_sql, so that migrations and execution
+    bookkeeping can quote SQL text without importing the Pydantic-backed
+    contracts package. Keeping this module dependency-free is what lets
+    `python3 scripts/phase2/migrate.py` run under the zero-dependency gate.
+    """
+    if "\x00" in value:
+        raise SqlRenderError("PostgreSQL text cannot contain NUL")
+    return "'" + value.replace("'", "''") + "'"
 
 
 def parse_json_rows(output: str) -> list[JsonObject]:

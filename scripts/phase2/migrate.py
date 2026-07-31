@@ -29,10 +29,10 @@ if str(ROOT) not in sys.path:
 from scripts.phase2.db import (  # noqa: E402
     DatabaseCommandError,
     JsonExtractionError,
+    literal,
     psql,
     query_json,
 )
-from scripts.phase2.identity_sql import literal  # noqa: E402
 from scripts.phase2.migrations import (  # noqa: E402
     m0001_phase2_core,
     m0002_execution_reconciliation,
@@ -48,6 +48,32 @@ EXPECTED_TABLES: Final = (
     "cis",
     "aliases",
     "noc_cards",
+)
+EXPECTED_M0002_COLUMNS: Final = (
+    ("dispositions", "execution_sequence", "bigint", "NO"),
+    ("dispositions", "input_ordinal", "integer", "NO"),
+    ("run_manifests", "last_execution_sequence", "bigint", "NO"),
+)
+EXPECTED_M0002_CONSTRAINTS: Final = (
+    (
+        "dispositions",
+        "dispositions_execution_input_unique",
+        "UNIQUE",
+        ("run_id", "execution_sequence", "input_ordinal"),
+    ),
+    (
+        "dispositions",
+        "dispositions_execution_sequence_nonnegative",
+        "CHECK",
+        (),
+    ),
+    ("dispositions", "dispositions_input_ordinal_nonnegative", "CHECK", ()),
+    (
+        "run_manifests",
+        "run_manifests_execution_sequence_nonnegative",
+        "CHECK",
+        (),
+    ),
 )
 MIGRATION_ID: Final = m0001_phase2_core.MIGRATION_ID
 LATEST_MIGRATION_ID: Final = m0002_execution_reconciliation.MIGRATION_ID
@@ -143,7 +169,7 @@ def rollback(migration_id: str) -> None:
 
 
 def verify() -> tuple[str, ...]:
-    """Assert and return the exact Phase 2 table inventory."""
+    """Assert the Phase 2 schema contract and return its table inventory."""
     rows = query_json(
         """
 SELECT json_build_object('table_name', table_name)::text
@@ -165,6 +191,89 @@ ORDER BY table_name;
     expected = tuple(sorted(EXPECTED_TABLES))
     if actual != expected:
         raise MigrationError("Phase 2 table inventory mismatch")
+
+    column_names = ", ".join(
+        literal(column_name) for _, column_name, _, _ in EXPECTED_M0002_COLUMNS
+    )
+    column_rows = query_json(
+        f"""
+SELECT json_build_object(
+    'table_name', table_name,
+    'column_name', column_name,
+    'data_type', data_type,
+    'is_nullable', is_nullable
+)::text
+FROM information_schema.columns
+WHERE table_schema = 'phase2'
+  AND column_name IN ({column_names})
+ORDER BY table_name, column_name;
+"""
+    )
+    columns_by_name = {
+        (row.get("table_name"), row.get("column_name")): row for row in column_rows
+    }
+    for table_name, column_name, data_type, is_nullable in EXPECTED_M0002_COLUMNS:
+        row = columns_by_name.get((table_name, column_name))
+        qualified_name = f"phase2.{table_name}.{column_name}"
+        if row is None:
+            raise MigrationError(f"required column {qualified_name} is missing")
+        if row.get("data_type") != data_type:
+            raise MigrationError(
+                f"required column {qualified_name} has wrong data type; "
+                f"expected {data_type}"
+            )
+        if row.get("is_nullable") != is_nullable:
+            raise MigrationError(f"required column {qualified_name} must be NOT NULL")
+
+    constraint_names = ", ".join(
+        literal(constraint_name)
+        for _, constraint_name, _, _ in EXPECTED_M0002_CONSTRAINTS
+    )
+    constraint_rows = query_json(
+        f"""
+SELECT json_build_object(
+    'table_name', constraint_item.table_name,
+    'constraint_name', constraint_item.constraint_name,
+    'constraint_type', constraint_item.constraint_type,
+    'columns', COALESCE(
+        json_agg(column_item.column_name ORDER BY column_item.ordinal_position)
+            FILTER (WHERE column_item.column_name IS NOT NULL),
+        '[]'::json
+    )
+)::text
+FROM information_schema.table_constraints AS constraint_item
+LEFT JOIN information_schema.key_column_usage AS column_item
+  ON column_item.constraint_schema = constraint_item.constraint_schema
+ AND column_item.constraint_name = constraint_item.constraint_name
+ AND column_item.table_schema = constraint_item.table_schema
+ AND column_item.table_name = constraint_item.table_name
+WHERE constraint_item.table_schema = 'phase2'
+  AND constraint_item.constraint_name IN ({constraint_names})
+GROUP BY constraint_item.table_name, constraint_item.constraint_name,
+    constraint_item.constraint_type
+ORDER BY constraint_item.table_name, constraint_item.constraint_name;
+"""
+    )
+    constraints_by_name = {
+        (row.get("table_name"), row.get("constraint_name")): row
+        for row in constraint_rows
+    }
+    for table_name, constraint_name, constraint_type, columns in (
+        EXPECTED_M0002_CONSTRAINTS
+    ):
+        row = constraints_by_name.get((table_name, constraint_name))
+        if row is None:
+            raise MigrationError(f"required constraint {constraint_name} is missing")
+        if row.get("constraint_type") != constraint_type:
+            raise MigrationError(
+                f"required constraint {constraint_name} has wrong type; "
+                f"expected {constraint_type}"
+            )
+        if row.get("columns") != list(columns):
+            raise MigrationError(
+                f"required constraint {constraint_name} covers wrong columns; "
+                f"expected {', '.join(columns)}"
+            )
     return EXPECTED_TABLES
 
 

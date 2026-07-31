@@ -9,7 +9,8 @@ from typing import TypeAlias
 
 from contracts.python.dcim_contracts.disposition import JsonValue
 
-from .errors import Phase2Error
+from .db import literal
+from .errors import SqlRenderError
 from .identity import (
     derive_asset_id,
     derive_ci_id,
@@ -20,9 +21,17 @@ from .identity import (
 
 JsonObject: TypeAlias = dict[str, JsonValue]
 
-
-class SqlRenderError(Phase2Error):
-    """Validated persistence data cannot be represented safely as SQL."""
+__all__ = (
+    "IdentityOmitted",
+    "IdentityPreparation",
+    "IdentityRejected",
+    "JsonObject",
+    "literal",
+    "PreparedIdentity",
+    "prepare_identity",
+    "render_identity_dml",
+    "SqlRenderError",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,12 +59,6 @@ class IdentityRejected:
 
 
 type IdentityPreparation = PreparedIdentity | IdentityOmitted | IdentityRejected
-
-
-def literal(value: str) -> str:
-    if "\x00" in value:
-        raise SqlRenderError("PostgreSQL text cannot contain NUL")
-    return "'" + value.replace("'", "''") + "'"
 
 
 def json_literal(value: JsonObject) -> str:

@@ -15,3 +15,7 @@ class DispositionImbalanceError(Phase2Error):
 
 class KillSwitchEngaged(Phase2Error):
     """Raised when a Phase 2 source kill switch is engaged."""
+
+
+class SqlRenderError(Phase2Error):
+    """Raised when validated data cannot be represented safely as SQL."""
