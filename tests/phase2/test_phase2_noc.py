@@ -135,13 +135,15 @@ COMMIT;
             f"""
 BEGIN;
 INSERT INTO phase2.run_manifests
-    (run_id, fixed_clock, source_count, manifest_sha256, created_at)
+    (run_id, fixed_clock, source_count, manifest_sha256, created_at,
+     last_execution_sequence)
 VALUES ({_literal(self.run_id)}, {_literal(CLOCK)}::timestamptz, 2,
-    'synthetic-manifest', {_literal(CLOCK)}::timestamptz);
+    'synthetic-manifest', {_literal(CLOCK)}::timestamptz, 4);
 INSERT INTO phase2.run_manifests
-    (run_id, fixed_clock, source_count, manifest_sha256, created_at)
+    (run_id, fixed_clock, source_count, manifest_sha256, created_at,
+     last_execution_sequence)
 VALUES ({_literal(self.cross_run_id)}, {_literal(CLOCK)}::timestamptz, 0,
-    'synthetic-other-manifest', {_literal(CLOCK)}::timestamptz);
+    'synthetic-other-manifest', {_literal(CLOCK)}::timestamptz, 1);
 INSERT INTO phase2.assets
     (asset_id, identity, asset_type, created_at, updated_at)
 VALUES ({_literal(self.asset_id)}::uuid, {_json_literal(identity)},
@@ -159,14 +161,21 @@ VALUES
     ({_literal(self.event_ids[1])}::uuid, {_literal(self.run_id)}, {_json_literal(second)},
         'synthetic-second', {_literal(CLOCK)}::timestamptz);
 INSERT INTO phase2.dispositions
-    (event_id, run_id, status, reason, lineage, decided_at)
+    (event_id, run_id, execution_sequence, input_ordinal,
+     status, reason, lineage, decided_at)
 VALUES
-    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 'accepted', NULL, '{{}}', {_literal(CLOCK)}),
-    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 'duplicate', NULL, '{{}}', {_literal(CLOCK)}),
-    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 'duplicate', NULL, '{{}}', {_literal(CLOCK)}),
-    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 'quarantined', 'synthetic', '{{}}', {_literal(CLOCK)}),
-    ({_literal(self.event_ids[1])}::uuid, {_literal(self.run_id)}, 'accepted', NULL, '{{}}', {_literal(CLOCK)}),
-    ({_literal(self.event_ids[0])}::uuid, {_literal(self.cross_run_id)}, 'duplicate', NULL, '{{}}', {_literal(CLOCK)});
+    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 1, 0,
+        'accepted', NULL, '{{}}', {_literal(CLOCK)}),
+    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 2, 0,
+        'duplicate', NULL, '{{}}', {_literal(CLOCK)}),
+    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 3, 0,
+        'duplicate', NULL, '{{}}', {_literal(CLOCK)}),
+    ({_literal(self.event_ids[0])}::uuid, {_literal(self.run_id)}, 4, 0,
+        'quarantined', 'synthetic', '{{}}', {_literal(CLOCK)}),
+    ({_literal(self.event_ids[1])}::uuid, {_literal(self.run_id)}, 1, 1,
+        'accepted', NULL, '{{}}', {_literal(CLOCK)}),
+    ({_literal(self.event_ids[0])}::uuid, {_literal(self.cross_run_id)}, 1, 0,
+        'duplicate', NULL, '{{}}', {_literal(CLOCK)});
 COMMIT;
 """
         )
@@ -271,7 +280,3 @@ class NocUnavailableTests(unittest.TestCase):
 
         self.assertEqual(1, result)
         self.assertEqual(before, after)
-
-
-if __name__ == "__main__":
-    unittest.main()

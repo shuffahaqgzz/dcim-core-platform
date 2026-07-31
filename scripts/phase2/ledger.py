@@ -1,10 +1,10 @@
-"""Disposition accounting that makes silent input loss fail closed."""
+"""In-memory disposition accounting for one process execution."""
 
 from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-from .errors import Phase2Error, SilentLossError
+from .errors import DispositionImbalanceError, Phase2Error
 
 
 DispositionStatus = Literal["received", "accepted", "quarantined", "duplicate"]
@@ -42,11 +42,13 @@ class DispositionLedger:
             case unreachable:
                 raise Phase2Error(f"unsupported disposition status: {unreachable}")
 
-    def assert_zero_silent_loss(self) -> None:
+    def assert_balanced(self) -> None:
         """Raise when received count does not equal accounted dispositions."""
         accounted = self.accepted + self.quarantined + self.duplicate
         if self.received != accounted:
-            raise SilentLossError("received inputs do not equal terminal dispositions")
+            raise DispositionImbalanceError(
+                "received inputs do not equal terminal dispositions"
+            )
 
     def to_json(self) -> LedgerJSON:
         """Return current ledger totals as JSON-compatible data."""

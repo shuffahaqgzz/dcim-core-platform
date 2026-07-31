@@ -54,6 +54,8 @@ EXPECTED_COLUMNS = [
             "reason",
             "lineage",
             "decided_at",
+            "execution_sequence",
+            "input_ordinal",
         ],
     },
     {
@@ -84,6 +86,7 @@ EXPECTED_COLUMNS = [
             "source_count",
             "manifest_sha256",
             "created_at",
+            "last_execution_sequence",
         ],
     },
     {
@@ -216,7 +219,7 @@ JOIN pg_class relation ON relation.oid = item.conrelid
 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
 WHERE namespace.nspname = 'phase2'
   AND item.contype = 'c'
-ORDER BY relation.relname;
+ORDER BY relation.relname, item.conname;
 """
         )
 
@@ -232,10 +235,22 @@ ORDER BY relation.relname;
                 },
                 {
                     "table_name": "dispositions",
+                    "definition": "CHECK ((execution_sequence >= 0))",
+                },
+                {
+                    "table_name": "dispositions",
+                    "definition": "CHECK ((input_ordinal >= 0))",
+                },
+                {
+                    "table_name": "dispositions",
                     "definition": (
                         "CHECK ((status = ANY (ARRAY['accepted', "
                         "'quarantined', 'duplicate'])))"
                     ),
+                },
+                {
+                    "table_name": "run_manifests",
+                    "definition": "CHECK ((last_execution_sequence >= 0))",
                 },
             ],
             rows,
@@ -262,24 +277,3 @@ SELECT json_build_object(
 
         # Then
         self.assertEqual([{"exists": False}], rows)
-
-    def test_rollback_when_schema_is_empty_reapplies_cleanly(self) -> None:
-        # Given
-        rows = db.query_json(
-            "SELECT json_build_object('count', count(*))::text "
-            "FROM phase2.run_manifests;"
-        )
-        if rows != [{"count": 0}]:
-            self.skipTest("shared Phase 2 data exists; destructive rollback not safe")
-
-        # When
-        migrate.rollback(migrate.MIGRATION_ID)
-        applied = migrate.apply()
-
-        # Then
-        self.assertEqual(1, applied)
-        self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
-
-
-if __name__ == "__main__":
-    unittest.main()

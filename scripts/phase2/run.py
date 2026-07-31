@@ -17,14 +17,10 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
-import hashlib
 import json
-import os
 from pathlib import Path
 import sys
-from typing import Final, Literal, override
+from typing import Final
 
 from pydantic import ValidationError
 
@@ -33,8 +29,6 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from connectors.redfish.adapter import RedfishFixtureAdapter  # noqa: E402
-from connectors.snmp.adapter import SNMPv3FixtureAdapter  # noqa: E402
 from contracts.python.dcim_contracts.disposition import JsonValue  # noqa: E402
 from scripts.phase2.db import (  # noqa: E402
     DatabaseCommandError,
@@ -42,128 +36,62 @@ from scripts.phase2.db import (  # noqa: E402
 )
 from scripts.phase2.errors import (  # noqa: E402
     KillSwitchEngaged,
-    ManifestDriftError,
     Phase2Error,
-    SilentLossError,
+)
+from scripts.phase2.execution import (  # noqa: E402
+    begin_execution,
+    reconcile_execution,
+    ReconciliationError,
 )
 from scripts.phase2.ledger import DispositionLedger  # noqa: E402
-from scripts.phase2.manifest import RunManifest, SourceSpec  # noqa: E402
 from scripts.phase2.persist import (  # noqa: E402
     IdentityQuarantined,
-    PersistenceContext,
     PersistenceError,
     PostgresClaimStore,
     QuarantineInput,
-    persist_manifest,
     persist_quarantine,
+)
+from scripts.phase2.runner_input import (  # noqa: E402
+    adapt_input,
+    build_manifest,
+    input_paths,
+    RunnerInputError,
 )
 from scripts.phase2.validate import DispositionEngine  # noqa: E402
 
 
-@dataclass(frozen=True, slots=True)
-class RunnerInputError(Phase2Error):
-    """A fixture input cannot cross the JSON boundary."""
-
-    error_type: Literal[
-        "fixtures_empty", "json_syntax_error", "json_root_not_object"
-    ]
-    detail: str
-
-    @override
-    def __str__(self) -> str:
-        return f"{self.error_type}: {self.detail}"
-
-
-def _manifest(run_id: str, fixtures_dir: Path, fixed_clock: str) -> RunManifest:
-    paths = tuple(sorted(fixtures_dir.glob("*.json")))
-    if not paths:
-        raise RunnerInputError(
-            error_type="fixtures_empty",
-            detail="fixtures directory contains no JSON inputs",
-        )
-    sources = tuple(
-        SourceSpec(
-            name=path.name,
-            fixture_path=str(path.resolve().relative_to(ROOT))
-            if path.resolve().is_relative_to(ROOT)
-            else path.name,
-            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-        )
-        for path in paths
-    )
-    return RunManifest(run_id=run_id, fixed_clock=fixed_clock, sources=sources)
-
-
-def _load_json(path: Path) -> dict[str, JsonValue]:
-    try:
-        candidate = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        raise RunnerInputError(
-            error_type="json_syntax_error",
-            detail="fixture is not valid JSON",
-        ) from error
-    if not isinstance(candidate, dict):
-        raise RunnerInputError(
-            error_type="json_root_not_object",
-            detail="fixture root must be a JSON object",
-        )
-    return candidate
-
-
-def _is_killed(fixtures_dir: Path) -> bool:
-    return os.environ.get("PHASE2_KILL_SWITCH") == "1" or (
-        fixtures_dir / ".phase2-stop"
-    ).exists()
-
-
-def _adapt(path: Path, fixtures_dir: Path, fixed_clock: str) -> Mapping[str, JsonValue]:
-    raw = _load_json(path)
-    source = raw.get("source")
-    connector = source.get("connector") if isinstance(source, dict) else None
-    stop_file = fixtures_dir / ".phase2-stop"
-    kill_flag = lambda: _is_killed(fixtures_dir)
-    if connector == "redfish-fixture":
-        return next(
-            iter(RedfishFixtureAdapter([path], fixed_clock, kill_flag, stop_file))
-        )
-    if connector == "snmpv3-fixture" or path.name == "p2-network-utilization.json":
-        return next(
-            iter(SNMPv3FixtureAdapter([path], fixed_clock, kill_flag, stop_file))
-        )
-    if kill_flag():
-        raise KillSwitchEngaged("Phase 2 fixture runner kill switch engaged")
-    return raw
-
-
-def _inputs(manifest: RunManifest, fixtures_dir: Path) -> Iterator[Path]:
-    by_name = {path.name: path for path in fixtures_dir.glob("*.json")}
-    for source in manifest.sources:
-        yield by_name[source.name]
+DURABILITY_GUARANTEE: Final = (
+    "durable per input from the moment its claim transaction begins; "
+    "pre-transaction loss is detectable via manifest source_count vs "
+    "persisted disposition count"
+)
 
 
 def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, JsonValue]:
-    """Execute one manifest-first batch and return its balanced summary."""
-    manifest = _manifest(run_id, fixtures_dir, fixed_clock)
-    persist_manifest(manifest)
-    context = PersistenceContext(run_id=run_id, fixed_clock=fixed_clock)
+    """Execute one manifest-first batch and return its reconciled summary."""
+    manifest = build_manifest(run_id, fixtures_dir, fixed_clock, ROOT)
+    context = begin_execution(manifest)
     ledger = DispositionLedger()
 
-    for path in _inputs(manifest, fixtures_dir):
+    for input_ordinal, path in enumerate(input_paths(manifest, fixtures_dir)):
         ledger.record("received")
+        candidate: dict[str, JsonValue] = {}
         try:
-            candidate = _adapt(path, fixtures_dir, fixed_clock)
+            candidate = dict(adapt_input(path, fixtures_dir, fixed_clock))
             engine_ledger = DispositionLedger()
-            store = PostgresClaimStore(context, candidate)
+            store = PostgresClaimStore(context, candidate, input_ordinal)
             disposition = DispositionEngine(store, engine_ledger).handle(candidate)
+        except (DatabaseCommandError, JsonExtractionError, PersistenceError):
+            raise
         except KillSwitchEngaged:
-            raw = _load_json(path)
             persist_quarantine(
                 context,
                 QuarantineInput(
-                    candidate=raw,
+                    candidate=candidate,
                     reason="kill_switch_engaged",
                     detail="kill_switch_engaged before fixture processing",
                 ),
+                input_ordinal,
             )
             ledger.record("quarantined")
             raise
@@ -175,6 +103,7 @@ def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, Json
                     reason="schema_invalid",
                     detail=f"{error.error_type}:{error.detail}",
                 ),
+                input_ordinal,
             )
             ledger.record("quarantined")
             continue
@@ -182,7 +111,6 @@ def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, Json
             ledger.record("quarantined")
             continue
         except ValidationError as error:
-            candidate = _load_json(path)
             validation_types = sorted(
                 {str(item["type"]) for item in error.errors(include_url=False)}
             )
@@ -198,17 +126,35 @@ def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, Json
                     reason=reason,
                     detail=",".join(validation_types),
                 ),
+                input_ordinal,
+            )
+            ledger.record("quarantined")
+            continue
+        except Exception as error:  # noqa: BROAD_EXCEPT_OK
+            persist_quarantine(
+                context,
+                QuarantineInput(
+                    candidate=candidate,
+                    reason="unexpected_input_error",
+                    detail=type(error).__name__,
+                ),
+                input_ordinal,
             )
             ledger.record("quarantined")
             continue
         ledger.record(disposition.status)
 
-    ledger.assert_zero_silent_loss()
-    counts = ledger.to_json()
+    ledger.assert_balanced()
+    counts = reconcile_execution(context)
+    if counts != ledger.to_json():
+        raise ReconciliationError(run_id, context.execution_sequence)
     return {
         "run_id": run_id,
         "counts": counts,
         "manifest_sha256": manifest.manifest_sha256,
+        "execution_sequence": context.execution_sequence,
+        "reconciled": True,
+        "durability_guarantee": DURABILITY_GUARANTEE,
     }
 
 
@@ -240,16 +186,14 @@ def main() -> int:
     """Translate expected failures into nonzero output without a success summary."""
     try:
         return run()
-    except (
-        DatabaseCommandError,
-        JsonExtractionError,
-        KillSwitchEngaged,
-        ManifestDriftError,
-        PersistenceError,
-        RunnerInputError,
-        SilentLossError,
-    ) as error:
-        print(f"phase2 batch failed: {error}", file=sys.stderr)
+    except (DatabaseCommandError, JsonExtractionError, Phase2Error) as error:
+        print(
+            f"phase2 batch failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+    except Exception as error:  # noqa: BROAD_EXCEPT_OK
+        print(f"phase2 batch failed: {type(error).__name__}", file=sys.stderr)
         return 1
 
 

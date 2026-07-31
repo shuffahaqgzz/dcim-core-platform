@@ -9,8 +9,8 @@ class ManifestDriftError(Phase2Error):
     """Raised when stored manifest data differs from its run manifest."""
 
 
-class SilentLossError(Phase2Error):
-    """Raised when received items lack a disposition."""
+class DispositionImbalanceError(Phase2Error):
+    """Raised when received and terminal in-memory counts differ."""
 
 
 class KillSwitchEngaged(Phase2Error):

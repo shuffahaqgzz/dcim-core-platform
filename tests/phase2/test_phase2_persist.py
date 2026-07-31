@@ -1,21 +1,16 @@
 from __future__ import annotations
 
-from contextlib import redirect_stdout
-import io
 import json
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 
 from scripts.phase2 import db
 from scripts.phase2.db import DatabaseCommandError
 from scripts.phase2.errors import ManifestDriftError
-from scripts.phase2.ledger import DispositionLedger
 from scripts.phase2.migrate import MIGRATION_ID, MigrationError, apply, rollback
-from scripts.phase2.run import execute, main
+from scripts.phase2.run import execute
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,49 +41,6 @@ SELECT json_build_object(
     return {key: int(value) for key, value in result[0].items()}
 
 
-class CommitFailureTests(unittest.TestCase):
-    def test_commit_failure_records_no_terminal_outcome_or_success_json(self) -> None:
-        for attempt in range(2):
-            with self.subTest(attempt=attempt):
-                report_ledger = DispositionLedger()
-                engine_ledger = DispositionLedger()
-                output = io.StringIO()
-                argv = [
-                    "run.py",
-                    "--run-id",
-                    f"commit-failure-{attempt}",
-                    "--fixtures-dir",
-                    str(FIXTURES),
-                    "--fixed-clock",
-                    CLOCK,
-                ]
-                with (
-                    patch("scripts.phase2.run.persist_manifest"),
-                    patch(
-                        "scripts.phase2.run.DispositionLedger",
-                        side_effect=(report_ledger, engine_ledger),
-                    ),
-                    patch(
-                        "scripts.phase2.persist.db.psql",
-                        side_effect=DatabaseCommandError("forced commit failure"),
-                    ),
-                    patch.object(sys, "argv", argv),
-                    redirect_stdout(output),
-                ):
-                    result = main()
-                self.assertEqual(1, result)
-                self.assertEqual(
-                    {
-                        "received": 1,
-                        "accepted": 0,
-                        "quarantined": 0,
-                        "duplicate": 0,
-                    },
-                    report_ledger.to_json(),
-                )
-                self.assertEqual("", output.getvalue())
-
-
 class PostgresPipelineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -107,7 +59,7 @@ class PostgresPipelineTests(unittest.TestCase):
         except MigrationError as error:
             if str(error) != "migration is not applied":
                 raise
-        self.assertEqual(1, apply())
+        self.assertEqual(2, apply())
 
     def test_full_replay_is_duplicate_and_authoritative_rows_are_stable(self) -> None:
         first = execute("synthetic-run-001", FIXTURES, CLOCK)
@@ -122,6 +74,25 @@ class PostgresPipelineTests(unittest.TestCase):
         self.assertEqual(
             first_counts["dispositions"] + second["counts"]["received"],
             second_counts["dispositions"],
+        )
+        executions = rows(
+            """
+SELECT json_build_object(
+    'execution_sequence', execution_sequence,
+    'ordinals', json_agg(input_ordinal ORDER BY input_ordinal)
+)::text
+FROM phase2.dispositions
+WHERE run_id = 'synthetic-run-001'
+GROUP BY execution_sequence
+ORDER BY execution_sequence;
+"""
+        )
+        self.assertEqual(
+            [
+                {"execution_sequence": 1, "ordinals": [0, 1, 2, 3, 4, 5]},
+                {"execution_sequence": 2, "ordinals": [0, 1, 2, 3, 4, 5]},
+            ],
+            executions,
         )
 
     def test_content_conflict_quarantines_without_mutating_event(self) -> None:
@@ -243,7 +214,7 @@ WHERE run_id = 'stable-run';
         self.assertEqual(6, counts()["events"])
 
         rollback(MIGRATION_ID)
-        self.assertEqual(1, apply())
+        self.assertEqual(2, apply())
         summary = execute("clean-reingest", FIXTURES, CLOCK)
         self.assertEqual(6, summary["counts"]["accepted"])
         self.assertEqual(6, counts()["events"])

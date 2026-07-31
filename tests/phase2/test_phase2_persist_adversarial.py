@@ -46,7 +46,7 @@ class AdversarialPersistenceTests(unittest.TestCase):
         except MigrationError as error:
             if str(error) != "migration is not applied":
                 raise
-        self.assertEqual(1, apply())
+        self.assertEqual(2, apply())
 
     def test_same_manifest_conflict_mutates_only_dispositions(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

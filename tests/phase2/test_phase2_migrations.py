@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts.phase2 import db, migrate
+from scripts.phase2.identity_sql import literal
 from scripts.phase2.migrations import m0001_phase2_core
 
 
@@ -204,6 +205,44 @@ class DatabaseCommandTests(unittest.TestCase):
 
 
 class MigrationSqlTests(unittest.TestCase):
+    def test_migration_id_when_rendered_is_quoted_at_every_sql_boundary(self) -> None:
+        # Given
+        migration_id = "m0001'; DROP TABLE phase2.events; --"
+        expected = literal(migration_id)
+
+        # When
+        with (
+            patch.object(migrate, "_registry_exists", return_value=True),
+            patch.object(migrate, "query_json", return_value=[]) as query_json,
+        ):
+            self.assertIs(False, migrate._is_applied(migration_id))
+        with (
+            patch.object(migrate, "MIGRATION_ID", migration_id),
+            patch.object(migrate, "_is_applied", side_effect=[False, True]),
+            patch.object(migrate, "psql") as apply_psql,
+        ):
+            self.assertEqual(1, migrate.apply())
+        with (
+            patch.object(migrate, "MIGRATION_ID", migration_id),
+            patch.object(migrate, "_is_applied", return_value=True),
+            patch.object(migrate, "psql") as rollback_psql,
+        ):
+            migrate.rollback(migration_id)
+
+        # Then
+        self.assertIn(
+            f"WHERE migration_id = {expected};",
+            query_json.call_args.args[0],
+        )
+        self.assertIn(
+            f"VALUES ({expected}, CURRENT_TIMESTAMP);",
+            apply_psql.call_args.args[0],
+        )
+        self.assertIn(
+            f"WHERE migration_id = {expected};",
+            rollback_psql.call_args.args[0],
+        )
+
     def test_up_when_inspected_defines_exact_eight_table_schema(self) -> None:
         # Given / When
         sql = m0001_phase2_core.up()

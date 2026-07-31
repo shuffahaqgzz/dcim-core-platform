@@ -11,7 +11,8 @@ from contracts.python.dcim_contracts.disposition import ClaimResult, JsonValue
 from contracts.python.dcim_contracts.envelope import Envelope
 
 from . import db
-from .errors import ManifestDriftError, Phase2Error
+from .errors import Phase2Error
+from .execution import ExecutionContext
 from .identity_sql import (
     IdentityOmitted,
     IdentityRejected,
@@ -22,15 +23,6 @@ from .identity_sql import (
     prepare_identity,
     render_identity_dml,
 )
-from .manifest import RunManifest
-
-
-@dataclass(frozen=True, slots=True)
-class PersistenceContext:
-    """Immutable values shared by every transaction in one run."""
-
-    run_id: str
-    fixed_clock: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,54 +48,17 @@ class IdentityQuarantined(Phase2Error):
         return f"event {self.event_id} has invalid identity"
 
 
-def persist_manifest(manifest: RunManifest) -> None:
-    """Insert or verify a run manifest in one dedicated transaction."""
-    sql = f"""
-\\set QUIET 1
-BEGIN;
-INSERT INTO phase2.run_manifests
-    (run_id, fixed_clock, source_count, manifest_sha256, created_at)
-VALUES (
-    {literal(manifest.run_id)}, {literal(manifest.fixed_clock)}::timestamptz,
-    {manifest.source_count}, {literal(manifest.manifest_sha256)},
-    {literal(manifest.fixed_clock)}::timestamptz
-)
-ON CONFLICT (run_id) DO NOTHING;
-SELECT (
-    source_count = {manifest.source_count}
-    AND manifest_sha256 = {literal(manifest.manifest_sha256)}
-) AS manifest_matches
-FROM phase2.run_manifests
-WHERE run_id = {literal(manifest.run_id)} \\gset
-\\if :manifest_matches
-    SELECT json_build_object('run_id', run_id, 'source_count', source_count,
-        'manifest_sha256', manifest_sha256)::text
-    FROM phase2.run_manifests WHERE run_id = {literal(manifest.run_id)};
-    COMMIT;
-\\else
-    ROLLBACK;
-    SELECT json_build_object('drift', true)::text;
-\\endif
-"""
-    rows = db.parse_json_rows(db.psql(sql))
-    expected: JsonObject = {
-        "run_id": manifest.run_id,
-        "source_count": manifest.source_count,
-        "manifest_sha256": manifest.manifest_sha256,
-    }
-    if rows == [{"drift": True}] or rows != [expected]:
-        raise ManifestDriftError("stored manifest differs from immutable run manifest")
-
-
 class PostgresClaimStore:
     """Atomically claim and durably classify one validated canonical event."""
 
     def __init__(
         self,
-        context: PersistenceContext,
+        context: ExecutionContext,
         candidate: Mapping[str, JsonValue],
+        input_ordinal: int,
     ) -> None:
         self._context = context
+        self._input_ordinal = input_ordinal
         self._canonical = Envelope.model_validate(
             candidate, strict=True
         ).model_dump(mode="json", round_trip=True)
@@ -158,8 +113,10 @@ decision AS (
 ),
 disposed AS (
     INSERT INTO phase2.dispositions
-        (event_id, run_id, status, reason, lineage, decided_at)
+        (event_id, run_id, execution_sequence, input_ordinal,
+         status, reason, lineage, decided_at)
     SELECT {literal(event_id)}::uuid, {literal(context.run_id)},
+        {context.execution_sequence}, {self._input_ordinal},
         CASE claim
             WHEN 'new' THEN 'accepted'
             WHEN 'duplicate' THEN 'duplicate'
@@ -199,8 +156,9 @@ COMMIT;
                 assert_never(unreachable)
 
 def persist_quarantine(
-    context: PersistenceContext,
+    context: ExecutionContext,
     rejected: QuarantineInput,
+    input_ordinal: int,
 ) -> None:
     """Commit exactly one pre-claim quarantine disposition."""
     raw_identifier = rejected.candidate.get("event_id")
@@ -217,9 +175,11 @@ def persist_quarantine(
 \\set QUIET 1
 BEGIN;
 INSERT INTO phase2.dispositions
-    (event_id, run_id, status, reason, lineage, decided_at)
+    (event_id, run_id, execution_sequence, input_ordinal,
+     status, reason, lineage, decided_at)
 VALUES (
-    {event_sql}, {literal(context.run_id)}, 'quarantined',
+    {event_sql}, {literal(context.run_id)}, {context.execution_sequence},
+    {input_ordinal}, 'quarantined',
     {literal(rejected.reason)}, {json_literal(lineage)},
     {literal(context.fixed_clock)}::timestamptz
 );

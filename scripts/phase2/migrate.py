@@ -32,7 +32,11 @@ from scripts.phase2.db import (  # noqa: E402
     psql,
     query_json,
 )
-from scripts.phase2.migrations import m0001_phase2_core  # noqa: E402
+from scripts.phase2.identity_sql import literal  # noqa: E402
+from scripts.phase2.migrations import (  # noqa: E402
+    m0001_phase2_core,
+    m0002_execution_reconciliation,
+)
 
 
 EXPECTED_TABLES: Final = (
@@ -46,6 +50,7 @@ EXPECTED_TABLES: Final = (
     "noc_cards",
 )
 MIGRATION_ID: Final = m0001_phase2_core.MIGRATION_ID
+LATEST_MIGRATION_ID: Final = m0002_execution_reconciliation.MIGRATION_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,46 +83,61 @@ SELECT json_build_object(
             assert_never(unreachable)
 
 
-def _is_applied() -> bool:
+def _is_applied(migration_id: str) -> bool:
     if not _registry_exists():
         return False
+    migration = literal(migration_id)
     rows = query_json(
-        """
+        f"""
 SELECT json_build_object('migration_id', migration_id)::text
 FROM phase2.schema_migrations
-WHERE migration_id = 'm0001_phase2_core';
+WHERE migration_id = {migration};
 """
     )
     if not rows:
         return False
-    if len(rows) != 1 or rows[0].get("migration_id") != MIGRATION_ID:
+    if len(rows) != 1 or rows[0].get("migration_id") != migration_id:
         raise MigrationError("migration registry returned an invalid row")
     return True
 
 
 def apply() -> int:
     """Apply every unrecorded migration transactionally."""
-    if _is_applied():
-        return 0
-    sql = (
-        f"BEGIN;\n{m0001_phase2_core.up()}"
-        "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
-        f"VALUES ('{MIGRATION_ID}', CURRENT_TIMESTAMP);\nCOMMIT;\n"
+    applied = 0
+    migrations = (
+        (MIGRATION_ID, m0001_phase2_core.up),
+        (LATEST_MIGRATION_ID, m0002_execution_reconciliation.up),
     )
-    _ = psql(sql)
-    return 1
+    for migration_id, migration_up in migrations:
+        if _is_applied(migration_id):
+            continue
+        migration = literal(migration_id)
+        sql = (
+            f"BEGIN;\n{migration_up()}"
+            "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
+            f"VALUES ({migration}, CURRENT_TIMESTAMP);\nCOMMIT;\n"
+        )
+        _ = psql(sql)
+        applied += 1
+    return applied
 
 
 def rollback(migration_id: str) -> None:
     """Delete one known record and run its down migration atomically."""
-    if migration_id != MIGRATION_ID:
+    if migration_id not in (MIGRATION_ID, LATEST_MIGRATION_ID):
         raise MigrationError("unknown migration ID")
-    if not _is_applied():
+    if not _is_applied(migration_id):
         raise MigrationError("migration is not applied")
+    migration_down = (
+        m0001_phase2_core.down
+        if migration_id == MIGRATION_ID
+        else m0002_execution_reconciliation.down
+    )
+    migration = literal(migration_id)
     sql = (
         "BEGIN;\nDELETE FROM phase2.schema_migrations\n"
-        f"WHERE migration_id = '{MIGRATION_ID}';\n"
-        f"{m0001_phase2_core.down()}COMMIT;\n"
+        f"WHERE migration_id = {migration};\n"
+        f"{migration_down()}COMMIT;\n"
     )
     _ = psql(sql)
 
