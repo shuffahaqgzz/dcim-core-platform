@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
+from unittest.mock import patch
 
 from scripts.phase2 import db, migrate
 
@@ -95,6 +99,54 @@ EXPECTED_COLUMNS = [
     },
 ]
 
+EMPTY_BUSINESS_ROWS = {
+    "run_manifests": 0,
+    "events": 0,
+    "dispositions": 0,
+    "assets": 0,
+    "cis": 0,
+    "aliases": 0,
+    "noc_cards": 0,
+}
+
+
+def business_row_counts() -> list[dict[str, object]]:
+    return db.query_json(
+        """
+SELECT json_build_object(
+    'run_manifests', (SELECT count(*) FROM phase2.run_manifests),
+    'events', (SELECT count(*) FROM phase2.events),
+    'dispositions', (SELECT count(*) FROM phase2.dispositions),
+    'assets', (SELECT count(*) FROM phase2.assets),
+    'cis', (SELECT count(*) FROM phase2.cis),
+    'aliases', (SELECT count(*) FROM phase2.aliases),
+    'noc_cards', (SELECT count(*) FROM phase2.noc_cards)
+)::text;
+"""
+    )
+
+
+def migration_registry() -> list[dict[str, object]]:
+    exists = db.query_json(
+        """
+SELECT json_build_object(
+    'exists', to_regclass('phase2.schema_migrations') IS NOT NULL
+)::text;
+"""
+    )
+    if exists == [{"exists": False}]:
+        return []
+    return db.query_json(
+        """
+SELECT json_build_object(
+    'migration_id', migration_id,
+    'applied_at', applied_at
+)::text
+FROM phase2.schema_migrations
+ORDER BY migration_id;
+"""
+    )
+
 
 class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
     @classmethod
@@ -119,6 +171,70 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         # Then
         self.assertEqual(0, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, inventory)
+
+    def test_fresh_apply_when_schema_is_empty_applies_two_then_none(self) -> None:
+        # Given
+        if business_row_counts() != [EMPTY_BUSINESS_ROWS]:
+            self.skipTest("shared Phase 2 data exists; destructive fresh apply not safe")
+        migrate.rollback(migrate.MIGRATION_ID)
+
+        # When
+        first_applied = migrate.apply()
+        second_applied = migrate.apply()
+
+        # Then
+        self.assertEqual(2, first_applied)
+        self.assertEqual(0, second_applied)
+        self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
+
+    def test_apply_cli_when_database_command_fails_preserves_registry(self) -> None:
+        # Given
+        before = migration_registry()
+        stderr = StringIO()
+        dropped_connection = db.DatabaseCommandError(
+            "PostgreSQL command failed with exit 1"
+        )
+
+        # When
+        with (
+            patch.object(sys, "argv", ["migrate.py", "apply"]),
+            patch.object(migrate, "query_json", side_effect=dropped_connection),
+            redirect_stderr(stderr),
+        ):
+            exit_code = migrate.main()
+
+        # Then
+        self.assertEqual(1, exit_code)
+        self.assertIn("phase2 migration failed:", stderr.getvalue())
+        self.assertEqual(before, migration_registry())
+
+    def test_apply_cli_when_transaction_fails_records_no_migration(self) -> None:
+        # Given
+        if business_row_counts() != [EMPTY_BUSINESS_ROWS]:
+            self.skipTest("shared Phase 2 data exists; destructive fresh apply not safe")
+        migrate.rollback(migrate.MIGRATION_ID)
+        before = migration_registry()
+        stderr = StringIO()
+        dropped_connection = db.DatabaseCommandError(
+            "PostgreSQL command failed with exit 1"
+        )
+
+        try:
+            # When
+            with (
+                patch.object(sys, "argv", ["migrate.py", "apply"]),
+                patch.object(migrate, "psql", side_effect=dropped_connection),
+                redirect_stderr(stderr),
+            ):
+                exit_code = migrate.main()
+
+            # Then
+            self.assertEqual(1, exit_code)
+            self.assertIn("phase2 migration failed:", stderr.getvalue())
+            self.assertEqual(before, migration_registry())
+        finally:
+            self.assertEqual(2, migrate.apply())
+            self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
     def test_verify_when_schema_is_fully_migrated_passes(self) -> None:
         # Given / When

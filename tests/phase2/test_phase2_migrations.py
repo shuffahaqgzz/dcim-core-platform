@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -9,7 +10,10 @@ from unittest.mock import patch
 
 from scripts.phase2 import db, migrate
 from scripts.phase2.db import literal
-from scripts.phase2.migrations import m0001_phase2_core
+from scripts.phase2.migrations import (
+    m0001_phase2_core,
+    m0002_execution_reconciliation,
+)
 
 
 class JsonExtractionTests(unittest.TestCase):
@@ -266,6 +270,88 @@ class MigrationSqlTests(unittest.TestCase):
         ):
             migrate.verify()
 
+    def test_apply_when_registry_is_empty_submits_each_migration_transactionally(self) -> None:
+        # Given / When
+        with (
+            patch.object(migrate, "_is_applied", side_effect=[False, False]),
+            patch.object(migrate, "psql") as psql,
+        ):
+            applied = migrate.apply()
+
+        # Then
+        self.assertEqual(2, applied)
+        self.assertEqual(2, psql.call_count)
+        for call, migration_id, up_sql in zip(
+            psql.call_args_list,
+            (migrate.MIGRATION_ID, migrate.LATEST_MIGRATION_ID),
+            (m0001_phase2_core.up(), m0002_execution_reconciliation.up()),
+            strict=True,
+        ):
+            generated_sql = call.args[0]
+            self.assertEqual(0, generated_sql.index("BEGIN;"))
+            self.assertLess(generated_sql.index(up_sql), generated_sql.index("INSERT INTO phase2.schema_migrations"))
+            self.assertIn(f"VALUES ({literal(migration_id)}, CURRENT_TIMESTAMP);", generated_sql)
+            self.assertLess(generated_sql.index("INSERT INTO phase2.schema_migrations"), generated_sql.index("COMMIT;"))
+
+    def test_apply_when_migrations_are_recorded_submits_no_ddl(self) -> None:
+        # Given / When
+        with (
+            patch.object(migrate, "_is_applied", side_effect=[True, True]),
+            patch.object(migrate, "psql") as psql,
+        ):
+            applied = migrate.apply()
+
+        # Then
+        self.assertEqual(0, applied)
+        psql.assert_not_called()
+
+    def test_verify_when_table_is_missing_rejects_inventory(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[0] = rows[0][1:]
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "table inventory mismatch"),
+        ):
+            migrate.verify()
+
+    def test_verify_when_table_is_extra_rejects_inventory(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[0].append({"table_name": "unexpected_table"})
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "table inventory mismatch"),
+        ):
+            migrate.verify()
+
+    def test_verify_when_table_is_misnamed_rejects_inventory(self) -> None:
+        rows = self._verified_schema_rows()
+        rows[0][0]["table_name"] = "misnamed_table"
+        with (
+            patch.object(migrate, "query_json", side_effect=rows),
+            self.assertRaisesRegex(migrate.MigrationError, "table inventory mismatch"),
+        ):
+            migrate.verify()
+
+    def test_rollback_when_migration_is_applied_submits_transactional_down_sql(self) -> None:
+        # Given / When
+        with (
+            patch.object(migrate, "_is_applied", return_value=True),
+            patch.object(migrate, "psql") as psql,
+        ):
+            migrate.rollback(migrate.LATEST_MIGRATION_ID)
+
+        # Then
+        generated_sql = psql.call_args.args[0]
+        delete_sql = "DELETE FROM phase2.schema_migrations"
+        down_sql = m0002_execution_reconciliation.down()
+        self.assertEqual(0, generated_sql.index("BEGIN;"))
+        self.assertLess(generated_sql.index(delete_sql), generated_sql.index(down_sql))
+        self.assertIn(
+            f"WHERE migration_id = {literal(migrate.LATEST_MIGRATION_ID)};",
+            generated_sql,
+        )
+        self.assertLess(generated_sql.index(down_sql), generated_sql.index("COMMIT;"))
+
     def test_verify_when_required_column_type_is_wrong_names_column(self) -> None:
         rows = self._verified_schema_rows()
         rows[1][0]["data_type"] = "integer"
@@ -339,7 +425,32 @@ class MigrationSqlTests(unittest.TestCase):
         sql = m0001_phase2_core.up()
 
         # Then
-        self.assertEqual(8, sql.count("CREATE TABLE phase2."))
+        table_blocks = re.findall(
+            r"CREATE TABLE phase2\.(\w+) \(\n(.*?)\n\);",
+            sql,
+            re.DOTALL,
+        )
+        actual_shape = {
+            table_name: tuple(
+                line.strip().split(maxsplit=1)[0]
+                for line in body.splitlines()
+                if line.strip() and not line.strip().startswith("PRIMARY KEY")
+            )
+            for table_name, body in table_blocks
+        }
+        self.assertEqual(
+            {
+                "schema_migrations": ("migration_id", "applied_at"),
+                "run_manifests": ("run_id", "fixed_clock", "source_count", "manifest_sha256", "created_at"),
+                "events": ("event_id", "run_id", "envelope", "content_sha256", "ingested_at"),
+                "dispositions": ("disposition_id", "event_id", "run_id", "status", "reason", "lineage", "decided_at"),
+                "assets": ("asset_id", "identity", "asset_type", "created_at", "updated_at"),
+                "cis": ("ci_id", "asset_id", "source_system", "native_device_id", "ci_type", "created_at", "updated_at"),
+                "aliases": ("alias_id", "owner_type", "owner_id", "type", "value", "valid_from", "valid_to", "source", "confidence"),
+                "noc_cards": ("run_id", "kind", "subject_key", "payload", "generated_at"),
+            },
+            actual_shape,
+        )
         self.assertIn("content_sha256 text NOT NULL", sql)
         self.assertIn(
             "status text CHECK (status IN ('accepted', 'quarantined', 'duplicate'))",
