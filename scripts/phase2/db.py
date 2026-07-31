@@ -192,6 +192,45 @@ def psql_file(path: Path, database: str = DEFAULT_DATABASE) -> str:
     return psql(sql, database)
 
 
+def pg_dump(*, schema: str, database: str = DEFAULT_DATABASE) -> str:
+    project = _compose_project_name()
+    command = [
+        *compose_prefix(),
+        "exec",
+        "-T",
+        "postgres",
+        "pg_dump",
+        "-U",
+        "dcim_bootstrap",
+        "-d",
+        database,
+        f"--schema={schema}",
+        "--no-owner",
+    ]
+    environment = os.environ.copy()
+    environment["COMPOSE_PROJECT_NAME"] = project
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_TIMEOUT_SECONDS,
+            check=False,
+            shell=False,
+            env=environment,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise DatabaseCommandError("PostgreSQL command timed out") from error
+    except OSError as error:
+        raise DatabaseCommandError("PostgreSQL command could not start") from error
+    if result.returncode:
+        raise DatabaseCommandError(
+            f"PostgreSQL command failed with exit {result.returncode}"
+        )
+    return result.stdout
+
+
 def literal(value: str) -> str:
     """Quote one text value as a PostgreSQL string literal.
 

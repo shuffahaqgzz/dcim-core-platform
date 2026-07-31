@@ -19,7 +19,6 @@ import os
 from pathlib import Path
 import re
 import stat
-import subprocess
 import sys
 import time
 from types import TracebackType
@@ -130,45 +129,10 @@ def _runtime_root() -> Path:
 
 
 def dump_phase2() -> str:
-    command = [
-        *db.compose_prefix(),
-        "exec",
-        "-T",
-        "postgres",
-        "pg_dump",
-        "-U",
-        "dcim_bootstrap",
-        "-d",
-        db.DEFAULT_DATABASE,
-        "--schema=phase2",
-        "--no-owner",
-    ]
-    environment = os.environ.copy()
-    environment["COMPOSE_PROJECT_NAME"] = os.environ.get(
-        "COMPOSE_PROJECT_NAME", "dcim-build"
-    )
-    try:
-        result = subprocess.run(
-            command,
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=db.COMMAND_TIMEOUT_SECONDS,
-            check=False,
-            shell=False,
-            env=environment,
-        )
-    except subprocess.TimeoutExpired as error:
-        raise RecoveryError("Phase 2 pg_dump timed out") from error
-    except OSError as error:
-        raise RecoveryError("Phase 2 pg_dump could not start") from error
-    if result.returncode:
-        raise RecoveryError(
-            f"Phase 2 pg_dump failed with exit {result.returncode}"
-        )
-    if not result.stdout:
+    dump = db.pg_dump(schema="phase2", database=db.DEFAULT_DATABASE)
+    if not dump:
         raise RecoveryError("Phase 2 pg_dump returned an empty dump")
-    return result.stdout
+    return dump
 
 
 def _table_inventory(database: str) -> tuple[str, ...]:
@@ -226,15 +190,51 @@ def _snapshot(database: str, tables: tuple[str, ...]) -> dict[str, TableDigest]:
     return {table: _table_digest(database, table) for table in tables}
 
 
+def _temporary_database_exists() -> bool:
+    rows = db.query_json(
+        f"""
+SELECT json_build_object(
+    'exists', EXISTS (
+        SELECT 1 FROM pg_database WHERE datname = '{RECOVERY_DATABASE}'
+    )
+)::text;
+""",
+        "postgres",
+    )
+    if rows == [{"exists": False}]:
+        return False
+    if rows == [{"exists": True}]:
+        return True
+    raise RecoveryError("temporary database absence check returned invalid values")
+
+
+def _raise_with_cleanup(original: Exception | None, cleanup: Exception) -> None:
+    if original is None:
+        raise RecoveryError(f"temporary database cleanup failed: {cleanup}") from cleanup
+    raise RecoveryError(
+        f"recovery failed: {original}; temporary database cleanup failed: {cleanup}"
+    ) from cleanup
+
+
 def verify_recovery() -> tuple[str, ...]:
     """Restore Phase 2 into one fixed temporary database and compare every table."""
     drop_sql = f'DROP DATABASE IF EXISTS "{RECOVERY_DATABASE}";'
     root = _runtime_root()
     with _recovery_lock(root):
+        original_error: Exception | None = None
         try:
             _ = db.psql(drop_sql, "postgres")
             tables = _table_inventory(db.DEFAULT_DATABASE)
             live_before = _snapshot(db.DEFAULT_DATABASE, tables)
+            live_business_rows = sum(
+                digest.row_count
+                for table, digest in live_before.items()
+                if table != "schema_migrations"
+            )
+            if live_business_rows == 0:
+                raise RecoveryError(
+                    "Phase 2 recovery is unverifiable: total live row count is zero"
+                )
             dump = dump_phase2()
             dump_path = write_protected_text(root, DUMP_PARTS, dump)
             _ = db.psql(f'CREATE DATABASE "{RECOVERY_DATABASE}";', "postgres")
@@ -250,11 +250,24 @@ def verify_recovery() -> tuple[str, ...]:
             live_after = _snapshot(db.DEFAULT_DATABASE, tables)
             for table in tables:
                 if live_before[table] != restored[table]:
-                    raise RecoveryError(f"{table}: restored checksum or row count mismatch")
+                    expected = live_before[table]
+                    actual = restored[table]
+                    raise RecoveryError(
+                        f"{table}: restored checksum or row count mismatch "
+                        f"(expected rows={expected.row_count}, actual rows={actual.row_count})"
+                    )
                 if live_before[table] != live_after[table]:
                     raise RecoveryError(f"{table}: live table changed during recovery")
+        except Exception as error:
+            original_error = error
+            raise
         finally:
-            _ = db.psql(drop_sql, "postgres")
+            try:
+                _ = db.psql(drop_sql, "postgres")
+                if _temporary_database_exists():
+                    raise RecoveryError("temporary database still exists after drop")
+            except (db.DatabaseCommandError, db.JsonExtractionError, RecoveryError) as cleanup_error:
+                _raise_with_cleanup(original_error, cleanup_error)
 
     for table in tables:
         digest = live_before[table]

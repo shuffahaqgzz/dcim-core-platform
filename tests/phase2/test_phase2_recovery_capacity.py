@@ -4,7 +4,6 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,17 +14,78 @@ from scripts.phase2 import capacity, db, recovery
 
 
 class CapacityTests(unittest.TestCase):
-    def test_admission_when_usage_is_below_threshold_passes(self) -> None:
+    def test_admission_when_measured_usage_is_below_threshold_passes(self) -> None:
         # Given
         output = io.StringIO()
 
         # When
-        with redirect_stdout(output):
-            result = capacity.run(["--force-threshold-for-test", "89.999"])
+        with (
+            patch(
+                "scripts.phase2.capacity.measured_usage_percent",
+                return_value=89.999,
+            ),
+            redirect_stdout(output),
+        ):
+            result = capacity.run([])
 
         # Then
         self.assertEqual(0, result)
         self.assertIn("PASS", output.getvalue())
+
+    def test_admission_when_forced_usage_is_below_threshold_is_rejected(self) -> None:
+        # Given
+        output = io.StringIO()
+
+        # When
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["capacity.py", "--force-threshold-for-test", "0"],
+            ),
+            redirect_stdout(output),
+            redirect_stderr(output),
+        ):
+            result = capacity.main()
+
+        # Then
+        self.assertEqual(1, result)
+        self.assertIn("can only force a refusal", output.getvalue())
+        self.assertNotIn("PASS", output.getvalue())
+
+    def test_admission_when_forced_usage_is_below_threshold_never_measures(self) -> None:
+        # Given
+        measurement = patch(
+            "scripts.phase2.capacity.measured_usage_percent",
+            side_effect=AssertionError("measurement must not run"),
+        )
+
+        # When
+        with (
+            measurement,
+            patch.object(
+                sys,
+                "argv",
+                ["capacity.py", "--force-threshold-for-test", "89.999"],
+            ),
+            redirect_stderr(io.StringIO()),
+        ):
+            result = capacity.main()
+
+        # Then
+        self.assertEqual(1, result)
+
+    def test_admission_when_forced_usage_equals_threshold_refuses(self) -> None:
+        # Given
+        output = io.StringIO()
+
+        # When
+        with redirect_stderr(output):
+            result = capacity.run(["--force-threshold-for-test", "90"])
+
+        # Then
+        self.assertEqual(1, result)
+        self.assertIn("REFUSED", output.getvalue())
 
     def test_admission_when_forced_usage_is_100_refuses_with_reason(self) -> None:
         # Given
@@ -92,71 +152,27 @@ class RecoveryUnitTests(unittest.TestCase):
     }
 
     def test_dump_when_invoked_uses_only_synthetic_phase2_schema(self) -> None:
-        # Given
-        completed = subprocess.CompletedProcess([], 0, "synthetic dump\n", "")
-        environment = {
-            "DCIM_RUNTIME_ROOT": "/synthetic/runtime",
-            "COMPOSE_PROJECT_NAME": "dcim-build",
-        }
-        commands: list[list[str]] = []
-
-        def fake_run(
-            command: list[str],
-            *,
-            cwd: Path,
-            capture_output: bool,
-            text: bool,
-            timeout: int,
-            check: bool,
-            shell: bool,
-            env: dict[str, str],
-        ) -> subprocess.CompletedProcess[str]:
-            commands.append(command)
-            self.assertEqual(recovery.ROOT, cwd)
-            self.assertTrue(capture_output)
-            self.assertTrue(text)
-            self.assertEqual(db.COMMAND_TIMEOUT_SECONDS, timeout)
-            self.assertFalse(check)
-            self.assertFalse(shell)
-            self.assertEqual("dcim-build", env["COMPOSE_PROJECT_NAME"])
-            return completed
-
-        # When
-        with (
-            patch.dict(os.environ, environment, clear=True),
-            patch(
-                "scripts.phase2.recovery.db.compose_prefix",
-                return_value=["docker", "compose", "protected"],
-            ),
-            patch(
-                "scripts.phase2.recovery.subprocess.run", side_effect=fake_run
-            ),
-        ):
+        with patch(
+            "scripts.phase2.recovery.db.pg_dump",
+            return_value="synthetic dump\n",
+        ) as pg_dump:
             dump = recovery.dump_phase2()
 
-        # Then
         self.assertEqual("synthetic dump\n", dump)
-        self.assertEqual(1, len(commands))
-        command = commands[0]
-        self.assertEqual(
-            [
-                "docker",
-                "compose",
-                "protected",
-                "exec",
-                "-T",
-                "postgres",
-                "pg_dump",
-                "-U",
-                "dcim_bootstrap",
-                "-d",
-                "dcim_foundation",
-                "--schema=phase2",
-                "--no-owner",
-            ],
-            command,
-        )
-        self.assertNotIn("--schema=foundation", command)
+        pg_dump.assert_called_once_with(schema="phase2", database=db.DEFAULT_DATABASE)
+
+    def test_recovery_when_all_live_tables_are_empty_is_unverifiable(self) -> None:
+        empty = {table: recovery.TableDigest(0, "d41d8cd98f00b204e9800998ecf8427e") for table in self.TABLES}
+        with tempfile.TemporaryDirectory() as raw:
+            with (
+                patch.dict(os.environ, {"DCIM_RUNTIME_ROOT": raw}, clear=True),
+                patch("scripts.phase2.recovery._table_inventory", return_value=self.TABLES),
+                patch("scripts.phase2.recovery._snapshot", return_value=empty),
+                patch("scripts.phase2.recovery.db.psql", return_value=""),
+                patch("scripts.phase2.recovery._temporary_database_exists", return_value=False),
+                self.assertRaisesRegex(recovery.RecoveryError, "unverifiable.*total live row count is zero"),
+            ):
+                recovery.verify_recovery()
 
     def test_recovery_when_checksums_match_reports_pass_and_preserves_live(self) -> None:
         # Given
@@ -191,6 +207,7 @@ class RecoveryUnitTests(unittest.TestCase):
                     return_value="synthetic dump\n",
                 ),
                 patch("scripts.phase2.recovery.db.psql", side_effect=fake_psql),
+                patch("scripts.phase2.recovery._temporary_database_exists", return_value=False),
                 redirect_stdout(output),
             ):
                 tables = recovery.verify_recovery()
@@ -245,6 +262,7 @@ class RecoveryUnitTests(unittest.TestCase):
                 ),
                 patch("scripts.phase2.recovery.dump_phase2", return_value=corrupt),
                 patch("scripts.phase2.recovery.db.psql", side_effect=fake_psql),
+                patch("scripts.phase2.recovery._temporary_database_exists", return_value=False),
                 self.assertRaisesRegex(db.DatabaseCommandError, "corrupt restore"),
             ):
                 _ = recovery.verify_recovery()
@@ -253,6 +271,30 @@ class RecoveryUnitTests(unittest.TestCase):
         drop = f'DROP DATABASE IF EXISTS "{recovery.RECOVERY_DATABASE}";'
         self.assertEqual((drop, "postgres"), calls[-1])
         self.assertEqual(2, sum(sql == drop for sql, _ in calls))
+
+    def test_recovery_when_restore_and_cleanup_fail_reports_both_errors(self) -> None:
+        calls = 0
+
+        def fake_psql(sql: str, database: str = db.DEFAULT_DATABASE) -> str:
+            nonlocal calls
+            calls += 1
+            if calls >= 3:
+                raise db.DatabaseCommandError("forced cleanup failure")
+            return ""
+
+        with tempfile.TemporaryDirectory() as raw:
+            with (
+                patch.dict(os.environ, {"DCIM_RUNTIME_ROOT": raw}, clear=True),
+                patch("scripts.phase2.recovery._table_inventory", return_value=self.TABLES),
+                patch("scripts.phase2.recovery._snapshot", return_value=self.DIGESTS),
+                patch("scripts.phase2.recovery.dump_phase2", return_value="BROKEN"),
+                patch("scripts.phase2.recovery.db.psql", side_effect=fake_psql),
+                self.assertRaisesRegex(
+                    recovery.RecoveryError,
+                    "recovery failed: forced cleanup failure; temporary database cleanup failed: forced cleanup failure",
+                ),
+            ):
+                recovery.verify_recovery()
 
 
 if __name__ == "__main__":

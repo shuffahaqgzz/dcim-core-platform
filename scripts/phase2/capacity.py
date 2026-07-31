@@ -9,7 +9,11 @@
 # 2. Run: python3 scripts/phase2/capacity.py
 # 3. Negative test: python3 scripts/phase2/capacity.py --force-threshold-for-test 100
 # ──────────────────
-"""Apply the Phase 1 90-percent logical-capacity admission threshold."""
+"""Apply the Phase 1 90-percent logical-capacity admission threshold.
+
+The threshold and its "stop admission at the same threshold" requirement come
+from docs/plan/PHASE1-COMPACT-INFRASTRUCTURE-FOUNDATION.md:248-251.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +34,9 @@ from scripts.phase2 import db  # noqa: E402
 
 ADMISSION_THRESHOLD_PERCENT: Final = 90.0
 POSTGRES_LOGICAL_BUDGET_BYTES: Final = 20 * 1024 * 1024 * 1024
+ADMISSION_POLICY_SOURCE: Final = (
+    "docs/plan/PHASE1-COMPACT-INFRASTRUCTURE-FOUNDATION.md:248-251"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,16 +90,40 @@ def _parser() -> argparse.ArgumentParser:
         "--force-threshold-for-test",
         type=float,
         metavar="PCT",
-        help="replace measured logical usage for a controlled negative test",
+        help=(
+            "force a refusal for a controlled negative test; the value must be"
+            f" at or above {ADMISSION_THRESHOLD_PERCENT:g} percent and can never"
+            " grant admission"
+        ),
     )
     return parser
 
 
+def forced_refusal_usage(value: float) -> float:
+    """Accept an injected usage value only when it forces a refusal."""
+    if not math.isfinite(value):
+        raise CapacityError("capacity percentage must be finite")
+    if value < 0.0 or value > 100.0:
+        raise CapacityError("capacity percentage must be between 0 and 100")
+    if value < ADMISSION_THRESHOLD_PERCENT:
+        raise CapacityError(
+            "--force-threshold-for-test can only force a refusal:"
+            f" {value:.6f}% is below the {ADMISSION_THRESHOLD_PERCENT:g}%"
+            f" admission threshold ({ADMISSION_POLICY_SOURCE});"
+            " omit the flag to measure real logical usage"
+        )
+    return value
+
+
 def run(argv: list[str] | None = None) -> int:
-    """Measure or inject logical usage and print the admission disposition."""
+    """Measure or force-refuse logical usage and print the admission disposition."""
     arguments = _parser().parse_args(argv, namespace=CapacityNamespace())
     forced: float | None = arguments.force_threshold_for_test
-    usage = measured_usage_percent() if forced is None else forced
+    usage = (
+        measured_usage_percent()
+        if forced is None
+        else forced_refusal_usage(forced)
+    )
     if not admit(usage):
         reason = (
             f"phase2-capacity: REFUSED: logical usage {usage:.6f}%"
