@@ -68,6 +68,30 @@ class Stage12GateContractTests(unittest.TestCase):
                 ["-m pip install pydantic==2.9.2"],
             )
 
+    def test_phase2_test_fails_cleanly_when_venv_is_absent(self) -> None:
+        # Given: the configured Phase 2 interpreter does not exist.
+        with tempfile.TemporaryDirectory(prefix="task12-missing-venv-") as temporary:
+            missing_python = Path(temporary) / "missing-venv" / "bin" / "python"
+            environment = os.environ.copy()
+            environment["PHASE2_PYTHON"] = str(missing_python)
+
+            # When: a new checkout invokes the public Phase 2 test target.
+            result = subprocess.run(
+                ["make", "phase2-test"],
+                cwd=ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            # Then: Make gives the bootstrap action without a shell traceback.
+            combined = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("run make phase2-deps", combined)
+            self.assertNotIn("No such file or directory", combined)
+            self.assertNotIn("Traceback", combined)
+
     def test_phase2_test_fails_cleanly_when_pydantic_is_unavailable(self) -> None:
         # Given: an isolated python3 shim that records every interpreter invocation
         # and suppresses site-packages to make Pydantic unavailable deterministically.
@@ -127,8 +151,8 @@ class Stage12GateContractTests(unittest.TestCase):
         # Then: the mandated unittest discovery command remains the next recipe line.
         self.assertEqual(result.returncode, 0)
         lines = [line for line in result.stdout.splitlines() if not line.startswith("make[")]
-        self.assertGreaterEqual(len(lines), 2)
-        self.assertEqual(lines[1], ".venv/bin/python -m unittest discover -s tests/phase2 -p 'test_*.py' -v")
+        self.assertGreaterEqual(len(lines), 3)
+        self.assertEqual(lines[2], ".venv/bin/python -m unittest discover -s tests/phase2 -p 'test_*.py' -v")
 
     def test_makefile_exposes_exact_phase2_gate_contract(self) -> None:
         # Given: the repository Makefile as the local gate interface.
@@ -139,7 +163,7 @@ class Stage12GateContractTests(unittest.TestCase):
             "PHASE2_VENV ?= .venv",
             "PHASE2_PYTHON ?= $(PHASE2_VENV)/bin/python",
             'phase2-deps:\n\t@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"\n\t$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2"',
-            "phase2-test:\n\t@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec(\"pydantic\") else (print(\"Pydantic unavailable; run make phase2-deps\", file=sys.stderr), sys.exit(1))'\n\t$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v",
+            "phase2-test:\n\t@test -x \"$(PHASE2_PYTHON)\" || { printf '%s\\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }\n\t@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec(\"pydantic\") else (print(\"Pydantic unavailable; run make phase2-deps\", file=sys.stderr), sys.exit(1))'\n\t$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v",
             "phase2-check: foundation-up phase2-deps\n\t$(PHASE2_PYTHON) scripts/phase2/check.py",
             "compile:\n\t$(PYTHON) -m compileall -q scripts tests contracts connectors",
         )

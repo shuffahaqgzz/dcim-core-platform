@@ -113,6 +113,7 @@ phase2-deps:
 	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2"
 
 phase2-test:
+	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }
 	@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec("pydantic") else (print("Pydantic unavailable; run make phase2-deps", file=sys.stderr), sys.exit(1))'
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v
 

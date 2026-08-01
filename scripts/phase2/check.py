@@ -28,6 +28,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.phase2 import capacity, db, migrate, noc, recovery  # noqa: E402
+from scripts.phase2.errors import Phase2Error  # noqa: E402
 
 
 FIXTURES_DIR: Final = ROOT / "fixtures/synthetic/events"
@@ -35,7 +36,6 @@ FIXED_CLOCK: Final = "2026-07-30T00:00:00Z"
 SHORT_COMMIT_LENGTH: Final = 12
 COMMIT_PATTERN: Final = re.compile(r"[0-9a-f]{40}\Z")
 AUTHORITATIVE_TABLES: Final = ("events", "assets", "cis", "aliases")
-UNIT_TEST_COMMAND: Final = "python3 -m unittest discover -s tests/phase2 -p 'test_*.py' -v"
 
 StageAction: TypeAlias = Callable[[str], None]
 Stage: TypeAlias = tuple[str, StageAction]
@@ -50,6 +50,16 @@ class CheckError(RuntimeError):
     @override
     def __str__(self) -> str:
         return self.reason
+
+
+@dataclass(frozen=True, slots=True)
+class StageFailure(RuntimeError):
+    label: str
+    reason: str
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.label}: FAIL: {self.reason}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,11 +224,18 @@ def idempotency_replay(run_id: str) -> None:
 
 def rollback_reapply(run_id: str) -> None:
     migrate.rollback(migrate.MIGRATION_ID)
-    _ = migrate.apply()
-    _ = migrate.verify()
-    _ = pipeline_execute(run_id)
-    baseline = _baseline(run_id)
-    _assert_duplicate_replay(pipeline_execute(run_id), baseline)
+    stage_complete = False
+    try:
+        _ = migrate.apply()
+        _ = migrate.verify()
+        _ = pipeline_execute(run_id)
+        baseline = _baseline(run_id)
+        _assert_duplicate_replay(pipeline_execute(run_id), baseline)
+        stage_complete = True
+    finally:
+        if not stage_complete:
+            _ = migrate.apply()
+            _ = migrate.verify()
 
 
 def recovery_check(_run_id: str) -> None:
@@ -238,20 +255,21 @@ def noc_verify(run_id: str) -> None:
         raise CheckError("NOC generation is not byte-identical")
 
 
-def unit_tests(run_id: str) -> None:
-    print(f"unit-tests: command {UNIT_TEST_COMMAND}")
-    suite = unittest.defaultTestLoader.discover(
-        str(ROOT / "tests" / "phase2"), pattern="test_*.py"
+def clean_acceptance_state() -> None:
+    _ = db.psql(
+        "TRUNCATE TABLE phase2.noc_cards, phase2.dispositions, phase2.events, "
+        "phase2.aliases, phase2.cis, phase2.assets, phase2.run_manifests "
+        "RESTART IDENTITY;"
     )
+
+
+def unit_tests(_run_id: str) -> None:
+    suite = unittest.defaultTestLoader.discover(str(ROOT / "tests" / "phase2"), pattern="test_*.py")
     result = unittest.TextTestRunner(verbosity=2).run(suite)
+    if result.skipped:
+        raise CheckError(f"unit test discovery skipped {len(result.skipped)} test(s)")
     if not result.wasSuccessful():
         raise CheckError("unit test discovery failed")
-    _ = migrate.apply()
-    _ = migrate.verify()
-    _ = pipeline_execute(run_id)
-    baseline = _baseline(run_id)
-    _assert_duplicate_replay(pipeline_execute(run_id), baseline)
-    noc_verify(run_id)
 
 
 STAGES: tuple[Stage, ...] = (
@@ -266,16 +284,44 @@ STAGES: tuple[Stage, ...] = (
 )
 
 
+def _run_stage(label: str, action: StageAction, run_id: str) -> None:
+    try:
+        action(run_id)
+    except (
+        CheckError,
+        Phase2Error,
+        capacity.CapacityError,
+        db.DatabaseCommandError,
+        db.JsonExtractionError,
+        migrate.MigrationError,
+        noc.NocError, recovery.RecoveryError, OSError, ValueError,
+    ) as error:
+        raise StageFailure(label, str(error)) from error
+    print(f"{label}: PASS")
+
+
 def run() -> int:
     run_id = f"phase2-check-{short_commit()}"
-    for label, action in STAGES:
-        action(run_id)
-        print(f"{label}: PASS")
+    for label, action in STAGES[:-1]:
+        _run_stage(label, action, run_id)
+    try:
+        clean_acceptance_state()
+    except db.DatabaseCommandError as error:
+        raise StageFailure("phase2-check", f"acceptance cleanup failed: {error}") from error
+    label, action = STAGES[-1]
+    _run_stage(label, action, run_id)
     return 0
 
 
 def main() -> int:
-    return run()
+    try:
+        return run()
+    except StageFailure as error:
+        print(error, file=sys.stderr)
+        return 1
+    except CheckError as error:
+        print(f"phase2-check: FAIL: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
