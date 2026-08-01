@@ -1,6 +1,8 @@
-.PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance
+.PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance phase2-deps phase2-test phase2-check
 
 PYTHON ?= python3
+PHASE2_VENV ?= .venv
+PHASE2_PYTHON ?= $(PHASE2_VENV)/bin/python
 DCIM_STATE_HOME := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)
 DCIM_RUNTIME_ROOT ?= $(DCIM_STATE_HOME)/dcim-core-platform/runtime
 export DCIM_RUNTIME_ROOT
@@ -86,7 +88,7 @@ foundation-clean-acceptance:
 	$(PYTHON) scripts/foundation_acceptance.py
 
 compile:
-	$(PYTHON) -m compileall -q scripts tests
+	$(PYTHON) -m compileall -q scripts tests contracts connectors
 
 lint:
 	@command -v ruff >/dev/null 2>&1 && ruff check || echo "ruff not installed; skipping optional lint"
@@ -105,6 +107,17 @@ markdown-links:
 
 test:
 	$(PYTHON) -m unittest discover -s tests -p 'test_*.py' -v
+
+phase2-deps:
+	@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"
+	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2"
+
+phase2-test:
+	@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec("pydantic") else (print("Pydantic unavailable; run make phase2-deps", file=sys.stderr), sys.exit(1))'
+	$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v
+
+phase2-check: foundation-up phase2-deps
+	$(PHASE2_PYTHON) scripts/phase2/check.py
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
 
