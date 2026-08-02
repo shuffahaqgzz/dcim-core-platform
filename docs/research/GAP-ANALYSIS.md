@@ -29,7 +29,7 @@
 |---|---|---|---|---|
 | CP-01 | Phase 0 safety baseline DEV-APPROVED | ✅ Yes | — | `docs/phase0/phase0-checklist.md` |
 | CP-02 | Phase 1 foundation lifecycle (issue #9) | ⚠️ Closed 2026-07-23, tetapi remediation #20 open | P1 | `docs/phase1/ISSUE-9-CLOSURE-PACKAGE.md`, PR #22 |
-| CP-03 | First synthetic P1/P2 vertical slice (issue #21) | ❌ Not started | P1 | Issue #21 open, branch `feat/phase2-first-vertical-slice` unstable |
+| CP-03 | First synthetic P1/P2 vertical slice (issue #21) | ✅ Delivered as synthetic Development evidence; owner disposition pending | P1 | [`docs/evidence/2026-08-02-phase2-vertical-slice.md`](../evidence/2026-08-02-phase2-vertical-slice.md), `make phase2-check` |
 | CP-04 | Canonical event envelope schema | ✅ Yes | — | `schemas/event-envelope.schema.json` |
 | CP-05 | Asset / CI identity schema | ✅ Yes | — | `schemas/asset.schema.json`, `schemas/ci.schema.json` |
 | CP-06 | CMDB service | ❌ Scaffold only (OD-01 accepted 2026-07-28, [ADR-0007](../adr/0007-cmdb-implementation-for-development.md)) | P1 | `services/cmdb/` |
@@ -38,7 +38,7 @@
 | CP-09 | Analytics service | ❌ Placeholder only | P2 | `services/analytics/README.md` |
 | CP-10 | Workflow service | ❌ Placeholder only | P2 | `services/workflow/README.md` |
 | CP-11 | Web dashboard (React/Vue) | ❌ Placeholder only | P2 | `web/README.md`; ADR-0017 accepted |
-| CP-12 | Connector code (Redfish/SNMP) | ❌ Placeholder only | P2 | `connectors/redfish/README.md`, `connectors/snmp/README.md`; C-01/C-09 open |
+| CP-12 | Connector code (Redfish/SNMP) | ✅ Fixture-replay adapters delivered; live activation remains out of scope | P2 | [`docs/evidence/2026-08-02-phase2-vertical-slice.md`](../evidence/2026-08-02-phase2-vertical-slice.md), `connectors/redfish/`, `connectors/snmp/`; C-01/C-09 remain open |
 | CP-13 | Elasticsearch integration | ❌ Placeholder only | P2 | ADR-0018 accepted; no code |
 | CP-14 | Resource limits in Compose match ADR-0021 | ⚠️ Values still older | P3 | `deploy/compose/dev-build/compose.yaml` vs `docs/adr/0021-foundation-resource-limits.md` |
 | CP-15 | Demo path executable | ❌ README only | P3 | `deploy/compose/demo/README.md` |

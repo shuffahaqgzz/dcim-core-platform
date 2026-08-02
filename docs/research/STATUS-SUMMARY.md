@@ -41,7 +41,7 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 - 9 issue: 7 closed, 2 open (#20, #21).
 - 22 PR: 12 merged, 4 open (termasuk 2 dependabot).
 - Phase 1 issue #9 (Implement compact infrastructure foundation) closed 2026-07-23, tetapi segera diikuti remediation issue #20 dan PR #22 yang masih open.
-- Phase 2 issue #21 (Deliver first synthetic P1/P2 vertical slice) masih open; branch `feat/phase2-first-vertical-slice` memiliki 63 komit dalam satu hari (2026-07-24) dan belum stabil.
+- Phase 2 issue #21 (Deliver first synthetic P1/P2 vertical slice) remains open for owner disposition; the synthetic evidence package and `phase2-check` gate are now recorded on `feat/phase2-vertical-slice`. The earlier `feat/phase2-first-vertical-slice` branch remains historical and is not reused.
 
 **Core repo branch proliferation:** 13 cabang `review/phase2-audit-evidence-independence-*`, 7 cabang `backup/phase2-*`, dan beberapa cabang `fix/phase*`. Ini menunjukkan rework/rebase intensif pada evidence dan audit gate, bukan pengembangan fitur.
 
@@ -177,7 +177,7 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 | ID | Item | Repo | Status | Dampak |
 |---|---|---|---|---|
 | #20 | Remediate fresh derived-image findings | core platform | Open | Blokir masuk Phase 2 |
-| #21 | Deliver first synthetic P1/P2 vertical slice | core platform | Open | Phase 2 belum dimulai |
+| #21 | Deliver first synthetic P1/P2 vertical slice | core platform | Open — owner closure request pending | Synthetic P1/P2 evidence and gates delivered; issue disposition remains owner-controlled |
 | OD-01 | CMDB implementation decision | core platform | Open | Blokir CMDB service |
 | OD-07 | Long-term service language/framework | core platform | Open | Blokir semua service code |
 | C-01 | Source authorization | core platform | Open | Blokir production-connected integration |
