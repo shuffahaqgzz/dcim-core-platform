@@ -9,11 +9,10 @@ Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset
 - Maturity: **Prototype/Alpha**; bukan Production-ready.
 - Owner: `shuffahaqgzz`.
 - Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
-- Current milestone: **Phase 1 compact infrastructure foundation**. Implementasi
-  synthetic Development berada pada closure-candidate branch; clean-runtime dan
-  preflight evidence sudah captured. Parent issue #9 masih membutuhkan remote
-  checks pada final pushed head, final review, dan owner disposition sebelum
-  closure.
+- Current milestone: **Phase 2 first synthetic P1/P2 vertical slice — Development
+  evidence**. The batch path and `phase2-check` gate are recorded in the public
+  evidence package; issue #21, open conditions, remote checks, and owner
+  disposition remain authoritative and pending.
 
 ## Public code, private runtime
 

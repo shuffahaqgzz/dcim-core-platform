@@ -152,3 +152,35 @@ registered evidence per row.
 None of the C-0x rows change status due to this section. Each remains in its
 registered state and still needs its registered evidence before the owner or
 named authority may mark it `CLOSED`.
+
+## Phase 2 vertical-slice impact — 2026-08-02
+
+This is a public Development evidence update and a set of owner closure
+requests. It changes no C-0x status.
+
+### C-06 — closure request
+
+- Status remains `OPEN`.
+- The evidence package [`2026-08-02-phase2-vertical-slice.md`](../evidence/2026-08-02-phase2-vertical-slice.md)
+  records the five deterministic ADR-0020 collision tests: duplicate serial
+  across sources, hostname reuse after validity expiry, IP movement, a
+  confidence tie quarantine, and merge lineage.
+- Closure request: owner review and register-conformant disposition. This
+  record does not close C-06.
+
+### C-07 — impact only
+
+- Status remains `OPEN`.
+- Planned Phase 2 caps are declared in
+  [`phase2-resource-caps.md`](../architecture/phase2-resource-caps.md), and
+  the synthetic capacity admission check passed.
+- The slice activates no long-running service and does not claim the complete
+  cap, alert, and load/smoke evidence required for closure.
+
+### C-09 — impact only
+
+- Status remains `OPEN`.
+- Fixture adapters exercise configuration and stop kill-switch tiers, with
+  read-only AST/behavioral tests retained by the Stage 1/2 gate.
+- The connector ceiling negative tests required by this register remain open;
+  no connected Runtime Plane is authorized by this evidence.
