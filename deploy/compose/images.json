@@ -60,8 +60,8 @@
       "filename": "jmx_prometheus_standalone-1.6.0.jar",
       "sha256": "6314f19186eb97023d424f5bdf108269fd86dbb0c70f65809b4d8751d68842b9",
       "license": "Apache-2.0",
-      "upstream": "https://github.com/prometheus/jmx_exporter/releases/tag/v1.6.0",
-      "download": "https://github.com/prometheus/jmx_exporter/releases/download/v1.6.0/jmx_prometheus_standalone-1.6.0.jar"
+      "upstream": "https://github.com/prometheus/jmx_exporter/releases/tag/1.6.0",
+      "download": "https://github.com/prometheus/jmx_exporter/releases/download/1.6.0/jmx_prometheus_standalone-1.6.0.jar"
     }
   ]
 }
