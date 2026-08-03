@@ -76,8 +76,10 @@ license, and vulnerability evidence outside Git, then writes `images.env` and
 the exact review-required inventories in the qualified six-image set. Each
 `restricted`, `reciprocal`, and `unknown` record binds both count and a canonical
 identity fingerprint; a changed inventory cannot pass by preserving aggregate
-counts. Recipe, publication/distribution, OD-06, or deployment-scope changes
-require fresh owner review. Qualification upgrades a valid external lock from
+counts. Recipe, publication/distribution, repository-license, runtime-obligation,
+or deployment-scope changes require fresh owner review. OD-06 is accepted as
+Apache-2.0, but acceptance still triggers review and does not authorize image
+publication or distribution. Qualification upgrades a valid external lock from
 schema v1 to v2 only after revalidating existing reports; rollback to v1 restores
 the Governance HOLD and cannot pass current policy or supply-chain gates.
 

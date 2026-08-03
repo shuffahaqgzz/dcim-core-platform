@@ -83,7 +83,8 @@ def license_dispositions(recipes_sha256: str) -> dict[str, object]:
             "scope": "synthetic dcim-build local Development only",
             "publication": False,
             "distribution": False,
-            "od_06": "OPEN",
+            "od_06": "ACCEPTED-APACHE-2.0",
+            "od_06_accepted_date": "2026-07-27",
         },
         "dispositions": [
             {
@@ -464,6 +465,30 @@ class FoundationImagesTests(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("foundation-images: manifest PASS", result.stdout)
+
+    def test_open_or_mismatched_od_06_is_rejected(self) -> None:
+        for status in ("OPEN", "ACCEPTED-MIT"):
+            with self.subTest(od_06=status), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                manifest_path = root / "recipes.json"
+                manifest_path.write_text(json.dumps(manifest()), encoding="utf-8")
+                dispositions_path = root / "license-dispositions.json"
+                recipes_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+                dispositions = license_dispositions(recipes_sha256)
+                decision = dispositions["decision"]
+                self.assertIsInstance(decision, dict)
+                decision["od_06"] = status
+                dispositions_path.write_text(json.dumps(dispositions), encoding="utf-8")
+                result = subprocess.run(
+                    [
+                        "python3", str(SCRIPT), "--manifest", str(manifest_path),
+                        "--license-dispositions", str(dispositions_path),
+                        "--runtime-root", "/var/empty/dcim-foundation-test", "--validate-only",
+                    ],
+                    cwd=ROOT, capture_output=True, text=True, check=False,
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("OD-06", result.stderr)
 
     def test_repository_manifest_passes_validation(self) -> None:
         result = subprocess.run(

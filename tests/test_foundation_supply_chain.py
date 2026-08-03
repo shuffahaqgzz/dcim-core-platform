@@ -28,7 +28,8 @@ def license_disposition_manifest() -> dict[str, object]:
             "scope": "synthetic dcim-build local Development only",
             "publication": False,
             "distribution": False,
-            "od_06": "OPEN",
+            "od_06": "ACCEPTED-APACHE-2.0",
+            "od_06_accepted_date": "2026-07-27",
         },
         "dispositions": [
             {
@@ -71,6 +72,16 @@ class FoundationSupplyChainTests(unittest.TestCase):
             foundation_supply_chain.validate_license_disposition_manifest(
                 unknown_field, "a" * 64,
             )
+
+        for invalid_status in ("OPEN", "ACCEPTED-MIT"):
+            mismatched_status = copy.deepcopy(manifest)
+            decision = mismatched_status["decision"]
+            self.assertIsInstance(decision, dict)
+            decision["od_06"] = invalid_status
+            with self.subTest(od_06=invalid_status), self.assertRaisesRegex(ValueError, "OD-06"):
+                foundation_supply_chain.validate_license_disposition_manifest(
+                    mismatched_status, "a" * 64,
+                )
 
     def test_reviewed_license_categories_require_exact_component_category_counts(self) -> None:
         dispositions = {

@@ -1,19 +1,14 @@
-# License Decision — OPEN
+# License Decision — Accepted
 
-The repository is public but has no selected open-source license. Public visibility alone does not grant clear permission to copy, modify, redistribute, or accept contributions.
+OD-06 was accepted on 2026-07-27: this repository is licensed under
+[Apache-2.0](../../LICENSE), with required attributions in
+[NOTICE](../../NOTICE). The authoritative decision record is
+[ADR-0019](../adr/0019-apache-2-0-repository-license.md), which supersedes
+ADR-0011.
 
-Before inviting external contributions or publishing a reusable release, the owner must decide:
-
-- intended commercial and community use;
-- copyright/ownership of current and future contributions;
-- whether patent grants or reciprocal obligations are desired;
-- compatibility with runtime, library, container image, model, dataset, and documentation licenses;
-- contributor terms and inbound/outbound license consistency;
-- whether any product material is proprietary and must remain outside the public repository.
-
-Until closed:
-
-- do not add a `LICENSE` file by assumption;
-- do not describe the project as open source;
-- keep external contributions owner-approved and minimal;
-- record third-party license findings with every new dependency or artifact.
+Repository licensing does not change the independent licenses or obligations of
+runtime components, libraries, container images, models, datasets, or
+documentation. Each new dependency or artifact requires recorded license review.
+In particular, Apache-2.0 does not authorize publication or distribution of
+derived images: those artifacts remain local Development-only until upstream
+redistribution and source obligations have been reviewed and recorded.

@@ -91,7 +91,8 @@ This PR does not close #9 by itself. Parent issue closure remains pending:
   preserve exact remediated dependency metadata in SBOM and vulnerability scans.
 - Grafana OSS, Prometheus, and PostgreSQL exporter are full source builds.
 - The JMX exporter Java runtime remains a qualified pinned upstream image.
-- OD-06 remains OPEN; derived images are not published or distributed.
+- OD-06 is accepted as Apache-2.0 per ADR-0019; derived images are not published
+  or distributed pending independent upstream-obligation review.
 
 ## Acceptance mapping
 
@@ -179,7 +180,8 @@ not committed.
 ## Dependency, license, and supply-chain result
 
 - No Python package dependency is added by this closure package.
-- No repository license decision is made; OD-06 remains OPEN.
+- OD-06 is accepted as Apache-2.0 per ADR-0019; runtime-component obligations
+  remain independently reviewed.
 - The governed effective six-image set remains the ADR-0013/0014 set:
   PostgreSQL, Kafka, Prometheus, Grafana OSS, PostgreSQL exporter, and JMX
   exporter Java runtime.
@@ -213,8 +215,9 @@ recovery, and preflight gates.
 - No Kafka backup claim.
 - No office or Production source access.
 - No Staging or Production readiness.
-- C-03, C-05, C-07, and OD-06 remain unchanged unless the owner separately
-  approves exact status changes.
+- C-03, C-05, and C-07 remain unchanged unless the owner separately approves
+  exact status changes. OD-06 is accepted as Apache-2.0 per ADR-0019; that does
+  not authorize derived-image distribution.
 ````
 
 ## Issue #9 closure action draft
@@ -314,8 +317,9 @@ does not claim P1/P2 vertical slices, connected-source integration, Hermes,
 workflow execution, Kafka backup, HA, SLA, Staging readiness, Production
 authorization, or Production hardening.
 
-Conditions/open decisions: C-03, C-05, C-07, and OD-06 remain unchanged unless
-separately approved by the owner.
+Conditions/open decisions: C-03, C-05, and C-07 remain unchanged unless
+separately approved by the owner. OD-06 is accepted as Apache-2.0 per ADR-0019;
+runtime obligations still prohibit derived-image distribution until reviewed.
 
 Owner disposition: `<owner approval text/date>`
 ````

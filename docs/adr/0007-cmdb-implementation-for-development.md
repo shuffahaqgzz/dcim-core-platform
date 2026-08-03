@@ -13,7 +13,7 @@
 
 The Development baseline requires deterministic Asset/CI context in the synthetic P1 and P2 vertical slices. Current service-boundary READMEs describe the CMDB as owning CI identity, relationships, history, and context APIs and the Asset Repository as owning asset identity, lifecycle, aliases, and public APIs. That ownership split is existing implementation guidance, not an accepted architecture decision. This ADR proposes and tests it rather than treating it as settled. ADR-0006 already fixes canonical identity rules: product row IDs and IP addresses cannot replace canonical Asset/CI identity, and alias validity, confidence, collision handling, and history must be preserved.
 
-OD-01 leaves the CMDB implementation open. The current status quo is a documented service boundary and JSON Schemas on the baseline PostgreSQL platform, without an implemented relationship/history store or context API. This avoids a premature product dependency but cannot yet satisfy the milestone's enrichment, migration, recovery, or handover evidence.
+OD-01 was accepted on 2026-07-28, selecting a thin custom CMDB service on the baseline PostgreSQL platform for Development. The current implementation status remains a documented service boundary and JSON Schemas, without an implemented relationship/history store or context API; this remains service-delivery backlog, not an open architecture choice.
 
 This is a Development decision for the compact Ubuntu 24.04 single-VM Docker Compose profile. It makes no HA, SLA, hardening, Staging, or Production claim. All evaluation data and evidence must be synthetic and public-safe.
 
@@ -215,7 +215,7 @@ NetBox Community v4.6.1, release commit `64d3b114bc68e152869b964d54b220ecf1d5088
 - OD-07 service language/framework direction or explicit approval for a disposable spike stack.
 - ADR issue link required by the open-decision process; no implementation PR may proceed while it remains pending.
 
-Owner must explicitly change this ADR to `Accepted` or `Rejected`. OD-01 decision recorded 2026-07-28; see the addendum below.
+~~Owner must explicitly change this ADR to `Accepted` or `Rejected`.~~ **[COMPLETED]** OD-01 was accepted on 2026-07-28; this ADR records the selected thin custom CMDB service on the baseline PostgreSQL platform. See the addendum below.
 
 ## Addendum 2026-07-27: iTop research and updated engineer recommendation
 

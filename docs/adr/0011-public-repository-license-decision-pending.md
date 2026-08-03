@@ -1,11 +1,14 @@
 # ADR-0011: Public Repository License Decision Pending
 
-- Status: Proposed
-- Decision reference: OD-06 (OPEN)
+- Status: Superseded by [ADR-0019](0019-apache-2-0-repository-license.md)
+- Decision reference: OD-06 (accepted 2026-07-27 — Apache-2.0)
 - Date: 2026-07-17
 - Owner: shuffahaqgzz
 
 ## Context
+
+> Superseded by [ADR-0019](0019-apache-2-0-repository-license.md), which
+> records the accepted Apache-2.0 repository license.
 
 Repository public belum berarti reuse/contribution rights jelas. License memengaruhi dependency compatibility, contribution, distribution, dan commercial intent.
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "target_platform": "linux/amd64",
   "verified_utc": "2026-07-20",
-  "license_review": "Runtime components remain separately distributed; this inventory does not resolve repository license decision OD-06. Grafana AGPL-3.0-only remains an explicit review item.",
+  "license_review": "Repository license OD-06 is accepted as Apache-2.0; runtime components remain independently licensed and require review. Grafana AGPL-3.0-only remains an explicit review item.",
   "scanner": {
     "image": "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
     "amd64_manifest": "sha256:c6e969c5662a546ad5de4a73c2a6b7a7c627f86d916903e175aa623af5b97ada",

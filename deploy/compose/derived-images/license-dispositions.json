@@ -8,7 +8,8 @@
     "scope": "synthetic dcim-build local Development only",
     "publication": false,
     "distribution": false,
-    "od_06": "OPEN"
+    "od_06": "ACCEPTED-APACHE-2.0",
+    "od_06_accepted_date": "2026-07-27"
   },
   "dispositions": [
     {

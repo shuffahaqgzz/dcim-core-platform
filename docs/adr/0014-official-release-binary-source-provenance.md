@@ -91,8 +91,9 @@ upstream binary trust. Existing vulnerability scans, SBOMs, package-license
 reports, and patch-delta review remain mandatory. No runtime CPU, memory, disk,
 network, capability, data, or credential boundary changes.
 
-OD-06 remains OPEN. This decision is not a legal conclusion and grants no
-publication or redistribution permission.
+OD-06 is accepted as Apache-2.0 (ADR-0019). This decision is not a conclusion
+about runtime-component obligations and grants no image publication or
+redistribution permission.
 
 ## Migration and rollback
 

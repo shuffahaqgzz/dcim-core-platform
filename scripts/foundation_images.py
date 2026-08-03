@@ -370,7 +370,7 @@ def scan_image(
     metadata = {
         "license_categories": license_categories,
         "license_disposition": reviewed_license_categories,
-        "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
+        "license_review": "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed",
         "sbom_components": sbom_components,
         "sha256": {
             "vulnerability": sha256_file(evidence / vulnerability),
@@ -574,7 +574,7 @@ def reusable_records(
                 evidence_metadata = {
                     "license_categories": actual_license_categories,
                     "license_disposition": reviewed_license_categories,
-                    "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
+                    "license_review": "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed",
                     "sbom_components": actual_sbom_components,
                     "sha256": {name: sha256_file(path) for name, path in report_paths.items()},
                 }
@@ -582,7 +582,7 @@ def reusable_records(
                 lock_upgraded = True
             elif evidence_metadata.get("license_disposition") is None:
                 evidence_metadata["license_disposition"] = reviewed_license_categories
-                evidence_metadata["license_review"] = "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN"
+                evidence_metadata["license_review"] = "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed"
                 lock_upgraded = True
             expected_hashes = evidence_metadata.get("sha256")
             if (

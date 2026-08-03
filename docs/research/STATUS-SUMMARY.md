@@ -18,7 +18,7 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 - **SOAR** (`madicemerlang/SOAR`) adalah prototype satu-file n8n; tidak ada containment, hardcoded test IP, tidak ada konfigurasi Wazuh deployable.
 - **Wiki** (`shuffahaqgzz/dcim-wiki`) memiliki referensi desain komprehensif (9 blok) dan 100+ halaman konsep, tetapi tidak ada mekanisme otomatis untuk menjaga sinkronisasi dengan implementasi.
 
-**Blocker utama program:** keputusan terbuka (CMDB, service language), kesenjangan safety boundary antara workflow automation dan core platform, krisis credential management, dan eksekusi berulang pada *foundation image gates* yang menghambat masuk ke Phase 2.
+**Blocker utama program:** kesenjangan safety boundary antara workflow automation dan core platform, krisis credential management, serta remediation foundation dan disposition owner untuk issue #21. OD-01 dan OD-07 telah diterima pada 2026-07-28, dan evidence synthetic Phase 2 telah disampaikan pada 2026-08-02.
 
 ---
 
@@ -65,7 +65,7 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 | Service code (CMDB, Asset, API, Analytics, Workflow, Web) | ❌ Belum ada | `services/*/README.md`, `connectors/*/README.md`, `web/README.md` hanya placeholder |
 | Integration-RO / demo manifests | ❌ Dokumen-only | `deploy/compose/integration-ro/README.md`, `deploy/compose/demo/README.md` |
 | Connectors (Redfish, SNMP) | ❌ Belum ada | `connectors/redfish/README.md`, `connectors/snmp/README.md` |
-| Open decisions | ⚠️ OD-01, OD-07 masih open | `docs/governance/OPEN-DECISIONS.md` |
+| Open decisions | ✅ OD-01 dan OD-07 accepted 2026-07-28 | [ADR-0007](../adr/0007-cmdb-implementation-for-development.md), [ADR-0024](../adr/0024-python-fastapi-service-language-baseline.md) |
 
 ### 3.2 Data Ingestion & Integration (`DCIM_SRV_DATA_COLLECTION`)
 
@@ -178,8 +178,8 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 |---|---|---|---|---|
 | #20 | Remediate fresh derived-image findings | core platform | Open | Blokir masuk Phase 2 |
 | #21 | Deliver first synthetic P1/P2 vertical slice | core platform | Open — owner closure request pending | Synthetic P1/P2 evidence and gates delivered; issue disposition remains owner-controlled |
-| OD-01 | CMDB implementation decision | core platform | Open | Blokir CMDB service |
-| OD-07 | Long-term service language/framework | core platform | Open | Blokir semua service code |
+| OD-01 | CMDB implementation decision | core platform | Accepted 2026-07-28 | Custom PostgreSQL CMDB baseline selected; implementation remains pending |
+| OD-07 | Long-term service language/framework | core platform | Accepted 2026-07-28 | Python/FastAPI backend baseline selected; service implementation remains pending |
 | C-01 | Source authorization | core platform | Open | Blokir production-connected integration |
 | C-04 | Read-only credentials | core platform | Open | Blokir credential record |
 | C-09 | Connector polling controls | core platform | Open | Blokir connector policy |
@@ -193,7 +193,7 @@ Program DCIM Core Platform terdiri dari satu **core platform repository** yang d
 
 1. **Jangan klaim “production ready”** untuk komponen satelit sampai safety, credential, dan CI/CD gates terpenuhi.
 2. **Tutup issue #20 dan #21** dengan scope minimal yang dapat diverifikasi oleh `make preflight`, bukan dengan tambahan fitur.
-3. **Putuskan OD-01 dan OD-07** sebelum menulis service code; rework akan tinggi jika keputusan berubah di tengah jalan.
+3. ~~**Putuskan OD-01 dan OD-07** sebelum menulis service code; rework akan tinggi jika keputusan berubah di tengah jalan.~~ **[COMPLETED]** OD-01 dan OD-07 accepted 2026-07-28; implementasi service tetap perlu mengikuti ADR-0007 dan ADR-0024.
 4. **Integrasikan komponen satelit ke core platform secara bertahap** melalui canonical event contract dan schema registry, bukan webhook ad-hoc.
 5. **Bangun CI/CD di setiap repo satelit** yang menjalankan setidaknya public-safety scan, unit test, dan lint.
 6. **Rotasi semua kredensial** yang pernah tertulis di repo publik; pindahkan ke Vault/Docker secrets dan hapus dari history.

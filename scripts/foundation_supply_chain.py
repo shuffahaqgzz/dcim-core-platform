@@ -237,6 +237,7 @@ def validate_license_disposition_manifest(
     decision = manifest.get("decision")
     decision_fields = {
         "owner", "date", "issue", "scope", "publication", "distribution", "od_06",
+        "od_06_accepted_date",
     }
     if not isinstance(decision, dict) or set(decision) != decision_fields:
         raise ValueError("license disposition decision fields mismatch")
@@ -250,8 +251,10 @@ def validate_license_disposition_manifest(
         raise ValueError("license disposition scope mismatch")
     if decision.get("publication") is not False or decision.get("distribution") is not False:
         raise ValueError("license disposition publication and distribution must be disabled")
-    if decision.get("od_06") != "OPEN":
-        raise ValueError("license disposition must keep OD-06 OPEN")
+    if decision.get("od_06") != "ACCEPTED-APACHE-2.0":
+        raise ValueError("license disposition must record accepted OD-06 Apache-2.0")
+    if decision.get("od_06_accepted_date") != "2026-07-27":
+        raise ValueError("license disposition OD-06 acceptance date mismatch")
 
     entries = manifest.get("dispositions")
     if not isinstance(entries, list) or not entries:
@@ -445,7 +448,7 @@ def scan(
                 "unfixable_high_without_disposition": unfixable_high,
                 "license_categories": license_categories,
                 "license_disposition": reviewed_license_categories,
-                "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
+                "license_review": "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed",
                 "sbom_components": sbom_components,
                 "evidence_sha256": {
                     "vulnerability": sha256_file(evidence / vulnerability_file),

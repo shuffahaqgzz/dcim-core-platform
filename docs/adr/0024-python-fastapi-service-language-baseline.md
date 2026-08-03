@@ -9,7 +9,7 @@
 
 ## Context
 
-OD-07 is the open decision blocking implementation of the core service
+OD-07 was the open decision blocking implementation of the core service
 boundaries: `services/{cmdb,asset-repository,api,analytics,workflow}` and the
 `web/` frontend. The owner confirmed on 2026-07-28 that the backend services use
 Python with FastAPI and Pydantic v2, while the frontend continues with the

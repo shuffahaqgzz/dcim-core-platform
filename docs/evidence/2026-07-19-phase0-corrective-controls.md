@@ -1,5 +1,7 @@
 # Evidence — Phase 0 Corrective Controls
 
+> Historical evidence; OD-06 was accepted 2026-07-27 (ADR-0019, Apache-2.0).
+
 - Governing specification: [#5](https://github.com/shuffahaqgzz/dcim-core-platform/issues/5)
 - Corrective implementation issue: [#3](https://github.com/shuffahaqgzz/dcim-core-platform/issues/3)
 - Base: merge commit PR #2 (`11fc8c6657e937f4b76ebe10bb35b29e1eb354b0`)

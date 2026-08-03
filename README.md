@@ -61,4 +61,6 @@ docs/phase0/          preflight, gate, evidence, dan handover
 - [Phase 0 Checklist](docs/phase0/phase0-checklist.md), [Dev Entry Gate](docs/phase0/dev-entry-gate.md), dan [Evidence Index](docs/phase0/evidence-index.md)
 - [Staging Handover Contract](docs/phase0/staging-handover-contract.md)
 
-No open-source license telah dipilih. Public visibility tidak memberikan reuse rights; OD-06 tetap OPEN.
+Repository ini dilisensikan di bawah [Apache-2.0](LICENSE); lihat juga
+[NOTICE](NOTICE). Komponen runtime tetap memiliki lisensi dan kewajiban
+independen yang harus ditinjau sebelum deployment atau distribution.

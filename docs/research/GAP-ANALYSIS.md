@@ -10,7 +10,7 @@
 
 | Komponen | Wiki Target (B#) | Implementasi Aktual | Overall Gap | Blocker P1 |
 |---|---|---|---|---|
-| Core Platform foundation | B1 Infrastructure Provisioning | Compose dev-build + derived images + 205 passing tests | Kecil | #20, #21, OD-01, OD-07 |
+| Core Platform foundation | B1 Infrastructure Provisioning | Compose dev-build + derived images + 205 passing tests; synthetic Phase 2 vertical-slice evidence delivered 2026-08-02 | Kecil | #20 and owner disposition for #21 |
 | Data Ingestion & Integration | B2 + DII UC Analysis 14 UCs | Pipeline v4.6.1 fungsional, tetapi credential crisis | Sedang–Besar | Credential exposure, no CI, no tests |
 | Asset Repository | B3 + 15 UCs | Hanya placeholder `services/asset-repository/README.md` | Besar | Belum ada service |
 | CMDB | B4 + 16 UCs | Scaffold `services/cmdb/`; OD-01 accepted 2026-07-28 ([ADR-0007](../adr/0007-cmdb-implementation-for-development.md)) | Besar | Belum ada service code |
@@ -224,7 +224,7 @@
 1. Rotasi semua kredensial yang pernah muncul di repo publik; pindahkan ke Vault/Docker secrets.
 2. Hapuskan atau isolasi workflow `systemctl restart` dan decommission sampai memiliki dry-run, approval, rollback, OT-safe enforcement.
 3. Bangun CI/CD minimum (public-safety scan, lint, unit test) di setiap repo satelit.
-4. Putuskan OD-01 (CMDB) dan OD-07 (service language/framework) di core platform.
+4. ~~Putuskan OD-01 (CMDB) dan OD-07 (service language/framework) di core platform.~~ **[COMPLETED]** OD-01 and OD-07 were accepted 2026-07-28; implement service work against ADR-0007 and ADR-0024.
 5. Tutup issue #20 dan #21 dengan scope minimal, verifiable, bukan dengan fitur tambahan.
 
 ### P2 — Close before multi-team staging

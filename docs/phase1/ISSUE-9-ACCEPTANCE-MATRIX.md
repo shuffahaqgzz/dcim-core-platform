@@ -97,7 +97,8 @@ pending until remote-hosted runner evidence passes on that final pushed head.
 - C-05: unchanged because `dcim-demo` remains non-executable.
 - C-07: evidence advances resource/retention visibility, but status remains
   `OPEN`.
-- OD-06: unchanged; public visibility and local Development image use do not
-  grant publication, distribution, or repository-license approval.
+- OD-06: accepted as Apache-2.0 per ADR-0019; local Development image use still
+  does not grant publication or distribution because runtime obligations require
+  separate review.
 
 Only the owner may change these statuses or approve issue #9 closure.

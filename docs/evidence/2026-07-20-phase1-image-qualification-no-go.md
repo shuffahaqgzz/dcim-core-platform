@@ -1,5 +1,7 @@
 # Phase 1 Foundation Image Qualification — NO-GO
 
+> Historical evidence; OD-06 was accepted 2026-07-27 (ADR-0019, Apache-2.0).
+
 - Date: 2026-07-20
 - Verification window: 2026-07-20 07:12:51–07:17:08 UTC
 - Subject: worktree at `6957ce85b0b130a4c4855f77291a22dd2053ea3e`
