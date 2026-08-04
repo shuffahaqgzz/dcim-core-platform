@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "NOC dashboard gateway and public API façade."
 requires-python = ">=3.12"
 dependencies = [
+    "asyncpg==0.30.0",
     "fastapi==0.115.0",
+    "httpx==0.28.1",
+    "prometheus-client==0.26.0",
     "pydantic==2.9.2",
     "uvicorn[standard]==0.30.6",
 ]
-# Pins are verified at first install in Phase 2; dependencies are declared but not installed in Phase 0.
 
 [tool.ruff]
 extend = "../../ruff.toml"

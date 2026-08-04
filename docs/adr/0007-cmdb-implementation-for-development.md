@@ -260,3 +260,34 @@ Owner confirmed 2026-07-28 (source: `docs/research/PRD.md` §7 Q1 and
 3. The bounded synthetic spike defined in this ADR is **converted** from a selection mechanism into Phase 3 implementation acceptance evidence: canonical-semantics tests, security negative tests, recovery/neutral round-trip, and Development-VM headroom evidence are all still required of the custom service before milestone acceptance.
 4. **ADR-0022 remains reserved and unused**; no replacement CMDB document is written.
 5. The satellite-repo iTop-consumer refactor (generic CMDB adapter) is a cross-repo follow-up outside this repository (per clarification D-5 in `docs/research/PHASE0-PLAN.md`).
+
+## Addendum 2026-08-03: Development internal-token boundary
+
+Authority: owner decision 2026-08-03 through approval of plan
+`phase2-closure-phase3-start`.
+
+The Development implementation uses five service-scoped PostgreSQL roles. The
+grant matrix is intentionally narrow:
+
+| Role | Development grants |
+| --- | --- |
+| `dcim_assets_rw` | SELECT, INSERT, and UPDATE on `phase2.assets` and `phase2.aliases` |
+| `dcim_cmdb_rw` | SELECT, INSERT, and UPDATE on `phase2.cis` and `phase2.ci_relationships`; REFERENCES only on `phase2.assets` for foreign-key enforcement |
+| `dcim_api_ro` | SELECT on `phase2.noc_cards`, `phase2.events`, and `phase2.dispositions` |
+| `dcim_analytics_ro` | SELECT on `phase2.events`, `phase2.dispositions`, `phase2.run_manifests`, and `phase2.noc_cards` |
+| `dcim_workflow_rw` | SELECT, INSERT, and UPDATE on `phase2.workflow_drafts` |
+
+For Development service-to-service traffic, a static shared internal token is
+read from an owner-only runtime file. When authentication is required, every
+`/api/*` route is deny-by-default and returns 403 unless
+`X-Internal-Token` matches. `/health`, `/ready`, and `/metrics` are exempt so
+container and monitoring probes do not carry the token. A missing or empty
+required token file prevents application startup.
+
+This bounded Development mechanism is **NOT least privilege** and is **NOT milestone security acceptance**.
+Phase 3 milestone acceptance must complete
+the complete remaining security-evidence set in ADR-0007 line 160: token
+TTL/rotation/revocation; audit attribution; actor and role enforcement;
+connection and network restrictions; and the full negative-test matrix,
+including unauthenticated access, horizontal escalation, vertical escalation,
+forbidden mutations, token expiry/revocation, and disable/kill behavior.

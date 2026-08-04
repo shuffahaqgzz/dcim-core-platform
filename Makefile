@@ -1,4 +1,5 @@
 .PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance phase2-deps phase2-test phase2-check
+.PHONY: phase3-deps phase3-test
 
 PYTHON ?= python3
 PHASE2_VENV ?= .venv
@@ -116,6 +117,14 @@ phase2-test:
 	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }
 	@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec("pydantic") else (print("Pydantic unavailable; run make phase2-deps", file=sys.stderr), sys.exit(1))'
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v
+
+phase3-deps:
+	@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"
+	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "fastapi==0.115.0" "uvicorn[standard]==0.30.6" "asyncpg==0.30.0" "httpx==0.28.1" "prometheus-client==0.26.0" "confluent-kafka==2.15.0"
+
+phase3-test:
+	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 3 environment unavailable; run make phase3-deps' >&2; exit 1; }
+	$(PHASE2_PYTHON) -m unittest discover -s tests/phase3 -p 'test_*.py' -v
 
 phase2-check: foundation-up phase2-deps
 	$(PHASE2_PYTHON) scripts/phase2/check.py
