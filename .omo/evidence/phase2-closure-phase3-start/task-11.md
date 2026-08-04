@@ -64,6 +64,13 @@ the Todo 11 changes remain staged.
 The evidence and committed inputs contain no credentials. Runtime secrets and
 local runtime material remain outside Git.
 
+## Commit hook bypass note
+
+Commit `269f5d0` used temporary `pre-commit = phase0-check` only per operator
+skip of foundation Docker gates (2026-08-04). Full `make preflight` still
+required before DEV-APPROVED/milestone. `foundation-images-qualify` and
+`foundation-policy` remain DEFERRED.
+
 ## Restore
 
 Remove the services recipe and Dockerfile, restore the five-component policy

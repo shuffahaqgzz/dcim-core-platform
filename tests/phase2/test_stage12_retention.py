@@ -34,6 +34,10 @@ PROHIBITED_ENTRYPOINT = re.compile(
     r"^(?:(?:automate|execute|apply|mutate)_(?:infrastructure|device|network|power|firmware|snmp)"
     r"|(?:infrastructure|device|network|power|firmware|snmp)_(?:automate|execute|apply|mutate))(?:_|$)"
 )
+SUBPROCESS_ALLOWED_PATHS: frozenset[Path] = frozenset({
+    Path("scripts/phase2/db.py"),
+    Path("scripts/phase2/kafka_topics.py"),
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,16 +85,16 @@ def scan_retention(root: Path) -> tuple[Violation, ...]:
                 for imported in _import_roots(node):
                     if imported in PROHIBITED_IMPORTS:
                         violations.append(Violation(relative, f"prohibited import {imported}"))
-                    if imported == "subprocess" and relative != Path("scripts/phase2/db.py"):
-                        violations.append(Violation(relative, "subprocess outside db.py"))
+                    if imported == "subprocess" and relative not in SUBPROCESS_ALLOWED_PATHS:
+                        violations.append(Violation(relative, "subprocess outside allowed adapter"))
             if isinstance(node, ast.Call):
                 called = _call_name(node)
                 if called is not None:
                     owner, method = called
                     if owner == "os" and method == "system":
                         violations.append(Violation(relative, "raw shell execution"))
-                    if owner == "subprocess" and relative != Path("scripts/phase2/db.py"):
-                        violations.append(Violation(relative, "subprocess call outside db.py"))
+                    if owner == "subprocess" and relative not in SUBPROCESS_ALLOWED_PATHS:
+                        violations.append(Violation(relative, "subprocess call outside allowed adapter"))
                 if isinstance(node.func, ast.Attribute):
                     method = node.func.attr
                     if method.lower() in PROHIBITED_HTTP_METHODS:
@@ -180,6 +184,79 @@ class Stage12RetentionTests(unittest.TestCase):
         )
         self.assertIsNotNone(compose_source)
         self.assertRegex(compose_source or "", r'command\s*=\s*\[\s*"docker",\s*"compose",')
+
+    def test_subprocess_is_confined_to_docker_compose_kafka_adapter(self) -> None:
+        # Given: the sole permitted subprocess-bearing Kafka topic adapter.
+        path = ROOT / "scripts/phase2/kafka_topics.py"
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+        functions = {
+            node.name: node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+        }
+
+        # When: every subprocess invocation and its command construction are inspected.
+        subprocess_owners: list[str] = []
+        for name, function in functions.items():
+            calls = [
+                node
+                for node in ast.walk(function)
+                if isinstance(node, ast.Call)
+                and (
+                    _call_name(node) is not None
+                    and _call_name(node)[0] == "subprocess"
+                )
+            ]
+            if calls:
+                subprocess_owners.append(name)
+                self.assertTrue(
+                    all(_call_name(call) == ("subprocess", "run") for call in calls),
+                    f"{name}: all subprocess calls must be subprocess.run",
+                )
+                self.assertTrue(
+                    all(
+                        call.args
+                        and isinstance(call.args[0], ast.Call)
+                        and isinstance(call.args[0].func, ast.Name)
+                        and call.args[0].func.id == "kafka_command"
+                        for call in calls
+                    ),
+                    f"{name}: subprocess.run must receive kafka_command(...) as argv",
+                )
+                for call in calls:
+                    for keyword in call.keywords:
+                        self.assertNotEqual(
+                            keyword.arg,
+                            "shell",
+                            f"{name}: subprocess.run must not use shell=True",
+                        )
+
+        # Then: only run_kafka invokes subprocess via docker-compose-derived argv.
+        self.assertEqual(subprocess_owners, ["run_kafka"])
+
+        compose_source = ast.get_source_segment(source, functions["kafka_command"])
+        self.assertIsNotNone(compose_source)
+        self.assertRegex(compose_source or "", r'"docker"')
+        self.assertRegex(compose_source or "", r'"compose"')
+        self.assertRegex(compose_source or "", r'"exec"')
+        self.assertRegex(compose_source or "", r'"kafka"')
+
+        allowed_executables = {"KAFKA_TOPICS", "KAFKA_CONFIGS"}
+        module_constants: dict[str, object] = {}
+        for node in tree.body:
+            if isinstance(node, ast.AnnAssign):
+                target = node.target
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id in allowed_executables
+                    and isinstance(node.value, ast.Constant)
+                ):
+                    module_constants[target.id] = node.value.value
+        self.assertEqual(set(module_constants.keys()), allowed_executables)
+        for name, value in module_constants.items():
+            self.assertIsInstance(value, str)
+            self.assertIn("/kafka-", value, f"{name} must point to a kafka CLI binary")
 
     def test_workflow_stage_one_and_two_safety_text_remains_exact(self) -> None:
         # Given: the accepted workflow safety design text.
