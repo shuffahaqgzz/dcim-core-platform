@@ -84,7 +84,7 @@ EXPECTED_EXPORTER_PROCESS = {
 EXPECTED_PROMETHEUS_COMMAND = (
     "--config.file=/etc/prometheus/prometheus.yml",
     "--storage.tsdb.path=/prometheus",
-    "--storage.tsdb.retention.time=7d",
+    "--storage.tsdb.retention.time=30d",
     "--storage.tsdb.retention.size=20GB",
     "--web.enable-lifecycle",
 )
@@ -155,7 +155,7 @@ EXPECTED_KAFKA_ENVIRONMENT = {
     "KAFKA_AUTO_CREATE_TOPICS_ENABLE": "false",
     "KAFKA_MESSAGE_MAX_BYTES": "1048576",
     "KAFKA_REPLICA_FETCH_MAX_BYTES": "1048576",
-    "KAFKA_LOG_RETENTION_HOURS": "24",
+    "KAFKA_LOG_RETENTION_HOURS": "720",
     "KAFKA_LOG_SEGMENT_BYTES": "268435456",
     "KAFKA_LOG_DIRS": "/var/lib/kafka/data",
     "KAFKA_JMX_HOSTNAME": "kafka",

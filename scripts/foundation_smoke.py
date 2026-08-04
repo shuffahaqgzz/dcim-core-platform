@@ -46,6 +46,16 @@ LONG_RUNNING = (
 )
 MODE_LIMIT_SECONDS = {"fast": 300.0, "recovery": 900.0}
 ACTIVE_DEADLINE: float | None = None
+SMOKE_KAFKA_TOPIC = "dcim.synthetic.smoke.v1"
+ALLOWED_EXTERNAL_KAFKA_TOPICS = frozenset(
+    {
+        SMOKE_KAFKA_TOPIC,
+        "dcim.raw.synthetic",
+        "dcim.normalized.events",
+        "dcim.enriched.events",
+        "dcim.dlq.synthetic",
+    }
+)
 
 
 class SmokeFailure(RuntimeError):
@@ -329,8 +339,12 @@ def kafka_topic_inventory() -> None:
     internal = sorted(topic for topic in topics if topic.startswith("__"))
     non_internal = sorted(topic for topic in topics if topic and not topic.startswith("__"))
     print(f"foundation-kafka: managed_internal_topics={len(internal)}")
-    if non_internal != ["dcim.synthetic.smoke.v1"]:
-        raise SmokeFailure(f"unexpected non-internal Kafka topics: {non_internal}")
+    external = set(non_internal)
+    unexpected = external - ALLOWED_EXTERNAL_KAFKA_TOPICS
+    if unexpected:
+        raise SmokeFailure(f"unexpected non-internal Kafka topics: {sorted(unexpected)}")
+    if SMOKE_KAFKA_TOPIC not in external:
+        raise SmokeFailure("Kafka smoke topic missing")
 
 
 def kafka_next_offset() -> int:

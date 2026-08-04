@@ -366,7 +366,7 @@ class FoundationPolicyTests(unittest.TestCase):
     def test_prometheus_retention_command_must_match_capacity_contract(self) -> None:
         model = self.normalized_model()
         model["services"]["prometheus"]["command"] = [
-            item.replace("7d", "14d")
+            item.replace("30d", "14d")
             for item in model["services"]["prometheus"]["command"]
         ]
 
