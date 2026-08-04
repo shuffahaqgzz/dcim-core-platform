@@ -11,3 +11,9 @@ work plans. It does not change any condition-register status.
 
 The unmerged `review/phase2-audit-evidence-independence-*` branches remain
 unmerged and may be deleted by the owner.
+
+## PR #19 — closure disposition
+
+| Pull request | Status | Authority | Coverage mapping |
+| --- | --- | --- | --- |
+| PR #19 | **CLOSED** | Owner decision 2026-08-03 via approval of [`phase2-closure-phase3-start`](../../.omo/plans/phase2-closure-phase3-start.md) | Its synthetic fixture contract compatibility and transport-enum parity intent is superseded by the merged `phase2-check` gate and re-covered by service contract-parity tests in `tests/phase3/` (todos 12 and 13). |
