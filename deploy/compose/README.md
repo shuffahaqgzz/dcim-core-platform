@@ -47,8 +47,10 @@ Future profile names remain reserved: `core`, `dashboard`, `workflow`,
   local immutable image-ID lock;
 - external runtime secrets and state; no runtime material in Git;
 - isolated internal networks and service-specific named volumes;
-- only the two metrics exporters may be long-running dual-homed services, with
-  IP forwarding disabled;
+- only the two metrics exporters and the five named application services
+  (`asset-repository`, `cmdb`, `api`, `analytics`, and `workflow`) may be
+  long-running dual-homed services on `data` and `observability`, with IP
+  forwarding disabled;
 - zero published host ports; Grafana access follows accepted ADR-0012 internal
   bridge resolution;
 - explicit health checks, resource limits, retention, and log rotation;
@@ -90,3 +92,12 @@ Fast and recovery evidence remains external, binds the effective image digests,
 and uses five- and fifteen-minute fail-closed deadlines respectively. Fast smoke
 proves the Kafka oversize-message rejection. Recovery verifies pre-restart
 PostgreSQL and Kafka state without rewriting it after restart.
+
+## Dual-home governance amendment — 2026-08-03
+
+Authority: owner decision **2026-08-03** via `phase2-closure-phase3-start`.
+The five named application services may be dual-homed on `data` and
+`observability` for Development only. `foundation_policy.py` enforces their
+exact two-network membership and `net.ipv4.ip_forward=0`; it rejects all other
+dual-homed services. This amendment must be revisited during the Staging design
+review and does not broaden network access beyond Development.

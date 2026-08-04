@@ -120,7 +120,7 @@ phase2-test:
 
 phase3-deps:
 	@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"
-	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "fastapi==0.115.0" "uvicorn[standard]==0.30.6" "asyncpg==0.30.0" "httpx==0.28.1" "prometheus-client==0.26.0" "confluent-kafka==2.15.0"
+	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "fastapi==0.116.0" "uvicorn[standard]==0.30.6" "asyncpg==0.30.0" "httpx==0.28.1" "prometheus-client==0.26.0" "confluent-kafka==2.15.0"
 
 phase3-test:
 	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 3 environment unavailable; run make phase3-deps' >&2; exit 1; }

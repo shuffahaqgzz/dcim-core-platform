@@ -41,7 +41,7 @@ def license_disposition_manifest() -> dict[str, object]:
             }
             for component in (
                 "postgresql", "apache-kafka", "grafana-oss", "postgresql-exporter",
-                "prometheus", "jmx-exporter-java-runtime",
+                "prometheus", "jmx-exporter-java-runtime", "dcim-services",
             )
         ],
         "revalidation_triggers": [

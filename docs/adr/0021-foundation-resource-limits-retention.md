@@ -98,3 +98,20 @@ recovery rerun; rollback restores the previous values.
 - measured p95 usage exceeds 70% of a limit;
 - a new service class activates (search, workflow, CMDB);
 - VM size or retention policy changes.
+
+## Addendum — Phase 3 services headroom (2026-08-03)
+
+The owner pre-approved this Development-scoped amendment on **2026-08-03** via
+the `phase2-closure-phase3-start` plan. Five application services reserve
+0.5 CPU and 512 MiB each. The existing approximately 14.75 CPU / 30.75 GiB
+budget plus 2.5 CPU / 2.5 GiB is 17.25 CPU / 33.25 GiB, within aggregate caps
+of **20 CPU / 40 GiB**. On the 32 vCPU / 64 GB Development VM this retains at
+least 40% headroom. These are Development limits only and require revalidation
+at the Staging design review.
+
+The services derivative uses Python 3.12 Alpine 3.24 rather than the initially
+evaluated Bookworm-slim base because the latter retained unfixed OS critical
+findings under the ADR-0013 zero-finding gate. FastAPI is pinned to 0.116.0 so
+its Starlette floor includes the remediations for CVE-2024-47874,
+CVE-2026-48818, and CVE-2026-54283. This applies ADR-0013 remediation option 2
+(update transitive dependency) without relaxing the gate.

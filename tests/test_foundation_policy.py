@@ -44,7 +44,7 @@ class FoundationPolicyTests(unittest.TestCase):
             "images": [
                 {"component": component, "image_id": image_id}
                 for component in (
-                    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+                    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
                 )
             ],
         }), encoding="utf-8")
@@ -55,6 +55,7 @@ class FoundationPolicyTests(unittest.TestCase):
                 f"DCIM_GRAFANA_IMAGE={image_id}",
                 f"DCIM_PROMETHEUS_IMAGE={image_id}",
                 f"DCIM_POSTGRES_EXPORTER_IMAGE={image_id}",
+                f"DCIM_SERVICES_IMAGE={image_id}",
             ]) + "\n",
             encoding="utf-8",
         )
@@ -108,6 +109,30 @@ class FoundationPolicyTests(unittest.TestCase):
             ],
             cwd=ROOT, capture_output=True, text=True, check=False,
         )
+
+    def add_application_service(self, model: dict[str, object], name: str) -> dict[str, object]:
+        service = json.loads(json.dumps(model["services"]["prometheus"]))
+        service["image"] = "sha256:" + "a" * 64
+        service["profiles"] = ["workflow"] if name == "workflow" else ["core"]
+        service["networks"] = {"data": None, "observability": None}
+        service["sysctls"] = {"net.ipv4.ip_forward": "0"}
+        service["user"] = "10001:10001"
+        service["healthcheck"] = None
+        service["command"] = None
+        service["entrypoint"] = None
+        secret_names = {
+            "asset-repository": ["assets-db-password"],
+            "cmdb": ["cmdb-db-password"],
+            "api": ["api-db-password", "internal-api-token"],
+            "analytics": ["analytics-db-password"],
+            "workflow": ["workflow-db-password", "internal-api-token"],
+        }[name]
+        service["secrets"] = [
+            {"source": secret, "target": f"/run/secrets/{secret}"}
+            for secret in secret_names
+        ]
+        model["services"][name] = service
+        return service
 
     def test_normalized_compose_model_passes(self) -> None:
         result = self.validate(self.normalized_model())
@@ -205,6 +230,17 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("published port", result.stderr)
 
+    def test_api_published_port_fails_closed(self) -> None:
+        model = self.normalized_model()
+        service = self.add_application_service(model, "api")
+        service["ports"] = [{"host_ip": "0.0.0.0", "published": "8000", "target": 8000, "protocol": "tcp"}]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("api", result.stderr)
+        self.assertIn("published port", result.stderr)
+
     def test_privilege_and_dual_home_bypass_fail_closed(self) -> None:
         model = self.normalized_model()
         model["services"]["prometheus"]["privileged"] = True
@@ -282,12 +318,33 @@ class FoundationPolicyTests(unittest.TestCase):
 
     def test_aggregate_resource_budget_fails_closed(self) -> None:
         model = self.normalized_model()
-        model["services"]["grafana"]["deploy"]["resources"]["limits"]["cpus"] = 2
-        model["services"]["grafana"]["deploy"]["resources"]["limits"]["memory"] = str(4 * 1024**3)
+        model["services"]["grafana"]["deploy"]["resources"]["limits"]["cpus"] = 8
+        model["services"]["grafana"]["deploy"]["resources"]["limits"]["memory"] = str(12 * 1024**3)
         result = self.validate(model)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("aggregate CPU limit", result.stderr)
         self.assertIn("aggregate memory limit", result.stderr)
+
+    def test_aggregate_21_cpu_fails_closed(self) -> None:
+        model = self.normalized_model()
+        model["services"]["grafana"]["deploy"]["resources"]["limits"]["cpus"] = 7.25
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("aggregate CPU limit", result.stderr)
+
+    def test_rogue_dual_homed_service_fails_closed(self) -> None:
+        model = self.normalized_model()
+        service = self.add_application_service(model, "api")
+        model["services"]["rogue"] = service
+        del model["services"]["api"]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("rogue", result.stderr)
+        self.assertIn("dual-homed", result.stderr)
 
     def test_network_inventory_must_be_exact(self) -> None:
         model = self.normalized_model()

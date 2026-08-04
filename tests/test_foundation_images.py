@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from scripts.foundation_images import build_once, runtime_environment
+from scripts.foundation_images import build_once, recipe_identity, reusable_record, runtime_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +68,7 @@ def manifest() -> dict[str, object]:
             recipe("grafana"),
             recipe("prometheus"),
             recipe("postgres-exporter"),
+            recipe("services"),
         ],
     }
 
@@ -96,7 +97,7 @@ def license_dispositions(recipes_sha256: str) -> dict[str, object]:
             }
             for component in (
                 "postgresql", "apache-kafka", "grafana-oss", "postgresql-exporter",
-                "prometheus", "jmx-exporter-java-runtime",
+                "prometheus", "jmx-exporter-java-runtime", "dcim-services",
             )
         ],
         "revalidation_triggers": [
@@ -433,6 +434,7 @@ class FoundationImagesTests(unittest.TestCase):
             {"component": component, "image_id": image_id}
             for component in (
                 "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+                "services",
             )
         ])
         self.assertEqual(
@@ -442,9 +444,40 @@ class FoundationImagesTests(unittest.TestCase):
                 "DCIM_GRAFANA_IMAGE": image_id,
                 "DCIM_PROMETHEUS_IMAGE": image_id,
                 "DCIM_POSTGRES_EXPORTER_IMAGE": image_id,
+                "DCIM_SERVICES_IMAGE": image_id,
             },
             environment,
         )
+
+    def test_services_recipe_uses_deterministic_unprivileged_account(self) -> None:
+        dockerfile = (MANIFEST.parent / "services/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("dcim:x:10001", dockerfile)
+        self.assertIn("USER 10001:10001", dockerfile)
+        self.assertEqual(2, dockerfile.count("-Wl,--build-id=none"))
+        self.assertIn("find /opt/venv -name '*.so'", dockerfile)
+
+    def test_reusable_record_requires_matching_complete_recipe_and_zero_counts(self) -> None:
+        image_id = "sha256:" + "f" * 64
+        current_recipe = recipe("services")
+        record = {
+            "component": "services",
+            "image_id": image_id,
+            "counts": {
+                "critical": 0,
+                "fixable_high": 0,
+                "unfixable_high_without_disposition": 0,
+            },
+            "recipe": recipe_identity(current_recipe),
+        }
+        with patch(
+            "scripts.foundation_images.inspect_image", return_value=(image_id, {}),
+        ):
+            self.assertEqual(record, reusable_record(record, current_recipe))
+            changed_recipe = recipe("services")
+            changed_recipe["output_tag"] = "1.0.0-r2"
+            self.assertIsNone(reusable_record(record, changed_recipe))
+            record["counts"] = {"critical": 1}
+            self.assertIsNone(reusable_record(record, current_recipe))
     def test_complete_locked_manifest_passes_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

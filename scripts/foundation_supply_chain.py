@@ -50,6 +50,7 @@ REQUIRED_LICENSE_COMPONENTS = {
     "postgresql-exporter",
     "prometheus",
     "jmx-exporter-java-runtime",
+    "dcim-services",
 }
 REVALIDATION_TRIGGERS = {
     "license-inventory-change",

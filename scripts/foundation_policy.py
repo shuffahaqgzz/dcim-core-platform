@@ -38,6 +38,8 @@ EXPECTED_USERS = {
     "postgres-exporter": "65534:65534", "kafka-jmx-exporter": "65534:65534",
     "prometheus": "65534:65534", "observability-smoke": "65534:65534",
     "grafana": "472:472",
+    "asset-repository": "10001:10001", "cmdb": "10001:10001",
+    "api": "10001:10001", "analytics": "10001:10001", "workflow": "10001:10001",
 }
 EXPECTED_SECRETS = {
     "postgres": {
@@ -55,22 +57,38 @@ EXPECTED_SECRETS = {
         ("grafana-admin-user", "/run/secrets/grafana-admin-user"),
         ("grafana-admin-password", "/run/secrets/grafana-admin-password"),
     },
+    "asset-repository": {("assets-db-password", "/run/secrets/assets-db-password")},
+    "cmdb": {("cmdb-db-password", "/run/secrets/cmdb-db-password")},
+    "api": {
+        ("api-db-password", "/run/secrets/api-db-password"),
+        ("internal-api-token", "/run/secrets/internal-api-token"),
+    },
+    "analytics": {("analytics-db-password", "/run/secrets/analytics-db-password")},
+    "workflow": {
+        ("workflow-db-password", "/run/secrets/workflow-db-password"),
+        ("internal-api-token", "/run/secrets/internal-api-token"),
+    },
 }
 SECRET_NAMES = {
     "postgres-superuser-password", "postgres-monitor-password", "postgres-smoke-password",
     "grafana-admin-user", "grafana-admin-password",
+    "assets-db-password", "cmdb-db-password", "api-db-password", "analytics-db-password",
+    "workflow-db-password", "internal-api-token",
 }
 IMAGE_INVENTORY = ROOT / "deploy/compose/images.json"
 IMAGE_RECIPES = ROOT / "deploy/compose/derived-images/recipes.json"
-ALLOWED_SERVICES = {
+FOUNDATION_REQUIRED_SERVICES = {
     "postgres", "kafka", "prometheus", "grafana", "postgres-exporter",
     "kafka-jmx-exporter", "postgres-smoke", "kafka-smoke", "observability-smoke",
 }
+APPLICATION_SERVICES = {"asset-repository", "cmdb", "api", "analytics", "workflow"}
+ALLOWED_SERVICES = FOUNDATION_REQUIRED_SERVICES | APPLICATION_SERVICES
 LONG_RUNNING = {
     "postgres", "kafka", "prometheus", "grafana", "postgres-exporter",
     "kafka-jmx-exporter",
+    *APPLICATION_SERVICES,
 }
-DUAL_HOMED = {"postgres-exporter", "kafka-jmx-exporter"}
+DUAL_HOMED = {"postgres-exporter", "kafka-jmx-exporter", *APPLICATION_SERVICES}
 EXPECTED_EXPORTER_PROCESS = {
     "postgres-exporter": ((), ()),
     "kafka-jmx-exporter": (
@@ -98,6 +116,11 @@ EXPECTED_PROFILES = {
     "postgres-smoke": {"smoke"},
     "kafka-smoke": {"smoke"},
     "observability-smoke": {"smoke"},
+    "asset-repository": {"core"},
+    "cmdb": {"core"},
+    "api": {"core"},
+    "analytics": {"core"},
+    "workflow": {"workflow"},
 }
 EXPECTED_NETWORKS = {
     "postgres": {"data"},
@@ -109,6 +132,11 @@ EXPECTED_NETWORKS = {
     "postgres-smoke": {"data"},
     "kafka-smoke": {"data"},
     "observability-smoke": {"observability"},
+    "asset-repository": {"data", "observability"},
+    "cmdb": {"data", "observability"},
+    "api": {"data", "observability"},
+    "analytics": {"data", "observability"},
+    "workflow": {"data", "observability"},
 }
 IMAGE_COMPONENT_BY_SERVICE = {
     "postgres": "PostgreSQL",
@@ -130,6 +158,11 @@ DERIVED_COMPONENT_BY_SERVICE = {
     "prometheus": "prometheus",
     "observability-smoke": "prometheus",
     "postgres-exporter": "postgres-exporter",
+    "asset-repository": "services",
+    "cmdb": "services",
+    "api": "services",
+    "analytics": "services",
+    "workflow": "services",
 }
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
 STATEFUL_VOLUMES = {
@@ -239,7 +272,7 @@ def validate_model(
             item["component"]: item["image_id"] for item in derived_lock["images"]
         }
         if set(derived_images) != {
-            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
         }:
             raise ValueError("derived component allowlist mismatch")
         if any(not isinstance(image, str) or not IMAGE_ID.fullmatch(image) for image in derived_images.values()):
@@ -250,7 +283,7 @@ def validate_model(
     if not isinstance(services, dict):
         return ["services must be an object"]
     unexpected = set(services) - ALLOWED_SERVICES
-    missing = ALLOWED_SERVICES - set(services)
+    missing = FOUNDATION_REQUIRED_SERVICES - set(services)
     if unexpected:
         errors.append(f"unexpected or prohibited services: {sorted(unexpected)}")
     if missing:
@@ -334,15 +367,16 @@ def validate_model(
             errors.append(f"{name}: unexpected dual-homed service")
         if name in DUAL_HOMED:
             if attached != {"data", "observability"}:
-                errors.append(f"{name}: exporter must attach to exact dual networks")
+                errors.append(f"{name}: dual-homed service must attach to exact dual networks")
             if str(value.get("sysctls", {}).get("net.ipv4.ip_forward")) != "0":
                 errors.append(f"{name}: IP forwarding must be disabled")
-            process = (
-                tuple(str(item) for item in (value.get("command") or [])),
-                tuple(str(item) for item in (value.get("entrypoint") or [])),
-            )
-            if process != EXPECTED_EXPORTER_PROCESS[name]:
-                errors.append(f"{name}: reviewed exporter process mismatch")
+            if name in EXPECTED_EXPORTER_PROCESS:
+                process = (
+                    tuple(str(item) for item in (value.get("command") or [])),
+                    tuple(str(item) for item in (value.get("entrypoint") or [])),
+                )
+                if process != EXPECTED_EXPORTER_PROCESS[name]:
+                    errors.append(f"{name}: reviewed exporter process mismatch")
         if name == "prometheus" and (
             tuple(str(item) for item in (value.get("command") or []))
             != EXPECTED_PROMETHEUS_COMMAND
@@ -399,15 +433,19 @@ def validate_model(
                         "dev-build", "artifacts", "jmx_prometheus_standalone-1.6.0.jar",
                     ).resolve()
                 )
-                if (expected_source is None or source_path != expected_source.resolve()) and not runtime_artifact:
+                application_source = (
+                    name in APPLICATION_SERVICES
+                    and any(source_path.is_relative_to(ROOT / relative) for relative in ("services", "contracts", "scripts"))
+                )
+                if (expected_source is None or source_path != expected_source.resolve()) and not runtime_artifact and not application_source:
                     errors.append(f"{name}: bind source/target not allowlisted")
         if volume_mounts != EXPECTED_VOLUME_MOUNTS.get(name, set()):
             errors.append(f"{name}: volume mount allowlist mismatch")
 
-    if total_cpus > 15:
-        errors.append(f"aggregate CPU limit exceeds 15 ({total_cpus:g})")
-    if total_memory > 34 * 1024**3:
-        errors.append(f"aggregate memory limit exceeds 34 GiB ({total_memory} bytes)")
+    if total_cpus > 20:
+        errors.append(f"aggregate CPU limit exceeds 20 ({total_cpus:g})")
+    if total_memory > 40 * 1024**3:
+        errors.append(f"aggregate memory limit exceeds 40 GiB ({total_memory} bytes)")
 
     networks = model.get("networks", {})
     if set(networks) != {"data", "observability"}:
@@ -434,7 +472,11 @@ def validate_model(
     if model.get("configs"):
         errors.append("top-level configs prohibited")
     secrets = model.get("secrets", {})
-    if set(secrets) != SECRET_NAMES:
+    expected_secret_names = SECRET_NAMES if APPLICATION_SERVICES & set(services) else SECRET_NAMES - {
+        "assets-db-password", "cmdb-db-password", "api-db-password", "analytics-db-password",
+        "workflow-db-password", "internal-api-token",
+    }
+    if set(secrets) != expected_secret_names:
         errors.append("top-level secret allowlist mismatch")
     for name, secret in secrets.items():
         source = Path(str(secret.get("file", ""))).resolve() if isinstance(secret, dict) else Path()
