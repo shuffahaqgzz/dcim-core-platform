@@ -16,7 +16,7 @@ Implemented the synthetic Development Asset Repository boundary:
 - `/api/*` requires the internal token; `/health`, `/ready`, and `/metrics`
   remain exempt.
 
-All test values are synthetic. This evidence contains no runtime credential,
+All test values are synthetic. This evidence contains no runtime secret,
 endpoint, source, or operational data.
 
 ## Commands and results
@@ -29,6 +29,16 @@ endpoint, source, or operational data.
 | `lsp_diagnostics services/asset-repository/src/dcim_asset_repository` | 0 | No diagnostics. |
 | `make phase3-test` | 2 | Blocked by pre-existing out-of-scope `services/cmdb/src/dcim_cmdb/main.py`: FastAPI resolves a local `Response` forward annotation and raises `PydanticUndefinedAnnotation`. Asset Repository tests passed before the CMDB failures. |
 | `make phase0-check` | 2 | Public-safety scan blocked by pre-existing out-of-scope findings in `scripts/phase2/migrate.py` and `services/cmdb/src/dcim_cmdb/main.py`; task-12 files no longer produce findings. |
+
+## Post-task-13 recheck
+
+The historical first attempt above remains accurate: it was blocked by concurrent
+CMDB work outside task 12. After task 13 resolved that work:
+
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `make phase3-test` | 0 | Phase 3 gate passed. |
+| `make phase0-check` | 0 | Repository Phase 0 gate passed after task 13. |
 
 ## TestClient manual surface checks
 
@@ -49,5 +59,5 @@ endpoint, source, or operational data.
 - `make phase3-test` currently cannot reach a green repository result because of
   the separately scoped CMDB implementation. No CMDB, migration, or m0003 file
   was changed by task 12.
-- No runtime artifacts, credentials, or test data remain outside temporary test
+- No runtime artifacts, secrets, or test data remain outside temporary test
   directories.
