@@ -274,6 +274,11 @@ def prepare_context(
     context.mkdir(parents=True, exist_ok=True, mode=0o700)
     dockerfile = ROOT / "deploy/compose/derived-images" / str(recipe["dockerfile"])
     shutil.copyfile(dockerfile, context / "Dockerfile")
+    if component == "services":
+        helper = dockerfile.parent / "fix_repro.py"
+        if not helper.is_file():
+            raise ValueError("services recipe requires fix_repro.py beside Dockerfile")
+        shutil.copyfile(helper, context / "fix_repro.py")
     for item in recipe["inputs"]:
         source = download_input(item, input_root)
         if item["context"]:
