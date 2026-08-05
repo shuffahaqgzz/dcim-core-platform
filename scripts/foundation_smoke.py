@@ -35,6 +35,9 @@ except ModuleNotFoundError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DERIVED_IMAGE_COMPONENTS = {
+    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
+}
 COMPOSE_FILE = ROOT / "deploy/compose/dev-build/compose.yaml"
 ACCEPTANCE_OVERRIDE_NAME = "acceptance-compose.override.yaml"
 IMAGE_INVENTORY = ROOT / "deploy/compose/images.json"
@@ -191,16 +194,17 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
         ).hexdigest():
             raise ValueError("derived image lock license disposition digest mismatch")
         locked_images = lock["images"]
-        if not isinstance(locked_images, list) or len(locked_images) != 5:
+        if (
+            not isinstance(locked_images, list)
+            or len(locked_images) != len(DERIVED_IMAGE_COMPONENTS)
+        ):
             raise ValueError("derived image lock inventory mismatch")
         derived = {
             str(item["component"]): str(item["image_id"])
             for item in locked_images
             if isinstance(item, dict)
         }
-        if set(derived) != {
-            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
-        }:
+        if set(derived) != DERIVED_IMAGE_COMPONENTS:
             raise ValueError("derived image digest allowlist mismatch")
         if any(not re.fullmatch(r"sha256:[0-9a-f]{64}", value) for value in derived.values()):
             raise ValueError("derived image digest invalid")

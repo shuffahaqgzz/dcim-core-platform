@@ -37,6 +37,7 @@ DERIVED_COMPONENTS = {
     "Grafana OSS": "grafana",
     "Prometheus": "prometheus",
     "PostgreSQL exporter": "postgres-exporter",
+    "DCIM services": "services",
 }
 REVIEW_REQUIRED_LICENSE_CATEGORIES = {"reciprocal", "restricted", "unknown"}
 BENIGN_LICENSE_CATEGORIES = {"notice", "permissive", "unencumbered"}

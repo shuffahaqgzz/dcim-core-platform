@@ -122,6 +122,7 @@ class FoundationSupplyChainTests(unittest.TestCase):
         inventory = {"images": [
             {"component": "PostgreSQL", "image": "official-postgres"},
             {"component": "Prometheus", "image": "official-prometheus"},
+            {"component": "DCIM services", "image": "official-python"},
         ]}
         lock = {"schema_version": 2, "publication": False, "images": [
             {"component": "postgres", "image_id": "sha256:" + "a" * 64},
@@ -129,10 +130,16 @@ class FoundationSupplyChainTests(unittest.TestCase):
             {"component": "grafana", "image_id": "sha256:" + "c" * 64},
             {"component": "postgres-exporter", "image_id": "sha256:" + "d" * 64},
             {"component": "prometheus", "image_id": "sha256:" + "e" * 64},
+            {"component": "services", "image_id": "sha256:" + "f" * 64},
         ]}
         images = foundation_supply_chain.effective_images(inventory, lock)
         self.assertEqual("sha256:" + "a" * 64, images[0]["image"])
         self.assertEqual("sha256:" + "e" * 64, images[1]["image"])
+        self.assertEqual("sha256:" + "f" * 64, images[2]["image"])
+        self.assertEqual("services", images[2]["derived_component"])
+        self.assertEqual("dcim-services", foundation_supply_chain.safe_name(
+            str(images[2]["component"])
+        ))
 
     def test_license_and_sbom_reports_fail_closed(self) -> None:
         with self.assertRaisesRegex(ValueError, "license"):

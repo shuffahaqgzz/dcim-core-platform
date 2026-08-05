@@ -37,7 +37,10 @@ def write_image_lock(plane: Path) -> None:
             "images": [
                 {"component": component, "image_id": f"sha256:{index:064x}"}
                 for index, component in enumerate(
-                    ("postgres", "kafka", "grafana", "prometheus", "postgres-exporter"),
+                    (
+                        "postgres", "kafka", "grafana", "prometheus",
+                        "postgres-exporter", "services",
+                    ),
                     start=1,
                 )
             ],
@@ -316,7 +319,7 @@ class FoundationSmokeContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 {"grafana", "jmx-exporter-java-runtime", "kafka", "postgres",
-                 "postgres-exporter", "prometheus"},
+                 "postgres-exporter", "prometheus", "services"},
                 set(evidence["image_digests"]),
             )
             serialized = output.read_text(encoding="utf-8")
