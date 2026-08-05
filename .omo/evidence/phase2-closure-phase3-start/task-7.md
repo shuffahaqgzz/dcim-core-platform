@@ -12,11 +12,18 @@ persistence owner for streamed normalized events. Stream runs deliberately skip
 
 | Command | Result |
 |---|---:|
-| `.venv/bin/python -m unittest discover -s tests/phase2 -p 'test_stream_consumer*' -v` | 0 (7 tests) |
+| `.venv/bin/python -m unittest discover -s tests/phase2 -p 'test_stream_consumer*' -v` | 0 (9 tests) |
 | `.venv/bin/python scripts/phase2/stream.py --help` | 0 |
 | `python3 scripts/check-public-safety.py` | 0 |
 
 Covered synthetic fake-consumer outcomes:
+
+- latency watermark capture lists the requested topic metadata and returns each
+  partition's high watermark before publication;
+- `--start-offsets` and `--from-offsets` use explicit assignment at the
+  supplied offsets rather than seeking before a subscription assignment exists;
+- an inclusive `--from-offsets` replay exits as soon as every requested
+  partition reaches its end offset, without waiting for idle timeout;
 
 - validated input claims before offset commit;
 - schema-invalid input quarantines, then DLQ publishes with copied
@@ -34,5 +41,6 @@ Covered synthetic fake-consumer outcomes:
 ## Limits
 
 This is Development synthetic evidence only. It makes no Production, HA, SLA,
-or broker-durability claim. Docker-dependent preflight is deferred to a Docker
-host under the accepted baseline gate process.
+or broker-durability claim. The new contracts are covered with unit fakes, not
+a live Kafka broker. Docker-dependent preflight must run on a Docker host under
+the accepted baseline gate process.

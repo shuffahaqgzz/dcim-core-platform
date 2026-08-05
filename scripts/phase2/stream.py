@@ -64,6 +64,7 @@ class KafkaPartition(Protocol):
 
 
 class KafkaConsumer(Protocol):
+    def assign(self, partitions: list[object]) -> None: ...
     def assignment(self) -> list[KafkaPartition]: ...
     def close(self) -> None: ...
     def commit(self, message: KafkaMessage) -> None: ...
@@ -127,6 +128,7 @@ def _load_offsets(path: Path, ranges: bool) -> dict[int, int | tuple[int, int]]:
 
 
 def _seek(consumer: KafkaConsumer, topic: str, offsets: Mapping[int, int | tuple[int, int]], ranges: bool) -> None:
+    assignments: list[object] = []
     for partition, boundary in offsets.items():
         if ranges:
             if not isinstance(boundary, tuple):
@@ -136,7 +138,8 @@ def _seek(consumer: KafkaConsumer, topic: str, offsets: Mapping[int, int | tuple
             if not isinstance(boundary, int):
                 raise ValueError("start offsets must be integers")
             start = boundary
-        consumer.seek(_topic_partition(topic, partition, start))
+        assignments.append(_topic_partition(topic, partition, start))
+    consumer.assign(assignments)
 
 
 def _record_offset(offsets: dict[str, OffsetRange], message: KafkaMessage) -> None:
@@ -182,8 +185,11 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
     offsets: dict[str, OffsetRange] = {}
     count = 0
     idle_since = time.monotonic()
-    consumer.subscribe([topic])
-    _seek(consumer, topic, selected_offsets, ranges)
+    if selected_offsets:
+        _seek(consumer, topic, selected_offsets, ranges)
+    else:
+        consumer.subscribe([topic])
+    completed_partitions: set[int] = set()
     try:
         while count < max_messages and time.monotonic() - idle_since < idle_timeout_s:
             message = consumer.poll(min(0.1, idle_timeout_s))
@@ -198,6 +204,10 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
                 raise RuntimeError("Kafka message lacks partition or offset")
             boundary = selected_offsets.get(partition)
             if ranges and (not isinstance(boundary, tuple) or offset > boundary[1]):
+                if isinstance(boundary, tuple):
+                    completed_partitions.add(partition)
+                if completed_partitions == set(selected_offsets):
+                    break
                 continue
             if count_only:
                 if not selected_offsets and _header(message, "source_run_id") != run_id:
@@ -228,6 +238,10 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
             consumer.commit(message)
             count += 1
             _record_offset(offsets, message)
+            if ranges and isinstance(boundary, tuple) and offset >= boundary[1]:
+                completed_partitions.add(partition)
+                if completed_partitions == set(selected_offsets):
+                    break
     finally:
         consumer.close()
     if not count_only:
@@ -244,7 +258,14 @@ def capture_end_offsets(topic: str) -> dict[str, int]:
     """Return the current per-partition end watermark for latency harnesses."""
     consumer = _new_consumer(f"{DEFAULT_GROUP}-watermark")
     try:
-        return {str(partition.partition): partition.offset for partition in consumer.assignment()}
+        metadata = consumer.list_topics(topic, timeout=10.0)
+        partitions = metadata.topics[topic].partitions
+        return {
+            str(partition): consumer.get_watermark_offsets(
+                _topic_partition(topic, partition, 0), timeout=10.0
+            )[1]
+            for partition in partitions
+        }
     finally:
         consumer.close()
 

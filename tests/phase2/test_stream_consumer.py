@@ -43,17 +43,30 @@ class FakeMessage:
 
 
 class FakeConsumer:
-    def __init__(self, messages: list[FakeMessage]) -> None:
+    def __init__(self, messages: list[FakeMessage], high_watermarks: dict[int, int] | None = None) -> None:
         self.messages = messages
+        self.high_watermarks = high_watermarks or {}
+        self.assigned: list[int] = []
         self.committed: list[int] = []
         self.seeks: list[int] = []
         self.topics: list[str] = []
+        self.poll_calls = 0
 
     def subscribe(self, topics: list[str]) -> None:
         self.topics = topics
 
     def poll(self, timeout: float) -> FakeMessage | None:
+        self.poll_calls += 1
         return self.messages.pop(0) if self.messages else None
+
+    def assign(self, partitions: list[SeekTarget]) -> None:
+        self.assigned = [partition.offset() for partition in partitions]
+
+    def list_topics(self, topic: str, timeout: float) -> FakeMetadata:
+        return FakeMetadata(topic, self.high_watermarks)
+
+    def get_watermark_offsets(self, partition: FakeTopicPartition, timeout: float) -> tuple[int, int]:
+        return (0, self.high_watermarks[partition.partition])
 
     def commit(self, message: FakeMessage) -> None:
         self.committed.append(message.offset())
@@ -84,6 +97,22 @@ class Offset:
         return self._offset
 
 
+class FakeTopicPartition(Offset):
+    def __init__(self, partition: int, offset: int) -> None:
+        super().__init__(offset)
+        self.partition = partition
+
+
+class FakeTopicMetadata:
+    def __init__(self, partitions: dict[int, int]) -> None:
+        self.partitions = {partition: None for partition in partitions}
+
+
+class FakeMetadata:
+    def __init__(self, topic: str, high_watermarks: dict[int, int]) -> None:
+        self.topics = {topic: FakeTopicMetadata(high_watermarks)}
+
+
 class FakeStore:
     def __init__(self, calls: list[str], result: str = "new", *_: object) -> None:
         self.calls = calls
@@ -95,6 +124,23 @@ class FakeStore:
 
 
 class StreamConsumerTests(unittest.TestCase):
+    def test_capture_end_offsets_reads_all_topic_partition_high_watermarks(self) -> None:
+        # Given: broker metadata for two partitions and their independently known high watermarks.
+        consumer = FakeConsumer([], {0: 19, 1: 23})
+        with (
+            patch.object(stream, "_new_consumer", return_value=consumer),
+            patch.object(
+                stream,
+                "_topic_partition",
+                side_effect=lambda _topic, partition, offset: FakeTopicPartition(partition, offset),
+            ),
+        ):
+            # When: latency capture snapshots the topic before publication.
+            watermarks = stream.capture_end_offsets("dcim.normalized.events")
+
+        # Then: each partition's end offset is returned and the consumer is closed.
+        self.assertEqual(watermarks, {"0": 19, "1": 23})
+
     def test_consumer_persists_before_each_offset_commit(self) -> None:
         # Given: one valid normalized event followed by one malformed event.
         valid = (ROOT / "fixtures/synthetic/events/p1-redfish-health.json").read_bytes()
@@ -186,8 +232,8 @@ class StreamConsumerTests(unittest.TestCase):
                     # When: the explicit offset range is drained.
                     summary = stream.run_consumer("run-7", 3, 0.01, from_offsets=offsets)
 
-        # Then: the consumer seeks exactly to the start and records duplicate dispositions only.
-        self.assertEqual(consumer.seeks, [4])
+        # Then: the consumer assigns exactly to the start and records duplicate dispositions only.
+        self.assertEqual(consumer.assigned, [4])
         self.assertEqual(consumer.committed, [4, 5])
         self.assertEqual(summary.get("ledger"), {"received": 2, "accepted": 0, "quarantined": 0, "duplicate": 2})
 
@@ -207,10 +253,34 @@ class StreamConsumerTests(unittest.TestCase):
                 # When: the start-offset contract drains until the input becomes idle.
                 summary = stream.run_consumer("run-7", 3, 0.001, count_only=True, start_offsets=offsets)
 
-        # Then: the requested start is sought and both available messages are committed.
-        self.assertEqual(consumer.seeks, [11])
+        # Then: the requested start is assigned before both available messages are committed.
+        self.assertEqual(consumer.assigned, [11])
         self.assertEqual(summary.get("count"), 2)
         self.assertEqual(consumer.committed, [11, 12])
+
+    def test_from_offsets_stops_when_the_window_end_is_consumed(self) -> None:
+        # Given: a replay window ending at offset 5 with a later record available.
+        valid = (ROOT / "fixtures/synthetic/events/p1-redfish-health.json").read_bytes()
+        consumer = FakeConsumer([
+            FakeMessage(4, valid, [("source_run_id", "run-7")]),
+            FakeMessage(5, valid, [("source_run_id", "run-7")]),
+            FakeMessage(6, valid, [("source_run_id", "run-7")]),
+        ])
+        with tempfile.TemporaryDirectory() as directory:
+            offsets = Path(directory) / "offsets.json"
+            offsets.write_text(json.dumps({"0": [4, 5]}), encoding="utf-8")
+            with (
+                patch.object(stream, "_new_consumer", return_value=consumer),
+                patch.object(stream, "_topic_partition", side_effect=lambda _topic, _partition, offset: Offset(offset)),
+                patch.object(stream, "begin_execution", return_value=ExecutionContext("run-7", "2026-08-05T00:00:00Z", 1)),
+                patch.object(stream, "PostgresClaimStore", lambda *_args: FakeStore([], "duplicate")),
+                patch.object(stream, "KafkaEnvelopeProducer"),
+            ):
+                # When: the explicit replay window reaches its inclusive end.
+                stream.run_consumer("run-7", 3, 60, from_offsets=offsets)
+
+        # Then: it stops before polling a record beyond the requested window.
+        self.assertEqual(consumer.poll_calls, 2)
 
     def test_missing_source_run_id_quarantines_without_dlq(self) -> None:
         # Given: malformed data without the source-run lineage header.
