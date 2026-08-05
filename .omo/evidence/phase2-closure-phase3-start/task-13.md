@@ -6,25 +6,30 @@ Implemented the bounded synthetic CMDB vertical slice: typed CI and relationship
 models, internal-token protection, CI/relationship/impact API routes, and the
 reversible `m0003_ci_relationships` migration with four service-scoped roles.
 
+The Development minimum slice is create/read/list CIs, relationships, and
+bounded impact queries. It intentionally does not claim update or delete API
+operations.
+
 ## Safety
 
-- Runtime passwords are loaded only from the protected bootstrap secret directory.
-- The migration rejects missing mapped files, unknown entries, symlinks, and
-  non-regular files; errors are redacted before terminal output.
+- Role values are loaded only from the protected bootstrap secret directory.
+- Role-aware migration failures now fail closed: after role values are
+  loaded, every terminal error path redacts loaded values, including unexpected
+  failures such as invalid literal construction.
 - The migration grants no workflow access and no cross-service data reads beyond
   `REFERENCES` on assets for the CMDB foreign key.
 
 ## Verification
 
-- `python3 -m compileall -q scripts/phase2 services/cmdb/src tests/phase2/test_phase2_migrations.py tests/phase3/test_cmdb.py` — pass.
-- `make phase0-check` completed compile, public-safety, JSON, fixture, markdown,
-  and 272 unit-test checks.
-- `make phase2-test` — pass (185 tests, including PostgreSQL migration and
-  recovery integration checks).
-- `make phase3-test` — pass (20 tests).
-- `make preflight` passed its Phase 0, image-qualification, and supply-chain
-  stages, then exceeded the sandbox timeout during Docker recovery smoke; it is
-  not claimed as a completed preflight.
+| Command | Exit | Result |
+| --- | ---: | --- |
+| `.venv/bin/python -m unittest tests.phase2.test_phase2_migrations.MigrationSqlTests.test_main_when_credential_aware_apply_raises_unexpected_error_redacts_secret -v` | 0 | Independent CLI redaction proof passed; the synthetic secret was replaced and absent from stderr. |
+| `make phase3-test` | 0 | 24 Phase 3 tests passed, including CI create/GET round-trip, relationship/impact closure, depth rejection, and API authentication. |
+| `make phase2-test` | 0 | 187 Phase 2 tests passed, including migration and recovery coverage. |
+| `make phase0-check` | 0 | Repository compile, public-safety, fixture, link, and 272-unit-test gate passed. |
+
+`make preflight` is not claimed complete: its earlier recovery stage exceeded the
+sandbox timeout.
 
 ## Limitations
 

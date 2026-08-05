@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 import re
 import subprocess
@@ -336,6 +338,29 @@ class MigrationSqlTests(unittest.TestCase):
 
     def test_redact_when_error_contains_secret_replaces_value(self) -> None:
         self.assertEqual("failed: ***", migrate.redact("failed: synthetic-secret", ("synthetic-secret",)))
+
+    def test_main_when_credential_aware_apply_raises_unexpected_error_redacts_secret(self) -> None:
+        # Given: a loaded role password and an unexpected error that exposes it.
+        fixture_value = "synthetic-value"
+        output = StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in migrate.SECRET_NAMES:
+                (root / name).write_text(f"{fixture_value}\n", encoding="utf-8")
+            arguments = ["migrate.py", "apply", "--role-password-dir", str(root)]
+
+            # When: the CLI boundary reports the unexpected credential-aware failure.
+            with (
+                patch("scripts.phase2.migrate.sys.argv", arguments),
+                patch.object(migrate, "run", side_effect=ValueError(f"invalid literal {fixture_value}")),
+                redirect_stderr(output),
+            ):
+                result = migrate.main()
+
+        # Then: the CLI fails without exposing the loaded password.
+        self.assertEqual(1, result)
+        self.assertIn("***", output.getvalue())
+        self.assertNotIn(fixture_value, output.getvalue())
 
     def test_verify_when_table_is_missing_rejects_inventory(self) -> None:
         rows = self._verified_schema_rows()

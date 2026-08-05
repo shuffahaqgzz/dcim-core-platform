@@ -28,13 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.phase2.db import (  # noqa: E402
-    DatabaseCommandError,
-    JsonExtractionError,
-    literal,
-    psql,
-    query_json,
-)
+from scripts.phase2.db import literal, psql, query_json  # noqa: E402
 from scripts.phase2.migrations import (  # noqa: E402
     m0001_phase2_core,
     m0002_execution_reconciliation,
@@ -364,7 +358,7 @@ def run(argv: list[str] | None = None) -> int:
     raise MigrationError("expected apply [--role-password-dir PATH], rollback <migration_id>, or --verify")
 
 
-def main() -> int:
+def main() -> int:  # noqa: BROAD_EXCEPT_OK
     """Translate expected migration failures into a clean nonzero result."""
     secrets: tuple[str, ...] = ()
     try:
@@ -376,7 +370,7 @@ def main() -> int:
                     role_password_context(Path(arguments[index + 1]))["role_passwords"].values()
                 )
         return run()
-    except (DatabaseCommandError, JsonExtractionError, MigrationError) as error:
+    except Exception as error:
         print(f"phase2 migration failed: {redact(str(error), secrets)}", file=sys.stderr)
         return 1
 
