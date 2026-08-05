@@ -43,6 +43,8 @@ class AuthMiddlewareTests(unittest.TestCase):
             {
                 "DCIM_AUTH_REQUIRED": "true",
                 "INTERNAL_API_TOKEN_FILE": str(self.token_path),
+                "ASSET_REPOSITORY_URL": "http://asset-repository:8000",
+                "CMDB_URL": "http://cmdb:8000",
                 "PGHOST": "synthetic-postgres",
                 "PGPORT": "5432",
                 "PGDATABASE": "dcim_foundation",

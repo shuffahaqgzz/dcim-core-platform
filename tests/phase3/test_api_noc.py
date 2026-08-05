@@ -44,10 +44,15 @@ class ApiNocTests(unittest.TestCase):
         self.temporary_directory = TemporaryDirectory()
         password_path = Path(self.temporary_directory.name) / "db-password"
         password_path.write_text("synthetic-db-password\n", encoding="utf-8")
+        token_path = Path(self.temporary_directory.name) / "internal-token"
+        token_path.write_text("synthetic-internal-token\n", encoding="utf-8")
         self.environment = patch.dict(
             os.environ,
             {
                 "DCIM_AUTH_REQUIRED": "false",
+                "ASSET_REPOSITORY_URL": "http://asset-repository:8000",
+                "CMDB_URL": "http://cmdb:8000",
+                "INTERNAL_API_TOKEN_FILE": str(token_path),
                 "PGHOST": "synthetic-postgres",
                 "PGPORT": "5432",
                 "PGDATABASE": "dcim_foundation",
@@ -103,7 +108,12 @@ class ApiNocTests(unittest.TestCase):
         self.environment.stop()
         self.environment = patch.dict(
             os.environ,
-            {"DCIM_AUTH_REQUIRED": "false"},
+            {
+                "DCIM_AUTH_REQUIRED": "false",
+                "ASSET_REPOSITORY_URL": "http://asset-repository:8000",
+                "CMDB_URL": "http://cmdb:8000",
+                "INTERNAL_API_TOKEN_FILE": str(Path(self.temporary_directory.name) / "internal-token"),
+            },
             clear=True,
         )
         self.environment.start()
