@@ -110,6 +110,10 @@ EXPECTED_COLUMNS = [
         "table_name": "schema_migrations",
         "columns": ["migration_id", "applied_at"],
     },
+    {
+        "table_name": "workflow_drafts",
+        "columns": ["draft_id", "created_at", "event_id", "draft_type", "payload", "status", "audit"],
+    },
 ]
 
 EMPTY_BUSINESS_ROWS = {
@@ -185,7 +189,7 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         self.assertEqual(0, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, inventory)
 
-    def test_fresh_apply_when_schema_is_empty_applies_three_then_none(self) -> None:
+    def test_fresh_apply_when_schema_is_empty_applies_four_then_none(self) -> None:
         # Given
         if business_row_counts() != [EMPTY_BUSINESS_ROWS]:
             self.skipTest("shared Phase 2 data exists; destructive fresh apply not safe")
@@ -197,7 +201,7 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         second_applied = migrate.apply(secrets)
 
         # Then
-        self.assertEqual(3, first_applied)
+        self.assertEqual(4, first_applied)
         self.assertEqual(0, second_applied)
         self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
@@ -247,7 +251,7 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
             self.assertIn("phase2 migration failed:", stderr.getvalue())
             self.assertEqual(before, migration_registry())
         finally:
-            self.assertEqual(3, migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets"))
+            self.assertEqual(4, migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets"))
             self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
     def test_verify_when_schema_is_fully_migrated_passes(self) -> None:
@@ -336,6 +340,12 @@ ORDER BY source.table_name, source.column_name;
                     "foreign_table": "run_manifests",
                     "foreign_column": "run_id",
                 },
+                {
+                    "table_name": "workflow_drafts",
+                    "column_name": "event_id",
+                    "foreign_table": "events",
+                    "foreign_column": "event_id",
+                },
             ],
             rows,
         )
@@ -404,6 +414,14 @@ ORDER BY relation.relname, item.conname;
                 {
                     "table_name": "run_manifests",
                     "definition": "CHECK ((last_execution_sequence >= 0))",
+                },
+                {
+                    "table_name": "workflow_drafts",
+                    "definition": "CHECK ((draft_type = ANY (ARRAY['notification', 'ticket_draft', 'approval_request'])))",
+                },
+                {
+                    "table_name": "workflow_drafts",
+                    "definition": "CHECK ((status = ANY (ARRAY['draft', 'simulated_approved', 'simulated_rejected'])))",
                 },
             ],
             rows,

@@ -33,6 +33,7 @@ from scripts.phase2.migrations import (  # noqa: E402
     m0001_phase2_core,
     m0002_execution_reconciliation,
     m0003_ci_relationships,
+    m0004_workflow_drafts,
 )
 from scripts.foundation_bootstrap import SECRET_NAMES  # noqa: E402
 
@@ -47,6 +48,7 @@ EXPECTED_TABLES: Final = (
     "aliases",
     "noc_cards",
     "ci_relationships",
+    "workflow_drafts",
 )
 EXPECTED_M0002_COLUMNS: Final = (
     ("dispositions", "execution_sequence", "bigint", "NO"),
@@ -75,8 +77,8 @@ EXPECTED_M0002_CONSTRAINTS: Final = (
     ),
 )
 MIGRATION_ID: Final = m0001_phase2_core.MIGRATION_ID
-LATEST_MIGRATION_ID: Final = m0003_ci_relationships.MIGRATION_ID
-PREVIOUS_MIGRATION_ID: Final = m0002_execution_reconciliation.MIGRATION_ID
+LATEST_MIGRATION_ID: Final = m0004_workflow_drafts.MIGRATION_ID
+PREVIOUS_MIGRATION_ID: Final = m0003_ci_relationships.MIGRATION_ID
 ROLE_PASSWORD_FILES: Final = {
     "dcim_assets_rw": "assets-db-password",
     "dcim_cmdb_rw": "cmdb-db-password",
@@ -180,7 +182,7 @@ def apply(role_password_dir: Path | None = None) -> int:
     context = role_password_context(role_password_dir) if role_password_dir else None
     migrations = (
         (MIGRATION_ID, m0001_phase2_core.up),
-        (PREVIOUS_MIGRATION_ID, m0002_execution_reconciliation.up),
+        (m0002_execution_reconciliation.MIGRATION_ID, m0002_execution_reconciliation.up),
     )
     for migration_id, migration_up in migrations:
         if _is_applied(migration_id):
@@ -193,15 +195,21 @@ def apply(role_password_dir: Path | None = None) -> int:
         )
         _ = psql(sql)
         applied += 1
-    if role_password_dir is not None and not _is_applied(LATEST_MIGRATION_ID):
-        migration = literal(LATEST_MIGRATION_ID)
-        sql = (
-            f"BEGIN;\n{_migration_sql(m0003_ci_relationships.up, context)}"
-            "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
-            f"VALUES ({migration}, CURRENT_TIMESTAMP);\nCOMMIT;\n"
-        )
-        _ = psql(sql)
-        applied += 1
+    if role_password_dir is not None:
+        for migration_id, migration_up in (
+            (PREVIOUS_MIGRATION_ID, m0003_ci_relationships.up),
+            (LATEST_MIGRATION_ID, m0004_workflow_drafts.up),
+        ):
+            if _is_applied(migration_id):
+                continue
+            migration = literal(migration_id)
+            sql = (
+                f"BEGIN;\n{_migration_sql(migration_up, context)}"
+                "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
+                f"VALUES ({migration}, CURRENT_TIMESTAMP);\nCOMMIT;\n"
+            )
+            _ = psql(sql)
+            applied += 1
     return applied
 
 
@@ -209,8 +217,9 @@ def rollback(migration_id: str) -> None:
     """Delete one known record and run its down migration atomically."""
     down_migrations = {
         MIGRATION_ID: m0001_phase2_core.down,
-        PREVIOUS_MIGRATION_ID: m0002_execution_reconciliation.down,
-        LATEST_MIGRATION_ID: m0003_ci_relationships.down,
+        m0002_execution_reconciliation.MIGRATION_ID: m0002_execution_reconciliation.down,
+        PREVIOUS_MIGRATION_ID: m0003_ci_relationships.down,
+        LATEST_MIGRATION_ID: m0004_workflow_drafts.down,
     }
     if migration_id not in down_migrations:
         raise MigrationError("unknown migration ID")

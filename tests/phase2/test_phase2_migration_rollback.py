@@ -53,7 +53,7 @@ SELECT json_build_object(
         migrate.rollback(migrate.MIGRATION_ID)
         applied = migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets")
 
-        self.assertEqual(3, applied)
+        self.assertEqual(4, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
 
