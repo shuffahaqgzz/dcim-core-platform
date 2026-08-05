@@ -80,7 +80,7 @@ class FoundationPolicyTests(unittest.TestCase):
                 project_name,
             ))))
         command.extend(
-            ["--profile", "data", "--profile", "observability", "--profile", "smoke"],
+            ["--profile", "data", "--profile", "observability", "--profile", "smoke", "--profile", "core"],
         )
         command.extend(["config", "--format", "json"])
         result = subprocess.run(
@@ -121,8 +121,8 @@ class FoundationPolicyTests(unittest.TestCase):
         service["command"] = None
         service["entrypoint"] = None
         secret_names = {
-            "asset-repository": ["assets-db-password"],
-            "cmdb": ["cmdb-db-password"],
+            "asset-repository": ["assets-db-password", "internal-api-token"],
+            "cmdb": ["cmdb-db-password", "internal-api-token"],
             "api": ["api-db-password", "internal-api-token"],
             "analytics": ["analytics-db-password"],
             "workflow": ["workflow-db-password", "internal-api-token"],

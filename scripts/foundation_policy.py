@@ -57,8 +57,14 @@ EXPECTED_SECRETS = {
         ("grafana-admin-user", "/run/secrets/grafana-admin-user"),
         ("grafana-admin-password", "/run/secrets/grafana-admin-password"),
     },
-    "asset-repository": {("assets-db-password", "/run/secrets/assets-db-password")},
-    "cmdb": {("cmdb-db-password", "/run/secrets/cmdb-db-password")},
+    "asset-repository": {
+        ("assets-db-password", "/run/secrets/assets-db-password"),
+        ("internal-api-token", "/run/secrets/internal-api-token"),
+    },
+    "cmdb": {
+        ("cmdb-db-password", "/run/secrets/cmdb-db-password"),
+        ("internal-api-token", "/run/secrets/internal-api-token"),
+    },
     "api": {
         ("api-db-password", "/run/secrets/api-db-password"),
         ("internal-api-token", "/run/secrets/internal-api-token"),
@@ -232,6 +238,14 @@ EXPECTED_HEALTHCHECKS = {
     ]),
     "observability-smoke": health_contract([
         "CMD", "promtool", "check", "rules", "/etc/prometheus/rules.yml",
+    ]),
+    "asset-repository": health_contract([
+        "CMD", "python3", "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
+    ]),
+    "cmdb": health_contract([
+        "CMD", "python3", "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
     ]),
 }
 SECRET_PATTERN = re.compile(r"(PASSWORD|PASS|TOKEN|SECRET|KEY)", re.IGNORECASE)
@@ -472,9 +486,10 @@ def validate_model(
     if model.get("configs"):
         errors.append("top-level configs prohibited")
     secrets = model.get("secrets", {})
-    expected_secret_names = SECRET_NAMES if APPLICATION_SERVICES & set(services) else SECRET_NAMES - {
-        "assets-db-password", "cmdb-db-password", "api-db-password", "analytics-db-password",
-        "workflow-db-password", "internal-api-token",
+    expected_secret_names = {
+        secret_name
+        for service_name in services
+        for secret_name, _ in EXPECTED_SECRETS.get(service_name, set())
     }
     if set(secrets) != expected_secret_names:
         errors.append("top-level secret allowlist mismatch")
