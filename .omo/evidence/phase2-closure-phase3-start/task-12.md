@@ -56,8 +56,9 @@ CMDB work outside task 12. After task 13 resolved that work:
 ## Limitations and cleanup
 
 - No Docker-backed PostgreSQL integration was run in this sandbox.
-- `make phase3-test` currently cannot reach a green repository result because of
-  the separately scoped CMDB implementation. No CMDB, migration, or m0003 file
-  was changed by task 12.
+- The first-attempt gate failures above were caused by concurrent out-of-scope
+  CMDB work; after task 13, repository `make phase3-test` and `make phase0-check`
+  are green (see Post-task-13 recheck). No CMDB, migration, or m0003 file was
+  changed by task 12 itself (`f35a3b7`).
 - No runtime artifacts, secrets, or test data remain outside temporary test
   directories.
