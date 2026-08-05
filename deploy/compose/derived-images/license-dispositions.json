@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "recipes_sha256": "80054748b4a43d24957f1437d32df5f2a9dffd9e061aa23e84c1a56fd7cea4a5",
+  "recipes_sha256": "ff66477c9cf7a426b1968cc693d0ae0d3bd500bb4affc7ba9f4ac1f55d7c5a78",
   "decision": {
     "owner": "shuffahaqgzz",
     "date": "2026-07-22",
@@ -114,21 +114,21 @@
       "component": "dcim-services",
       "category": "reciprocal",
       "reviewed_count": 3,
-      "inventory_sha256": "5fe149a1b2888227fba4b09e24e1024f52e760ee57330a2ab9451b9bf11073d0",
+      "inventory_sha256": "e417dc1987f008fbffa84eafbad26733606c308b645cfcdfcfb2dd78c837818f",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "dcim-services",
       "category": "restricted",
-      "reviewed_count": 353,
-      "inventory_sha256": "36f3059caacb676ef4ff7878814dd01bb4be3e2455d2abe8049147a4c809dc14",
+      "reviewed_count": 19,
+      "inventory_sha256": "be79de288af506e37538803f10ef41f403cc869c8cd2d4c0f92545a16557af4d",
       "disposition": "accepted-local-development-only"
     },
     {
       "component": "dcim-services",
       "category": "unknown",
-      "reviewed_count": 175,
-      "inventory_sha256": "03a8feb570bc4a28031af9f6a37edabae1b82f420c434a884d0be14b0d52d4a3",
+      "reviewed_count": 8,
+      "inventory_sha256": "cde6f1f8a7991c705cdfc8339cf7637dd133600ca0256623269b024303c9a370",
       "disposition": "accepted-local-development-only"
     }
   ],

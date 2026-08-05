@@ -27,7 +27,8 @@ RUN apk add --no-cache bash build-base cyrus-sasl-dev openssl-dev zlib-dev \
     SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \
     /opt/venv/bin/pip install --no-cache-dir --no-compile \
       pydantic==2.9.2 \
-      fastapi==0.116.0 \
+      fastapi==0.141.1 \
+      starlette==1.3.1 \
       "uvicorn[standard]==0.30.6" \
       asyncpg==0.30.0 \
       httpx==0.28.1 \

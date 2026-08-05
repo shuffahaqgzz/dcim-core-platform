@@ -7,7 +7,8 @@ for the named distributions.
 | Dependency | Exact version | SPDX license | PyPI evidence | Purpose | Introduced by |
 | --- | --- | --- | --- | --- | --- |
 | pydantic | 2.9.2 | MIT | [pydantic 2.9.2](https://pypi.org/project/pydantic/2.9.2/) | Typed API boundary models | ADR-0024 Phase 0 service scaffold; installed by Todo 9 |
-| fastapi | 0.116.0 | MIT | [fastapi 0.116.0](https://pypi.org/project/fastapi/0.116.0/) | ASGI API framework | ADR-0024 Phase 0 service scaffold; installed by Todo 9 |
+| fastapi | 0.141.1 | MIT | [fastapi 0.141.1](https://pypi.org/project/fastapi/0.141.1/) | ASGI API framework | ADR-0024 Phase 0 service scaffold; refreshed for Starlette security fixes |
+| starlette | 1.3.1 | BSD-3-Clause | [starlette 1.3.1](https://pypi.org/project/starlette/1.3.1/) | ASGI toolkit required by FastAPI | ADR-0024 Phase 0 service scaffold; explicitly pinned to clear fixable HIGH findings |
 | uvicorn[standard] | 0.30.6 | BSD-3-Clause | [uvicorn 0.30.6](https://pypi.org/project/uvicorn/0.30.6/) | ASGI service process | ADR-0024 Phase 0 service scaffold; installed by Todo 9 |
 | asyncpg | 0.30.0 | Apache-2.0 | [asyncpg 0.30.0](https://pypi.org/project/asyncpg/0.30.0/) | Explicit asynchronous PostgreSQL SQL, without an ORM | Wave 2 Todo 9 (`asyncpg==0.30.0`) |
 | httpx | 0.28.1 | BSD-3-Clause | [httpx 0.28.1](https://pypi.org/project/httpx/0.28.1/) | In-process ASGI tests and later internal gateway calls | Wave 2 Todo 9 |
