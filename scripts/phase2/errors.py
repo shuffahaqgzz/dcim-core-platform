@@ -40,3 +40,7 @@ class ConnectorCeilingError(Phase2Error):
 
 class SqlRenderError(Phase2Error):
     """Raised when validated data cannot be represented safely as SQL."""
+
+
+class KafkaPublishError(Phase2Error):
+    """Raised when a stream-mode publish cannot be durably delivered."""
