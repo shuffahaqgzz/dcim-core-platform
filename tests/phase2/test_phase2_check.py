@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import json
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -19,12 +21,15 @@ EXPECTED_STAGES = (
     "capacity",
     "noc-verify",
     "unit-tests",
+    "topic-verify",
+    "stream-roundtrip",
+    "latency-assert",
 )
 
 
 class Phase2CheckTests(unittest.TestCase):
-    def test_run_reuses_one_commit_derived_run_id_across_eight_stages(self) -> None:
-        # Given: eight observable stage actions and one fixed commit identity.
+    def test_run_reuses_one_commit_derived_run_id_across_eleven_stages(self) -> None:
+        # Given: eleven observable stage actions and one fixed commit identity.
         calls: list[tuple[str, str]] = []
 
         def action(label: str):
@@ -70,6 +75,57 @@ class Phase2CheckTests(unittest.TestCase):
             output.getvalue().splitlines(),
             [f"{label}: PASS" for label in EXPECTED_STAGES],
         )
+
+    def test_stream_roundtrip_orders_sentinel_watermark_publish_consume_replay_and_dlq(self) -> None:
+        # Given: a synthetic fixture inventory and observable stream boundaries.
+        calls: list[str] = []
+        fixture_count = len(tuple(check.FIXTURES_DIR.glob("*.json")))
+        summaries = iter(
+            (
+                {"received": fixture_count, "published": 2, "dlq": fixture_count - 2},
+                {
+                    "ledger": {"received": 2, "accepted": 2, "quarantined": 0, "duplicate": 0},
+                    "offsets": {"0": {"first": 11, "last": 12}},
+                },
+                {
+                    "ledger": {"received": 2, "accepted": 0, "quarantined": 0, "duplicate": 2},
+                    "offsets": {"0": {"first": 11, "last": 12}},
+                },
+                {"count": fixture_count - 2, "missing_reason_count": 0},
+            )
+        )
+
+        def publish_sentinels(_source_run_id: str) -> None:
+            calls.append("sentinel")
+
+        def capture(_topic: str) -> dict[str, int]:
+            calls.append("watermark")
+            return {"0": 11}
+
+        def invoke(arguments: list[str]):
+            calls.append(Path(arguments[1]).name)
+            return next(summaries)
+
+        # When: the stream acceptance stage runs.
+        with tempfile.TemporaryDirectory() as runtime_root:
+            with (
+                patch.dict(os.environ, {"DCIM_RUNTIME_ROOT": runtime_root}),
+                patch.object(check, "_publish_sentinels", side_effect=publish_sentinels),
+                patch.object(check, "_capture_end_offsets", side_effect=capture),
+                patch.object(check, "_run_json_command", side_effect=invoke),
+                patch.object(check, "_expected_event_ids", return_value=("event-a", "event-b")),
+                patch.object(check, "_event_counts", side_effect=((1, 1), (1, 1), (1, 1))),
+                patch.object(check.time, "time_ns", return_value=123),
+            ):
+                check.stream_roundtrip("phase2-check-abcdef012345")
+
+            # Then: sentinels precede the watermark and every required leg keeps exact order.
+            self.assertEqual(
+                calls,
+                ["sentinel", "watermark", "run.py", "stream.py", "stream.py", "stream.py"],
+            )
+            replay_path = Path(runtime_root) / "dev-build/evidence/stream-phase2-check-abcdef012345-123/replay-offsets.json"
+            self.assertEqual({"0": [11, 12]}, json.loads(replay_path.read_text(encoding="utf-8")))
 
     def test_main_labels_first_failure_without_false_pass_marker(self) -> None:
         # Given: a second stage that fails and a later stage that must not run.

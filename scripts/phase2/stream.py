@@ -48,6 +48,7 @@ class ConsumerSummary(TypedDict, total=False):
     ledger: LedgerJSON
     run_id: str
     count: int
+    missing_reason_count: int
 
 
 class KafkaMessage(Protocol):
@@ -184,6 +185,7 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
     ledger = DispositionLedger()
     offsets: dict[str, OffsetRange] = {}
     count = 0
+    missing_reason_count = 0
     idle_since = time.monotonic()
     if selected_offsets:
         _seek(consumer, topic, selected_offsets, ranges)
@@ -212,6 +214,8 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
             if count_only:
                 if not selected_offsets and _header(message, "source_run_id") != run_id:
                     continue
+                if topic == DLQ_TOPIC and not _header(message, "reason"):
+                    missing_reason_count += 1
                 count += 1
                 consumer.commit(message)
                 _record_offset(offsets, message)
@@ -249,6 +253,7 @@ def run_consumer(run_id: str, max_messages: int, idle_timeout_s: float, topic: s
     summary: ConsumerSummary = {"consumer_group": effective_group, "topic": topic, "offsets": offsets, "run_id": run_id}
     if count_only:
         summary["count"] = count
+        summary["missing_reason_count"] = missing_reason_count
     else:
         summary["ledger"] = ledger.to_json()
     return summary

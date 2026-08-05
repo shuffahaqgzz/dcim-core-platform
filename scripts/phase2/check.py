@@ -15,10 +15,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from contextlib import redirect_stdout
+from io import StringIO
+import json
 import os
 from pathlib import Path
 import re
 import sys
+import time
 from typing import Final, override, TypeAlias
 import unittest
 
@@ -36,6 +40,8 @@ FIXED_CLOCK: Final = "2026-07-30T00:00:00Z"
 SHORT_COMMIT_LENGTH: Final = 12
 COMMIT_PATTERN: Final = re.compile(r"[0-9a-f]{40}\Z")
 AUTHORITATIVE_TABLES: Final = ("events", "assets", "cis", "aliases")
+NORMALIZED_TOPIC: Final = "dcim.normalized.events"
+DLQ_TOPIC: Final = "dcim.dlq.synthetic"
 
 StageAction: TypeAlias = Callable[[str], None]
 Stage: TypeAlias = tuple[str, StageAction]
@@ -274,6 +280,162 @@ def unit_tests(_run_id: str) -> None:
         raise CheckError("unit test discovery failed")
 
 
+def _run_json_command(arguments: list[str]) -> db.JsonObject:
+    script = Path(arguments[1]).name
+    command_arguments = arguments[2:]
+    output = StringIO()
+    with redirect_stdout(output):
+        match script:
+            case "run.py":
+                from scripts.phase2 import run as pipeline
+
+                result = pipeline.run(command_arguments)
+            case "stream.py":
+                from scripts.phase2 import stream
+
+                result = stream.main(command_arguments)
+            case _:
+                raise CheckError(f"unsupported Phase 2 command: {script}")
+    if result != 0:
+        raise CheckError(f"command failed: {script}")
+    try:
+        value = json.loads(output.getvalue())
+    except json.JSONDecodeError as error:
+        raise CheckError("command did not return JSON") from error
+    if not isinstance(value, dict):
+        raise CheckError("command returned a non-object JSON summary")
+    return value
+
+
+def topic_verify(_run_id: str) -> None:
+    from scripts.phase2 import kafka_topics
+
+    if kafka_topics.run(["--verify"]) != 0:
+        raise CheckError("Kafka topic verification failed")
+
+
+def _stream_evidence_dir(run_id: str) -> Path:
+    path = Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build" / "evidence" / run_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _publish_sentinels(source_run_id: str) -> None:
+    from scripts.phase2.kafka_producer import KafkaEnvelopeProducer
+
+    producer = KafkaEnvelopeProducer()
+    headers = {"source_run_id": source_run_id, "reason": "foreign_sentinel"}
+    payload = json.dumps({"sentinel": source_run_id}, sort_keys=True).encode("utf-8")
+    producer.produce_envelope(NORMALIZED_TOPIC, None, payload, headers)
+    producer.produce_envelope(DLQ_TOPIC, None, payload, headers)
+    producer.flush(30)
+
+
+def _capture_end_offsets(topic: str) -> dict[str, int]:
+    from scripts.phase2 import stream
+
+    return stream.capture_end_offsets(topic)
+
+
+def _expected_event_ids() -> tuple[str, ...]:
+    from contracts.python.dcim_contracts.envelope import Envelope
+    from pydantic import ValidationError
+    from scripts.phase2.runner_input import adapt_input
+
+    accepted: list[str] = []
+    for path in sorted(FIXTURES_DIR.glob("*.json")):
+        try:
+            candidate = adapt_input(path, FIXTURES_DIR, FIXED_CLOCK)
+            accepted.append(Envelope.model_validate(candidate, strict=True).event_id)
+        except (Phase2Error, ValidationError):
+            continue
+    return tuple(accepted)
+
+
+def _event_counts(event_ids: tuple[str, ...]) -> tuple[int, ...]:
+    return tuple(
+        _single_integer(
+            "SELECT json_build_object('events', count(*))::text FROM phase2.events "
+            f"WHERE event_id = {db.literal(event_id)}::uuid;",
+            "events",
+        )
+        for event_id in event_ids
+    )
+
+
+def stream_roundtrip(run_id: str) -> None:
+    stream_run_id = f"stream-{run_id}-{time.time_ns()}"
+    evidence_dir = _stream_evidence_dir(stream_run_id)
+    start_offsets = evidence_dir / "start-offsets.json"
+    replay_offsets = evidence_dir / "replay-offsets.json"
+    _publish_sentinels(f"sentinel-{time.time_ns()}")
+    start_offsets.write_text(
+        json.dumps(_capture_end_offsets(NORMALIZED_TOPIC), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    event_ids = _expected_event_ids()
+    fixture_count = len(tuple(FIXTURES_DIR.glob("*.json")))
+    accepted_count = len(event_ids)
+    invalid_count = fixture_count - accepted_count
+    producer = _run_json_command([
+        sys.executable, str(ROOT / "scripts/phase2/run.py"), "--mode", "stream",
+        "--run-id", stream_run_id, "--fixtures-dir", str(FIXTURES_DIR),
+        "--fixed-clock", FIXED_CLOCK,
+    ])
+    if producer != {"received": fixture_count, "published": accepted_count, "dlq": invalid_count}:
+        raise CheckError("stream producer ledger is not balanced")
+    first = _run_json_command([
+        sys.executable, str(ROOT / "scripts/phase2/stream.py"), "--run-id", stream_run_id,
+        "--start-offsets", str(start_offsets), "--max-messages", str(accepted_count),
+        "--idle-timeout-seconds", "30",
+    ])
+    expected_first = {"received": accepted_count, "accepted": accepted_count, "quarantined": 0, "duplicate": 0}
+    if first.get("ledger") != expected_first or _event_counts(event_ids) != (1,) * accepted_count:
+        raise CheckError("first stream pass did not persist every accepted event exactly once")
+    offsets = first.get("offsets")
+    if not isinstance(offsets, dict):
+        raise CheckError("first stream pass did not record replay offsets")
+    ranges: dict[str, list[int]] = {}
+    for partition, value in offsets.items():
+        if not isinstance(partition, str) or not isinstance(value, dict):
+            raise CheckError("first stream pass returned invalid replay offsets")
+        first_offset = value.get("first")
+        last_offset = value.get("last")
+        if type(first_offset) is not int or type(last_offset) is not int:
+            raise CheckError("first stream pass returned invalid replay boundaries")
+        ranges[partition] = [first_offset, last_offset]
+    replay_offsets.write_text(json.dumps(ranges, sort_keys=True) + "\n", encoding="utf-8")
+    before_replay = _event_counts(event_ids)
+    replay = _run_json_command([
+        sys.executable, str(ROOT / "scripts/phase2/stream.py"), "--run-id", stream_run_id,
+        "--group-id", f"dcim-phase2-replay-{time.time_ns()}", "--from-offsets", str(replay_offsets),
+        "--max-messages", str(accepted_count), "--idle-timeout-seconds", "30",
+    ])
+    expected_replay = {"received": accepted_count, "accepted": 0, "quarantined": 0, "duplicate": accepted_count}
+    if replay.get("ledger") != expected_replay or _event_counts(event_ids) != before_replay:
+        raise CheckError("stream replay did not produce only duplicate dispositions")
+    dlq = _run_json_command([
+        sys.executable, str(ROOT / "scripts/phase2/stream.py"), "--run-id", stream_run_id,
+        "--topic", DLQ_TOPIC, "--group-id", f"dcim-phase2-dlq-{time.time_ns()}",
+        "--count-only", "--max-messages", str(invalid_count), "--idle-timeout-seconds", "30",
+    ])
+    if dlq.get("count") != invalid_count or dlq.get("missing_reason_count") != 0:
+        raise CheckError("stream DLQ count or reason headers did not match rejected fixtures")
+
+
+def latency_assert(run_id: str) -> None:
+    from scripts.phase2 import latency
+
+    evidence = _stream_evidence_dir(run_id) / "kafka-latency.json"
+    result = latency.main([
+        "--leg", "kafka",
+        "--count", "50", "--seed", "42", "--assert", "--output", str(evidence),
+    ])
+    if result != 0:
+        raise CheckError(f"Kafka latency assertion failed; evidence={evidence}")
+    print(f"latency-evidence: {evidence}")
+
+
 STAGES: tuple[Stage, ...] = (
     ("migrate-apply", migrate_apply),
     ("pipeline-run", pipeline_run),
@@ -283,6 +445,9 @@ STAGES: tuple[Stage, ...] = (
     ("capacity", capacity_check),
     ("noc-verify", noc_verify),
     ("unit-tests", unit_tests),
+    ("topic-verify", topic_verify),
+    ("stream-roundtrip", stream_roundtrip),
+    ("latency-assert", latency_assert),
 )
 
 
