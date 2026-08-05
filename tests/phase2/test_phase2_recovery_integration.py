@@ -30,7 +30,7 @@ class RecoveryIntegrationTests(unittest.TestCase):
             raise unittest.SkipTest(
                 f"Compose PostgreSQL unavailable: {error}"
             ) from error
-        _ = migrate.apply()
+        _ = migrate.apply(default_root / "dev-build/secrets")
         command = [
             sys.executable,
             "scripts/phase2/run.py",

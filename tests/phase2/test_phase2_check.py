@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -167,7 +168,9 @@ class Phase2CheckTests(unittest.TestCase):
 
         # Then: m0001 is dropped, all migrations are restored, and the same run replays.
         rollback.assert_called_once_with(check.migrate.MIGRATION_ID)
-        apply.assert_called_once_with()
+        apply.assert_called_once_with(
+            Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build" / "secrets"
+        )
         verify.assert_called_once_with()
         self.assertEqual(
             execute.call_args_list[0].args[0],
@@ -185,7 +188,7 @@ class Phase2CheckTests(unittest.TestCase):
         # Given: rollback succeeds but the synthetic re-ingest fails mid-stage.
         calls: list[str] = []
 
-        def apply() -> int:
+        def apply(_role_password_dir: Path) -> int:
             calls.append("apply")
             return 2
 
@@ -230,7 +233,7 @@ class Phase2CheckTests(unittest.TestCase):
         # Given: observable migration operations for an idempotency check.
         calls: list[str] = []
 
-        def apply() -> int:
+        def apply(_role_password_dir: Path) -> int:
             calls.append("apply")
             return 2
 

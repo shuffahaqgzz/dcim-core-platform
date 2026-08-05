@@ -208,8 +208,9 @@ def _assert_duplicate_replay(summary: db.JsonObject, baseline: ReplayBaseline) -
 
 
 def migrate_apply(_run_id: str) -> None:
-    _ = migrate.apply()
-    _ = migrate.apply()
+    role_password_dir = Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build" / "secrets"
+    _ = migrate.apply(role_password_dir)
+    _ = migrate.apply(role_password_dir)
     _ = migrate.verify()
 
 
@@ -223,10 +224,11 @@ def idempotency_replay(run_id: str) -> None:
 
 
 def rollback_reapply(run_id: str) -> None:
+    role_password_dir = Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build" / "secrets"
     migrate.rollback(migrate.MIGRATION_ID)
     stage_complete = False
     try:
-        _ = migrate.apply()
+        _ = migrate.apply(role_password_dir)
         _ = migrate.verify()
         _ = pipeline_execute(run_id)
         baseline = _baseline(run_id)
@@ -234,7 +236,7 @@ def rollback_reapply(run_id: str) -> None:
         stage_complete = True
     finally:
         if not stage_complete:
-            _ = migrate.apply()
+            _ = migrate.apply(role_password_dir)
             _ = migrate.verify()
 
 
