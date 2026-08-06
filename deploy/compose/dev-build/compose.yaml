@@ -257,6 +257,107 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 512M}
 
+  api:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [dashboard]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_api.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      ASSET_REPOSITORY_URL: http://asset-repository:8000
+      CMDB_URL: http://cmdb:8000
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_api_ro
+      PGPASSWORD_FILE: /run/secrets/api-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/api/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [api-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  analytics:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [core]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_analytics.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_analytics_ro
+      PGPASSWORD_FILE: /run/secrets/analytics-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/analytics/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [analytics-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  workflow:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [workflow]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_workflow.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_workflow_rw
+      PGPASSWORD_FILE: /run/secrets/workflow-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/workflow/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [workflow-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
   postgres-smoke:
     image: ${DCIM_POSTGRES_IMAGE:?run make foundation-images-qualify}
     profiles: [smoke]

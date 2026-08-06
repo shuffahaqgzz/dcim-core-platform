@@ -83,9 +83,10 @@ class CoreComposeContractTests(unittest.TestCase):
         for service in ("asset-repository", "cmdb"):
             with self.subTest(service=service):
                 self.assertIn(service, source)
-        self.assertIn('"/health"', source)
-        self.assertIn('"/ready"', source)
+        self.assertIn("/health", source)
+        self.assertIn("/ready", source)
         self.assertIn("status == 200", source)
+        self.assertIn("403", source)
 
 
 if __name__ == "__main__":

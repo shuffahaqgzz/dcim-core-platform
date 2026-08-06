@@ -1,5 +1,5 @@
 .PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance phase2-deps phase2-test phase2-check
-.PHONY: phase3-deps phase3-test
+.PHONY: phase3-deps phase3-test service-smoke service-check
 
 PYTHON ?= python3
 PHASE2_VENV ?= .venv
@@ -17,6 +17,9 @@ FOUNDATION_PROFILES := --profile data --profile observability --profile smoke
 FOUNDATION_SERVICES := postgres kafka postgres-exporter kafka-jmx-exporter prometheus grafana
 FOUNDATION_COMPOSE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-build' docker compose --env-file "$(FOUNDATION_ENV)" --env-file "$(FOUNDATION_IMAGE_ENV)" -f '$(FOUNDATION_COMPOSE)' $(FOUNDATION_PROFILES)
 FOUNDATION_SMOKE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-build' $(PYTHON) scripts/foundation_smoke.py
+SERVICE_PROFILES := --profile data --profile observability --profile core --profile dashboard --profile workflow
+SERVICE_COMPOSE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-build' docker compose --env-file "$(FOUNDATION_ENV)" --env-file "$(FOUNDATION_IMAGE_ENV)" -f '$(FOUNDATION_COMPOSE)' $(SERVICE_PROFILES)
+SERVICE_SMOKE_EVIDENCE := $$DCIM_RUNTIME_ROOT/dev-build/evidence/service-smoke/evidence.json
 
 help:
 	@printf '%s\n' \
@@ -41,7 +44,9 @@ help:
 	  'foundation-recovery Run restart and PostgreSQL restore checks' \
 	  'foundation-supply-chain Generate external SBOM/license/vulnerability evidence' \
 	  'foundation-evidence-summary Generate public-safe evidence summary' \
-	  'foundation-clean-acceptance Run isolated clean-runtime acceptance'
+	  'foundation-clean-acceptance Run isolated clean-runtime acceptance' \
+	  'service-smoke   Start all service profiles and run the Phase 3 smoke gate' \
+	  'service-check  Run Phase 3 deps, tests, and the service smoke gate'
 
 bootstrap:
 	./scripts/bootstrap-dev.sh
@@ -128,6 +133,18 @@ phase3-test:
 
 phase2-check: foundation-up phase2-deps
 	$(PHASE2_PYTHON) scripts/phase2/check.py
+
+service-smoke: foundation-up
+	@status=0; \
+	$(SERVICE_COMPOSE_CMD) up -d --wait --wait-timeout 240 || status=$$?; \
+	if [ $$status -eq 0 ]; then \
+	  $(PYTHON) scripts/phase3/smoke.py --output "$(SERVICE_SMOKE_EVIDENCE)" || status=$$?; \
+	fi; \
+	$(SERVICE_COMPOSE_CMD) stop --timeout 60 || status=$$?; \
+	exit $$status
+
+service-check: phase3-deps phase3-test service-smoke
+	@printf '%s\n' 'service-check: PASS (phase3-deps, phase3-test, service-smoke)'
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
 

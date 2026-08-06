@@ -80,7 +80,10 @@ class FoundationPolicyTests(unittest.TestCase):
                 project_name,
             ))))
         command.extend(
-            ["--profile", "data", "--profile", "observability", "--profile", "smoke", "--profile", "core"],
+            [
+                "--profile", "data", "--profile", "observability", "--profile", "smoke",
+                "--profile", "core", "--profile", "dashboard", "--profile", "workflow",
+            ],
         )
         command.extend(["config", "--format", "json"])
         result = subprocess.run(
@@ -113,7 +116,10 @@ class FoundationPolicyTests(unittest.TestCase):
     def add_application_service(self, model: dict[str, object], name: str) -> dict[str, object]:
         service = json.loads(json.dumps(model["services"]["prometheus"]))
         service["image"] = "sha256:" + "a" * 64
-        service["profiles"] = ["workflow"] if name == "workflow" else ["core"]
+        service["profiles"] = {
+            "api": ["dashboard"],
+            "workflow": ["workflow"],
+        }.get(name, ["core"])
         service["networks"] = {"data": None, "observability": None}
         service["sysctls"] = {"net.ipv4.ip_forward": "0"}
         service["user"] = "10001:10001"
@@ -124,7 +130,7 @@ class FoundationPolicyTests(unittest.TestCase):
             "asset-repository": ["assets-db-password", "internal-api-token"],
             "cmdb": ["cmdb-db-password", "internal-api-token"],
             "api": ["api-db-password", "internal-api-token"],
-            "analytics": ["analytics-db-password"],
+            "analytics": ["analytics-db-password", "internal-api-token"],
             "workflow": ["workflow-db-password", "internal-api-token"],
         }[name]
         service["secrets"] = [

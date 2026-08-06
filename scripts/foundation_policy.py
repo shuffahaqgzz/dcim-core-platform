@@ -69,7 +69,10 @@ EXPECTED_SECRETS = {
         ("api-db-password", "/run/secrets/api-db-password"),
         ("internal-api-token", "/run/secrets/internal-api-token"),
     },
-    "analytics": {("analytics-db-password", "/run/secrets/analytics-db-password")},
+    "analytics": {
+        ("analytics-db-password", "/run/secrets/analytics-db-password"),
+        ("internal-api-token", "/run/secrets/internal-api-token"),
+    },
     "workflow": {
         ("workflow-db-password", "/run/secrets/workflow-db-password"),
         ("internal-api-token", "/run/secrets/internal-api-token"),
@@ -124,7 +127,7 @@ EXPECTED_PROFILES = {
     "observability-smoke": {"smoke"},
     "asset-repository": {"core"},
     "cmdb": {"core"},
-    "api": {"core"},
+    "api": {"dashboard"},
     "analytics": {"core"},
     "workflow": {"workflow"},
 }
@@ -244,6 +247,18 @@ EXPECTED_HEALTHCHECKS = {
         "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
     ]),
     "cmdb": health_contract([
+        "CMD", "python3", "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
+    ]),
+    "api": health_contract([
+        "CMD", "python3", "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
+    ]),
+    "analytics": health_contract([
+        "CMD", "python3", "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
+    ]),
+    "workflow": health_contract([
         "CMD", "python3", "-c",
         "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()",
     ]),

@@ -18,3 +18,12 @@ scrape_configs:
   - job_name: cmdb
     metrics_path: /metrics
     static_configs: [{targets: [cmdb:8000]}]
+  - job_name: api
+    metrics_path: /metrics
+    static_configs: [{targets: [api:8000]}]
+  - job_name: analytics
+    metrics_path: /metrics
+    static_configs: [{targets: [analytics:8000]}]
+  - job_name: workflow
+    metrics_path: /metrics
+    static_configs: [{targets: [workflow:8000]}]
