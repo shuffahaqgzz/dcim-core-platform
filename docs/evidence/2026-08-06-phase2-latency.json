@@ -1,0 +1,16 @@
+{
+  "scope": "synthetic Development Kafka event/trap measurement",
+  "source_receipt": ".omo/evidence/phase2-closure-phase3-start/task-19.md",
+  "leg": "kafka",
+  "sample_count": 50,
+  "seed": 42,
+  "workload_class": "event/trap (P1)",
+  "test_window": "one bounded 50-event E2E workload",
+  "clock_source": "time.time_ns",
+  "percentile_method": "nearest-rank",
+  "dashboard_latency_p95_ms": 1581.272993,
+  "threshold_ms": 5000,
+  "assertion": "strictly below threshold",
+  "cleanup_confirmed": true,
+  "note": "Public-safe summary transcribed from the verified Todo 19 receipt; it contains no runtime payloads or endpoints."
+}

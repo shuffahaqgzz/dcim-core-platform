@@ -5,14 +5,15 @@ Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset
 ## Status saat ini
 
 - Phase: **Phase 0 COMPLETE / DEV-APPROVED — Repository Safety, Governance, dan Dev Entry Readiness**.
+- Phase 2: **complete-pending-owner-disposition**.
+- Phase 3: **in progress**.
 - Overall Development: **CONDITIONAL GO**; open conditions tetap authoritative.
-- Maturity: **Prototype/Alpha**; bukan Production-ready.
+- Maturity: **Prototype/Alpha**; belum siap untuk rilis Production.
 - Owner: `shuffahaqgzz`.
 - Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
-- Current milestone: **Phase 2 first synthetic P1/P2 vertical slice — Development
-  evidence**. The batch path and `phase2-check` gate are recorded in the public
-  evidence package; issue #21, open conditions, remote checks, and owner
-  disposition remain authoritative and pending.
+- Current milestone: Phase 2 is complete-pending-owner-disposition; Phase 3 is
+  in progress. Issue #21, open conditions, remote checks, and owner disposition
+  remain authoritative and pending.
 
 ## Public code, private runtime
 
