@@ -270,3 +270,45 @@ pure LOC and its test at 129; the skill checker therefore reports the API module
 Splitting that pre-existing multi-endpoint module is intentionally deferred because the owner
 limited this recovery to the smallest directly necessary JSONB fix. The todo-18 plan checkbox
 remains unchanged for independent review.
+
+## Independent-review remediation: one exact CMDB sequence
+
+This section closes the reviewer's sole remaining blocker by recording all required CMDB
+operations, in the required order, in one protected transcript. The exact committed code SHA
+was `cd30d0a8f18313218a38a91464f731d5dc8a432a`; its exact subject was
+`feat(phase3): full service compose integration and smoke gate`. That commit changes only
+`scripts/phase3/smoke.py` and `tests/phase3/test_smoke.py`: connection failures now receive
+service context at the per-service smoke boundary, with a failing-first regression test.
+
+The all-profile stack setup completed before the numbered sequence. From
+2026-08-06T18:28:14Z through 2026-08-06T18:29:25Z, the single invocation then recorded:
+
+| Order | Exact command | Exit/observable |
+| ---: | --- | --- |
+| 1 | Repository-bounded `docker compose ... stop --timeout 60 cmdb` | Exit 0; `dcim-build-cmdb-1` stopped. |
+| 2 | `python3 scripts/phase3/smoke.py --output "$DCIM_RUNTIME_ROOT/dev-build/evidence/service-smoke/task18-cmdb-single-exact-sequence.json"` | Exit 1; the smoke command's own output was exactly `service-smoke: FAIL: cmdb: service connection failed`. |
+| 3 | Repository-bounded `docker compose ... start cmdb` | Exit 0; CMDB started. |
+| 4 | Bounded `docker inspect` health verification of `dcim-build-cmdb-1` | `healthy` after 14 one-second checks. |
+| 5 | The identical smoke command from step 2 | Exit 0; `service-smoke: PASS services=5/5 auth-denials=5/5`. The protected JSON contains five service records, five healthy services, and five auth denials. |
+| 6 | Repository-bounded all-profile `docker compose ... down --timeout 60` | Exit 0; final project inventory was containers 0, networks 0, with all three pre-existing volumes preserved. |
+
+No operation was inserted, removed, or reordered between steps 1 through 6. The failure-name
+assertion was evaluated only after cleanup and passed. The setup, all six steps, assertions,
+exact exits, full code SHA, timestamps, and cleanup are together in
+`$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-cmdb-single-exact-sequence.log`
+(7,586 bytes, mode 0600, SHA-256
+`12098a1389bb8e86b3aa6f859b448c3787c4c72cae11949f82f9bd6bcd262a58`). No token,
+endpoint address, or credential value is present in the public receipt.
+
+Failing-first evidence is retained in
+`$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-cmdb-name-unit-red.log`: before the fix, the
+new unittest exited 1 because it observed `service connection failed` instead of
+`cmdb: service connection failed`. After the fix,
+`$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-cmdb-name-unit-green.log` records the focused
+suite passing 14/14. `make phase3-test` then passed 63 tests, and `make phase0-check` passed
+the repository gates and 272 tests; their protected transcripts are respectively
+`task18-cmdb-name-phase3-test.log` and `task18-cmdb-name-phase0-check.log` under the same
+protected transcript directory.
+
+This remains synthetic Development-only evidence. `.codex/config.toml` and the todo-18 plan
+checkbox were not modified. No images or volumes were deleted.
