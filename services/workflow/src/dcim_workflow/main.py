@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
 import os
 from pathlib import Path
 from typing import Literal, Protocol, TypeAlias
@@ -114,9 +115,15 @@ def create_app(pool_factory: PoolFactory | None = None):
             raise HTTPException(status_code=503, detail="Unavailable")
         return pool
 
+    def _decoded(record: dict[str, object]) -> dict[str, object]:
+        for key in ("payload", "audit"):
+            if isinstance(record.get(key), str):
+                record[key] = json.loads(record[key])
+        return record
+
     async def retrieve(draft_id: UUID) -> Draft | None:
         row = await require_pool().fetchrow("SELECT draft_id, created_at, event_id, draft_type, payload, status, audit FROM phase2.workflow_drafts WHERE draft_id = $1", draft_id)
-        return None if row is None else Draft.model_validate(dict(row))
+        return None if row is None else Draft.model_validate(_decoded(dict(row)))
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -138,13 +145,13 @@ def create_app(pool_factory: PoolFactory | None = None):
         now = datetime.now(UTC)
         payload = request.context or {}
         audit = [AuditEntry(action="created", occurred_at=now)]
-        row = await require_pool().fetchrow("INSERT INTO phase2.workflow_drafts (draft_id, created_at, event_id, draft_type, payload, status, audit) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING draft_id, created_at, event_id, draft_type, payload, status, audit", uuid4(), now, request.event_id, request.draft_type, payload, "draft", [item.model_dump(mode="json") for item in audit])
-        return Draft.model_validate(dict(row or {}))
+        row = await require_pool().fetchrow("INSERT INTO phase2.workflow_drafts (draft_id, created_at, event_id, draft_type, payload, status, audit) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING draft_id, created_at, event_id, draft_type, payload, status, audit", uuid4(), now, request.event_id, request.draft_type, json.dumps(payload), "draft", json.dumps([item.model_dump(mode="json") for item in audit]))
+        return Draft.model_validate(_decoded(dict(row or {})))
 
     @app.get("/api/v1/workflows/drafts", dependencies=[Depends(authorized)], response_model=list[Draft])
     async def list_drafts() -> list[Draft]:
         rows = await require_pool().fetch("SELECT draft_id, created_at, event_id, draft_type, payload, status, audit FROM phase2.workflow_drafts ORDER BY created_at, draft_id")
-        return [Draft.model_validate(dict(row)) for row in rows]
+        return [Draft.model_validate(_decoded(dict(row))) for row in rows]
 
     @app.get("/api/v1/workflows/drafts/{draft_id}", dependencies=[Depends(authorized)], response_model=Draft)
     async def get(draft_id: UUID) -> Draft:
@@ -162,9 +169,9 @@ def create_app(pool_factory: PoolFactory | None = None):
             raise HTTPException(status_code=409, detail="Draft simulation is terminal")
         resulting_status = "simulated_approved" if request.decision == "approve" else "simulated_rejected"
         audit = [*draft.audit, AuditEntry(action="simulated", occurred_at=datetime.now(UTC), decision=request.decision)]
-        row = await require_pool().fetchrow("UPDATE phase2.workflow_drafts SET status = $2, audit = $3 WHERE draft_id = $1 AND status = 'draft' RETURNING draft_id, created_at, event_id, draft_type, payload, status, audit", draft_id, resulting_status, [item.model_dump(mode="json") for item in audit])
+        row = await require_pool().fetchrow("UPDATE phase2.workflow_drafts SET status = $2, audit = $3 WHERE draft_id = $1 AND status = 'draft' RETURNING draft_id, created_at, event_id, draft_type, payload, status, audit", draft_id, resulting_status, json.dumps([item.model_dump(mode="json") for item in audit]))
         if row is None:
             raise HTTPException(status_code=409, detail="Draft simulation is terminal")
-        return Draft.model_validate(dict(row))
+        return Draft.model_validate(_decoded(dict(row)))
 
     return app

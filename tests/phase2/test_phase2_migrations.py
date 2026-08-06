@@ -228,6 +228,7 @@ class MigrationSqlTests(unittest.TestCase):
         grants = tuple(line for line in sql.splitlines() if line.startswith("GRANT "))
         self.assertEqual(
             (
+                "GRANT USAGE ON SCHEMA phase2 TO dcim_workflow_rw;",
                 "GRANT SELECT, INSERT, UPDATE ON phase2.workflow_drafts TO dcim_workflow_rw;",
                 "GRANT SELECT ON phase2.events TO dcim_workflow_rw;",
                 "GRANT REFERENCES ON phase2.events TO dcim_workflow_rw;",

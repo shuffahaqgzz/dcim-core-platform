@@ -29,6 +29,7 @@ def up(context: Mapping[str, Mapping[str, str]]) -> str:
 );
 DO $$ BEGIN CREATE ROLE dcim_workflow_rw LOGIN PASSWORD {credential_literal};
 EXCEPTION WHEN duplicate_object THEN ALTER ROLE dcim_workflow_rw PASSWORD {credential_literal}; END $$;
+GRANT USAGE ON SCHEMA phase2 TO dcim_workflow_rw;
 GRANT SELECT, INSERT, UPDATE ON phase2.workflow_drafts TO dcim_workflow_rw;
 GRANT SELECT ON phase2.events TO dcim_workflow_rw;
 GRANT REFERENCES ON phase2.events TO dcim_workflow_rw;

@@ -84,7 +84,7 @@ class FakePool:
         if "INSERT INTO phase2.assets" in query:
             self.assets[params[0]] = {
                 "asset_id": params[0],
-                "identity": json.loads(params[1]),
+                "identity": params[1],
                 "asset_type": params[2],
                 "created_at": params[3],
                 "updated_at": params[4],

@@ -55,7 +55,10 @@ def _database_configuration() -> DatabaseConfiguration:
 
 
 def _asset(row: Mapping[str, object], aliases: Sequence[Mapping[str, object]]) -> Asset:
-    return Asset.model_validate({**dict(row), "aliases": [{**dict(alias), "confidence": int(alias["confidence"]) / 100} for alias in aliases]})
+    identity = row["identity"]
+    if isinstance(identity, str):
+        identity = json.loads(identity)
+    return Asset.model_validate({**dict(row), "identity": identity, "aliases": [{**dict(alias), "confidence": int(alias["confidence"]) / 100} for alias in aliases]})
 
 
 def create_app(pool_factory: PoolFactory | None = None):

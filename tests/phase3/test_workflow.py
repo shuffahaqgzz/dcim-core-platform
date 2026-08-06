@@ -29,6 +29,8 @@ class FakePool:
     async def fetchrow(self, query: str, *parameters: object) -> dict[str, object] | None:
         if query.lstrip().startswith("INSERT"):
             draft_id, created_at, event_id, draft_type, payload, status, audit = parameters
+            assert isinstance(payload, str)
+            assert isinstance(audit, str)
             row = {"draft_id": draft_id, "created_at": created_at, "event_id": event_id, "draft_type": draft_type, "payload": payload, "status": status, "audit": audit}
             assert isinstance(draft_id, UUID)
             self.rows[draft_id] = row
@@ -36,6 +38,7 @@ class FakePool:
         if query.lstrip().startswith("UPDATE"):
             draft_id, status, audit = parameters
             assert isinstance(draft_id, UUID)
+            assert isinstance(audit, str)
             row = self.rows[draft_id]
             row.update(status=status, audit=audit)
             return row
