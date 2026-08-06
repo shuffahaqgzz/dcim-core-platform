@@ -125,3 +125,33 @@ Exit code: `0`. The E2E runner removes its run-scoped rows in foreign-key
 order, and the latency harness removes its four run-scoped rows in `finally`;
 the recorded `latency_cleanup` assertion is true. No governance status file
 was changed.
+
+## Current fix binding
+
+This evidence applies to the current Makefile contract: Kafka bootstrap is
+inspected at command execution time in both `phase2-check` and `e2e`, so each
+invocation uses the running Kafka container address. `service-check`
+prerequisites are serialized by a runtime lock before they run.
+
+Protected raw receipt names remain under
+`$DCIM_RUNTIME_ROOT/evidence-transcripts` and are not committed.
+
+Static verification of this binding:
+
+```text
+rtk git diff --check
+```
+
+Exit code: `0`.
+
+```text
+rtk .venv/bin/python -m unittest discover -s tests/phase2 -p 'test_stage12_gate_contracts.py' -v
+```
+
+Exit code: `0` (6 tests passed).
+
+```text
+rtk .venv/bin/python -m unittest discover -s tests/phase3 -p 'test_e2e.py' -v
+```
+
+Exit code: `0` (7 tests passed).

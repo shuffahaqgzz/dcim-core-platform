@@ -158,8 +158,15 @@ class E2EContractTests(unittest.TestCase):
         self.assertIn("scripts/phase3/e2e.py", makefile)
         self.assertIn("_service-check: phase3-deps phase3-test service-smoke e2e", makefile)
         self.assertIn("e2e: service-smoke", makefile)
-        self.assertIn("KAFKA_BOOTSTRAP := $$(docker inspect", makefile)
-        self.assertIn('DCIM_KAFKA_BOOTSTRAP="$(KAFKA_BOOTSTRAP)"', makefile)
+        self.assertNotIn("KAFKA_BOOTSTRAP :=", makefile)
+        self.assertEqual(
+            2,
+            makefile.count(
+                'DCIM_KAFKA_BOOTSTRAP="$$(docker inspect --format '
+                "'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "
+                'dcim-build-kafka-1):9092"'
+            ),
+        )
 
     def test_service_check_serializes_before_running_prerequisites(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
