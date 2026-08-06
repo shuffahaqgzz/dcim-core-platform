@@ -35,8 +35,9 @@ CREATE UNIQUE INDEX ci_relationships_current_unique
     ON phase2.ci_relationships (from_ci, to_ci, relationship_type)
     WHERE valid_to IS NULL;
 {role_sql}
+GRANT USAGE ON SCHEMA phase2 TO dcim_assets_rw, dcim_cmdb_rw, dcim_api_ro, dcim_analytics_ro;
 GRANT SELECT, INSERT, UPDATE ON phase2.assets, phase2.aliases TO dcim_assets_rw;
-GRANT SELECT, INSERT, UPDATE ON phase2.cis, phase2.ci_relationships TO dcim_cmdb_rw;
+GRANT SELECT, INSERT, UPDATE ON phase2.cis, phase2.ci_relationships, phase2.aliases TO dcim_cmdb_rw;
 GRANT REFERENCES ON phase2.assets TO dcim_cmdb_rw;
 GRANT SELECT ON phase2.noc_cards, phase2.events, phase2.dispositions TO dcim_api_ro;
 GRANT SELECT ON phase2.events, phase2.dispositions, phase2.run_manifests, phase2.noc_cards TO dcim_analytics_ro;

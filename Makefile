@@ -1,5 +1,5 @@
 .PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance phase2-deps phase2-test phase2-check
-.PHONY: phase3-deps phase3-test service-smoke service-check
+.PHONY: phase3-deps phase3-test service-smoke e2e service-check
 
 PYTHON ?= python3
 PHASE2_VENV ?= .venv
@@ -20,6 +20,8 @@ FOUNDATION_SMOKE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-
 SERVICE_PROFILES := --profile data --profile observability --profile core --profile dashboard --profile workflow
 SERVICE_COMPOSE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-build' docker compose --env-file "$(FOUNDATION_ENV)" --env-file "$(FOUNDATION_IMAGE_ENV)" -f '$(FOUNDATION_COMPOSE)' $(SERVICE_PROFILES)
 SERVICE_SMOKE_EVIDENCE := $$DCIM_RUNTIME_ROOT/dev-build/evidence/service-smoke/evidence.json
+E2E_EVIDENCE := $$DCIM_RUNTIME_ROOT/dev-build/evidence/e2e/evidence-e2e.json
+KAFKA_BOOTSTRAP := $$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dcim-build-kafka-1):9092
 
 help:
 	@printf '%s\n' \
@@ -46,6 +48,7 @@ help:
 	  'foundation-evidence-summary Generate public-safe evidence summary' \
 	  'foundation-clean-acceptance Run isolated clean-runtime acceptance' \
 	  'service-smoke   Start all service profiles and run the Phase 3 smoke gate' \
+	  'e2e            Run the bounded Kafka-to-dashboard E2E gate' \
 	  'service-check  Run Phase 3 deps, tests, and the service smoke gate'
 
 bootstrap:
@@ -132,7 +135,7 @@ phase3-test:
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase3 -p 'test_*.py' -v
 
 phase2-check: foundation-up phase2-deps
-	$(PHASE2_PYTHON) scripts/phase2/check.py
+	DCIM_KAFKA_BOOTSTRAP="$(KAFKA_BOOTSTRAP)" $(PHASE2_PYTHON) scripts/phase2/check.py
 
 service-smoke: foundation-up
 	@status=0; \
@@ -143,8 +146,17 @@ service-smoke: foundation-up
 	$(SERVICE_COMPOSE_CMD) stop --timeout 60 || status=$$?; \
 	exit $$status
 
-service-check: phase3-deps phase3-test service-smoke
-	@printf '%s\n' 'service-check: PASS (phase3-deps, phase3-test, service-smoke)'
+e2e: service-smoke
+	@status=0; \
+	$(SERVICE_COMPOSE_CMD) up -d --wait --wait-timeout 240 || status=$$?; \
+	if [ $$status -eq 0 ]; then \
+	  DCIM_KAFKA_BOOTSTRAP="$(KAFKA_BOOTSTRAP)" $(PHASE2_PYTHON) scripts/phase3/e2e.py --output "$(E2E_EVIDENCE)" || status=$$?; \
+	fi; \
+	$(SERVICE_COMPOSE_CMD) stop --timeout 60 || status=$$?; \
+	exit $$status
+
+service-check: phase3-deps phase3-test service-smoke e2e
+	@printf '%s\n' 'service-check: PASS (phase3-deps, phase3-test, service-smoke, e2e)'
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
 

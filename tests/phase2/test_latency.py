@@ -161,7 +161,6 @@ class ReportTests(unittest.TestCase):
         with self.assertRaises(latency.LatencyThresholdError):
             latency.assert_dashboard_latency(result)
 
-
 class KafkaSeamTests(unittest.TestCase):
     def test_kafka_seams_constructs_the_module_producer_boundary(self) -> None:
         # Given: the real seam resolution with a stubbed producer constructor.
@@ -221,7 +220,7 @@ class KafkaOrderingTests(unittest.TestCase):
                     return {"0": 19}
 
                 def run_consumer(self, run_id, max_messages, idle_timeout_s, **options):
-                    self_outer.assertEqual(("run", 2, 30), (run_id, max_messages, idle_timeout_s))
+                    self_outer.assertEqual(("run", 1, 30), (run_id, max_messages, idle_timeout_s))
                     self_outer.assertEqual(offsets, options["start_offsets"])
                     calls.append("consume")
                     return {}
@@ -229,7 +228,7 @@ class KafkaOrderingTests(unittest.TestCase):
             self_outer = self
             clock = iter((1_800_000_000_000_000_000, 1_800_000_000_000_000_001,
                           1_800_000_000_000_000_010, 1_800_000_000_000_000_011,
-                          1_800_000_000_000_000_020)).__next__
+                          1_800_000_000_000_000_020, 1_800_000_000_000_000_021)).__next__
             with (
                 patch.object(latency, "_kafka_seams", return_value=(Producer(), Stream())),
                 patch.object(latency.db, "query_json", return_value=[{"present": True}]),
@@ -238,7 +237,10 @@ class KafkaOrderingTests(unittest.TestCase):
                 timings = latency._kafka_leg("run", 2, 42, FIXTURES, output, clock)
 
         # When / Then: publication follows the durable pre-run watermark handoff.
-        self.assertEqual(["capture", "publish", "publish", "flush", "consume", "noc"], calls)
+        self.assertEqual(
+            ["capture", "publish", "flush", "consume", "noc"] * 2,
+            calls,
+        )
         self.assertEqual(2, len(timings))
 
 

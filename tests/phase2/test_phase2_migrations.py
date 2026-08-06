@@ -235,6 +235,26 @@ class MigrationSqlTests(unittest.TestCase):
             grants,
         )
 
+    def test_m0003_up_defines_schema_usage_and_exact_service_grants(self) -> None:
+        # Given / When
+        sql = m0003_ci_relationships.up(
+            {"role_passwords": {role: "synthetic" for role in migrate.ROLE_PASSWORD_FILES}}
+        )
+
+        # Then
+        grants = tuple(line for line in sql.splitlines() if line.startswith("GRANT "))
+        self.assertEqual(
+            (
+                "GRANT USAGE ON SCHEMA phase2 TO dcim_assets_rw, dcim_cmdb_rw, dcim_api_ro, dcim_analytics_ro;",
+                "GRANT SELECT, INSERT, UPDATE ON phase2.assets, phase2.aliases TO dcim_assets_rw;",
+                "GRANT SELECT, INSERT, UPDATE ON phase2.cis, phase2.ci_relationships, phase2.aliases TO dcim_cmdb_rw;",
+                "GRANT REFERENCES ON phase2.assets TO dcim_cmdb_rw;",
+                "GRANT SELECT ON phase2.noc_cards, phase2.events, phase2.dispositions TO dcim_api_ro;",
+                "GRANT SELECT ON phase2.events, phase2.dispositions, phase2.run_manifests, phase2.noc_cards TO dcim_analytics_ro;",
+            ),
+            grants,
+        )
+
     @staticmethod
     def _verified_schema_rows() -> list[list[dict[str, object]]]:
         return [

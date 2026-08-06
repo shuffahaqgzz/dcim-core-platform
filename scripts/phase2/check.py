@@ -265,8 +265,8 @@ def noc_verify(run_id: str) -> None:
 
 def clean_acceptance_state() -> None:
     _ = db.psql(
-        "TRUNCATE TABLE phase2.noc_cards, phase2.dispositions, phase2.events, "
-        "phase2.aliases, phase2.cis, phase2.assets, phase2.run_manifests "
+        "TRUNCATE TABLE phase2.noc_cards, phase2.workflow_drafts, phase2.dispositions, phase2.events, "
+        "phase2.ci_relationships, phase2.aliases, phase2.cis, phase2.assets, phase2.run_manifests "
         "RESTART IDENTITY;"
     )
 
@@ -310,7 +310,7 @@ def _run_json_command(arguments: list[str]) -> db.JsonObject:
 def topic_verify(_run_id: str) -> None:
     from scripts.phase2 import kafka_topics
 
-    if kafka_topics.run(["--verify"]) != 0:
+    if kafka_topics.main(["--verify"]) != 0:
         raise CheckError("Kafka topic verification failed")
 
 
@@ -470,6 +470,11 @@ def _run_stage(label: str, action: StageAction, run_id: str) -> None:
 def run() -> int:
     run_id = f"phase2-check-{short_commit()}"
     for label, action in STAGES[:-1]:
+        if label == "unit-tests":
+            try:
+                clean_acceptance_state()
+            except db.DatabaseCommandError as error:
+                raise StageFailure("phase2-check", f"acceptance cleanup failed: {error}") from error
         _run_stage(label, action, run_id)
     try:
         clean_acceptance_state()

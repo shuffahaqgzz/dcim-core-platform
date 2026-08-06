@@ -65,7 +65,12 @@ class Phase2CheckTests(unittest.TestCase):
             [
                 *[
                     (label, "phase2-check-0123456789ab")
-                    for label in EXPECTED_STAGES[:-1]
+                    for label in EXPECTED_STAGES[:7]
+                ],
+                ("acceptance-cleanup", ""),
+                *[
+                    (label, "phase2-check-0123456789ab")
+                    for label in EXPECTED_STAGES[7:-1]
                 ],
                 ("acceptance-cleanup", ""),
                 (EXPECTED_STAGES[-1], "phase2-check-0123456789ab"),
@@ -282,6 +287,8 @@ class Phase2CheckTests(unittest.TestCase):
         # Then: rows are truncated without dropping the Phase 2 schema.
         sql = psql.call_args.args[0]
         self.assertIn("TRUNCATE TABLE", sql)
+        self.assertIn("phase2.ci_relationships", sql)
+        self.assertIn("phase2.workflow_drafts", sql)
         self.assertIn("phase2.run_manifests", sql)
         self.assertNotIn("DROP SCHEMA", sql)
 
