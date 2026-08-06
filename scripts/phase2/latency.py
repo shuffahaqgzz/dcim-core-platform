@@ -206,8 +206,9 @@ def _direct_leg(run_id: str, count: int, seed: int, fixtures_dir: Path, clock_ns
 
 def _kafka_seams() -> tuple[ProducerSeam, StreamSeam]:
     try:
-        producer = importlib.import_module("scripts.phase2.kafka_producer")
+        producer_module = importlib.import_module("scripts.phase2.kafka_producer")
         stream = importlib.import_module("scripts.phase2.stream")
+        producer = producer_module.KafkaEnvelopeProducer()
         getattr(producer, "produce_envelope")
         getattr(producer, "flush")
         getattr(stream, "capture_end_offsets")

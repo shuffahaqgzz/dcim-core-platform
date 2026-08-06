@@ -162,6 +162,39 @@ class ReportTests(unittest.TestCase):
             latency.assert_dashboard_latency(result)
 
 
+class KafkaSeamTests(unittest.TestCase):
+    def test_kafka_seams_constructs_the_module_producer_boundary(self) -> None:
+        # Given: the real seam resolution with a stubbed producer constructor.
+        class FakeProducer:
+            def produce_envelope(self, *_args: object) -> None:
+                return None
+
+            def flush(self, _timeout: float) -> None:
+                return None
+
+        # When: the seams resolve without any mock of _kafka_seams itself.
+        with patch("scripts.phase2.kafka_producer.KafkaEnvelopeProducer", FakeProducer):
+            producer, stream = latency._kafka_seams()
+
+        # Then: the producer is the constructed boundary and the stream surface is complete.
+        self.assertIsInstance(producer, FakeProducer)
+        self.assertTrue(callable(stream.capture_end_offsets))
+        self.assertTrue(callable(stream.run_consumer))
+
+    def test_kafka_seams_fail_closed_when_producer_boundary_is_incomplete(self) -> None:
+        # Given: a producer class lacking the required flush surface.
+        class IncompleteProducer:
+            def produce_envelope(self, *_args: object) -> None:
+                return None
+
+        # When / Then: seam resolution refuses the incomplete boundary.
+        with (
+            patch("scripts.phase2.kafka_producer.KafkaEnvelopeProducer", IncompleteProducer),
+            self.assertRaises(latency.KafkaIntegrationError),
+        ):
+            latency._kafka_seams()
+
+
 class KafkaOrderingTests(unittest.TestCase):
     def test_kafka_captures_and_writes_watermark_before_publication(self) -> None:
         # Given: fake future integration seams and a protected temporary output path.
