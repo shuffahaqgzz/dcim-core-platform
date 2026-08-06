@@ -161,12 +161,9 @@ class E2EContractTests(unittest.TestCase):
         self.assertNotIn("KAFKA_BOOTSTRAP :=", makefile)
         self.assertEqual(
             2,
-            makefile.count(
-                'DCIM_KAFKA_BOOTSTRAP="$$(docker inspect --format '
-                "'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "
-                'dcim-build-kafka-1):9092"'
-            ),
+            makefile.count("scripts/phase2/kafka_host.py --"),
         )
+        self.assertNotIn("docker inspect --format", makefile)
 
     def test_service_check_serializes_before_running_prerequisites(self) -> None:
         with tempfile.TemporaryDirectory() as raw_directory:
