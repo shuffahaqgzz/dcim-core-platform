@@ -25,7 +25,7 @@ from pydantic import ValidationError
 from contracts.python.dcim_contracts.envelope import Envelope, JsonValue
 
 from scripts.phase2.execution import ExecutionContext, begin_execution
-from scripts.phase2.kafka_producer import KafkaEnvelopeProducer
+from scripts.phase2.kafka_producer import KafkaEnvelopeProducer, bootstrap_servers
 from scripts.phase2.ledger import DispositionLedger, LedgerJSON
 from scripts.phase2.manifest import RunManifest
 from scripts.phase2.persist import PostgresClaimStore, QuarantineInput, persist_quarantine
@@ -77,7 +77,12 @@ class KafkaConsumer(Protocol):
 def _new_consumer(group_id: str):
     """Construct the lazily imported non-auto-committing Kafka consumer."""
     driver = importlib.import_module("confluent_kafka")
-    return driver.Consumer({"group.id": group_id, "enable.auto.commit": False, "auto.offset.reset": "earliest"})
+    return driver.Consumer({
+        "bootstrap.servers": bootstrap_servers(),
+        "group.id": group_id,
+        "enable.auto.commit": False,
+        "auto.offset.reset": "earliest",
+    })
 
 
 def _topic_partition(topic: str, partition: int, offset: int):

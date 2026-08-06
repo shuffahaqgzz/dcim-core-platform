@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 from typing import Protocol
@@ -299,6 +300,46 @@ class StreamConsumerTests(unittest.TestCase):
         self.assertEqual(calls, ["missing_source_run_id"])
         self.assertEqual(consumer.committed, [13])
         self.assertEqual(summary.get("ledger"), {"received": 1, "accepted": 0, "quarantined": 1, "duplicate": 0})
+
+
+class ConsumerBootstrapTests(unittest.TestCase):
+    def new_consumer_config(self, environment: dict[str, str], *, clear: bool = False) -> dict[str, object]:
+        captured: dict[str, object] = {}
+
+        class FakeDriver:
+            @staticmethod
+            def Consumer(config: dict[str, object]) -> object:
+                captured.update(config)
+                return object()
+
+        fake_importlib = type(
+            "FakeImportlib",
+            (),
+            {"import_module": staticmethod(lambda _name: FakeDriver)},
+        )
+        with (
+            patch.object(stream, "importlib", fake_importlib),
+            patch.dict(os.environ, environment, clear=clear),
+        ):
+            stream._new_consumer("group-1")
+        return captured
+
+    def test_consumer_honors_dcim_kafka_bootstrap(self) -> None:
+        # Given/When: a consumer built with an explicit broker override.
+        config = self.new_consumer_config({"DCIM_KAFKA_BOOTSTRAP": "broker.example:9092"})
+
+        # Then: the driver receives the override plus the bounded-consumer contract.
+        self.assertEqual(config.get("bootstrap.servers"), "broker.example:9092")
+        self.assertEqual(config.get("group.id"), "group-1")
+        self.assertIs(config.get("enable.auto.commit"), False)
+        self.assertEqual(config.get("auto.offset.reset"), "earliest")
+
+    def test_consumer_defaults_to_the_compose_broker(self) -> None:
+        # Given/When: a consumer built with a broker-free environment.
+        config = self.new_consumer_config({}, clear=True)
+
+        # Then: the default matches the producer boundary default.
+        self.assertEqual(config.get("bootstrap.servers"), "kafka:9092")
 
 
 if __name__ == "__main__":
