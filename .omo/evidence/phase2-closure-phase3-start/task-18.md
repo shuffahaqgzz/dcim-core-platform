@@ -316,10 +316,24 @@ checkbox were not modified. No images or volumes were deleted.
 ## Shared-Compose-runtime contention fix closeout
 
 This addendum uses only public-safe receipt metadata. The final lock-fix code is
-**pending commit in the current tree**; no final lock-fix commit SHA is claimed.
-`cd30d0a8f18313218a38a91464f731d5dc8a432a` is the exact pre-lock-fix product
-SHA and remains the SHA for the earlier CMDB receipt. The current tree's
-committed parent was `e0fd7e0996e57e13651d9283740c3b080c9c6b49` at closeout.
+commit `ed7e39c69b9362079e041dbd829d1feeb6eb7602`.
+`cd30d0a8f18313218a38a91464f731d5dc8a432a` remains the exact pre-lock-fix
+product SHA for the earlier CMDB and wrong-token receipts; those receipts are
+distinct from the lock-final receipt. The lock fix changes only `Makefile` and
+`tests/phase3/test_e2e.py`; `scripts/phase3/smoke.py` and
+`tests/phase3/test_smoke.py` are unchanged from `cd30d0a8f18313218a38a91464f731d5dc8a432a`.
+
+The protected lock-final manual service-check transcript was run before the
+commit, on the immediately preceding working tree based on
+`e0fd7e0996e57e13651d9283740c3b080c9c6b49`, whose lock-fixed `Makefile` and
+`tests/phase3/test_e2e.py` were byte-identical to the copies committed in
+`ed7e39c69b9362079e041dbd829d1feeb6eb7602`. It is therefore bound to the final
+commit by identical product/test content, not represented as a command run
+after the commit. Read-only post-commit comparison
+`git diff --quiet ed7e39c69b9362079e041dbd829d1feeb6eb7602 -- Makefile tests/phase3/test_e2e.py`
+exited 0; `ed7e39c69b9362079e041dbd829d1feeb6eb7602` is current `HEAD` and its
+only product/test changes are the lock fix, so there is no post-QA code
+difference.
 
 ### Root cause and final fix
 
@@ -342,8 +356,9 @@ at `$DCIM_RUNTIME_ROOT/dev-build/service-check.lock` then recursively invokes
 ### Manual QA and silent-failure audit
 
 The protected manual result is authoritative; no new broad `service-check` was
-run for this closeout. `rtk make service-check` exited 0 and recorded 64 Phase 3
-tests, smoke `services=5/5 auth-denials=5/5`, E2E `zero_silent_loss=true` and
+run for this closeout. On the immediately preceding byte-identical lock-fix
+working tree, `rtk make service-check` exited 0 and recorded 64 Phase 3 tests,
+smoke `services=5/5 auth-denials=5/5`, E2E `zero_silent_loss=true` and
 `dashboard_visibility=true`, p95 `1601.507934 ms`, and the final marker
 `service-check: PASS (phase3-deps, phase3-test, service-smoke, e2e)`.
 Artifact: `$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-service-check-lock-final.log`
@@ -380,8 +395,9 @@ Before staging, `rtk git diff --check` exited 0. The exact focused invocation
 `rtk .venv/bin/python -m unittest tests/phase3/test_e2e.py -v` exited 0 with
 `Ran 7 tests` and `OK`, including
 `test_service_check_serializes_before_running_prerequisites`. This receipt is
-the public-safe captured artifact for those results. No final lock-fix commit
-SHA is claimed here; exact-SHA verification remains for independent review.
+the public-safe captured artifact for those results. The final lock-fix commit
+is `ed7e39c69b9362079e041dbd829d1feeb6eb7602`; the post-commit tree comparison
+above binds the pre-commit manual receipt to identical product/test content.
 
 ### Normal-hook result and cleanup
 
@@ -398,4 +414,5 @@ the exact-project container and network inventories were empty afterward.
 This is the public-safe captured artifact for the required normal-hook attempt
 and cleanup. The strict gate remains unchanged; the authorized `--no-verify`
 commit path is used only because it cannot bind recovery evidence to a commit
-that does not yet exist. No final lock-fix SHA is claimed here.
+that did not yet exist at hook time. The final lock-fix SHA is
+`ed7e39c69b9362079e041dbd829d1feeb6eb7602`; no gate was weakened.
