@@ -312,3 +312,90 @@ protected transcript directory.
 
 This remains synthetic Development-only evidence. `.codex/config.toml` and the todo-18 plan
 checkbox were not modified. No images or volumes were deleted.
+
+## Shared-Compose-runtime contention fix closeout
+
+This addendum uses only public-safe receipt metadata. The final lock-fix code is
+**pending commit in the current tree**; no final lock-fix commit SHA is claimed.
+`cd30d0a8f18313218a38a91464f731d5dc8a432a` is the exact pre-lock-fix product
+SHA and remains the SHA for the earlier CMDB receipt. The current tree's
+committed parent was `e0fd7e0996e57e13651d9283740c3b080c9c6b49` at closeout.
+
+### Root cause and final fix
+
+Concurrent `service-check` invocations entered the fixed `dcim-build` Compose
+runtime before their prerequisite graphs ran. Observed contention produced
+moving failures at stages 1, 2, and 6 while an intervening Kafka metadata query
+succeeded; this was not a stable dashboard-contract, bootstrap, durability, or
+source-mount failure. The final fix changes only `Makefile` and
+`tests/phase3/test_e2e.py`: `service-check` takes a bounded exclusive `flock`
+at `$DCIM_RUNTIME_ROOT/dev-build/service-check.lock` then recursively invokes
+`_service-check`, so all original prerequisites execute while holding the lock.
+
+### Failing-first proof
+
+| Scenario | Exact invocation | Exit and binary observable | Protected artifact |
+| --- | --- | ---: | --- |
+| Red: lock hunk temporarily absent while another holder owns the lock | `.venv/bin/python -m unittest tests/phase3/test_e2e.py -k test_service_check_serializes_before_running_prerequisites -v` | 1; the held lock was ignored and the Make invocation returned 0 | `$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-service-check-lock-unit-red.log` (SHA-256 `75a8b370b1b868dd2f743568396a236795004db129e9482b8a8859a8c61b0605`) |
+| Green: lock hunk restored | same invocation | 0; `1 test, OK` | `$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-service-check-lock-unit-green.log` (SHA-256 `9828b5aeb6e601ccbe53513a522b7e4408c45e4d8165a30e83b27d89adf58d00`) |
+
+### Manual QA and silent-failure audit
+
+The protected manual result is authoritative; no new broad `service-check` was
+run for this closeout. `rtk make service-check` exited 0 and recorded 64 Phase 3
+tests, smoke `services=5/5 auth-denials=5/5`, E2E `zero_silent_loss=true` and
+`dashboard_visibility=true`, p95 `1601.507934 ms`, and the final marker
+`service-check: PASS (phase3-deps, phase3-test, service-smoke, e2e)`.
+Artifact: `$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-service-check-lock-final.log`
+(mode 0600, SHA-256 `2544e3a9ff016557720c3cfe010760e273f5a5d3ca84bddefdf8ccc203a45752`).
+
+The manual result combines process exit with semantic smoke/E2E fields and the
+PASS marker. The regression intentionally uses `check=False` to assert the
+locked Make invocation exits nonzero and emits no `service-check: PASS` while
+the lock is held. A lock timeout/failure propagates rather than being swallowed.
+No debug instrumentation, connector, endpoint, credential, published port, or
+governance status change was introduced.
+
+### Cleanup and artifact checklist
+
+- Cleanup invocation: `rtk env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME=dcim-build docker compose --env-file "$DCIM_RUNTIME_ROOT/dev-build/runtime.env" --env-file "$DCIM_RUNTIME_ROOT/dev-build/images.env" -f deploy/compose/dev-build/compose.yaml --profile data --profile observability --profile core --profile dashboard --profile workflow down --timeout 60`.
+- Cleanup receipt: `$DCIM_RUNTIME_ROOT/evidence-transcripts/task18-service-check-lock-cleanup.log` (SHA-256 `02fb37cd39a4d3f7255b8fd06101aa5f5cb2fff473afae433febe4c182e6015a`), reporting exit 0, zero lock holders, removed lock, zero project containers and networks, and three pre-existing volumes preserved.
+- Closeout inventory observed no `dcim-build` containers, no `dcim-build` networks, and no `service-check.lock` under `$DCIM_RUNTIME_ROOT`; no further task-created resource required stopping.
+- `.debug-journal.md` and its `.git/info/exclude` entry were already absent at closeout. They were not recreated; all available public-safe findings are retained here and in the ledger event.
+- Intended lock-fix changes are `Makefile`, `tests/phase3/test_e2e.py`, and this receipt. The unrelated dirty `.codex/config.toml` remains preserved without modification.
+
+### Final closeout scope validation
+
+Read-only invocation: `rtk git status --short; rtk git diff --name-only; rtk git diff --stat; rtk git diff --check; rtk git ls-files --others --exclude-standard`.
+Observed result: `scope_paths=PASS`; exactly `.codex/config.toml`, this task-18
+receipt, `Makefile`, and `tests/phase3/test_e2e.py` were modified; there were no
+untracked files and `git diff --check` emitted no error. `rtk python3 -c` JSON
+parsing of `.omo/start-work/ledger.jsonl` reported `ledger_jsonl=PASS` and the
+final event was `evidence-closeout`. This receipt is the captured public-safe
+artifact for that validation.
+
+### Commit-preparation validation
+
+Before staging, `rtk git diff --check` exited 0. The exact focused invocation
+`rtk .venv/bin/python -m unittest tests/phase3/test_e2e.py -v` exited 0 with
+`Ran 7 tests` and `OK`, including
+`test_service_check_serializes_before_running_prerequisites`. This receipt is
+the public-safe captured artifact for those results. No final lock-fix commit
+SHA is claimed here; exact-SHA verification remains for independent review.
+
+### Normal-hook result and cleanup
+
+The normal invocation `rtk git commit -m 'feat(phase3): full service compose
+integration and smoke gate'` ran the repository `make preflight` hook and
+exited 1 only at `foundation-evidence-summary --strict-commit`: its recovery
+evidence was bound to committed parent
+`e0fd7e0996e57e13651d9283740c3b080c9c6b49`, not an as-yet-uncreated commit.
+Before that failure, the hook's public-safety scan passed (356 files), Phase 0
+completed successfully (`Ran 272 tests`, `OK`), and foundation image
+qualification, supply-chain, policy, and recovery passed. The hook-created
+synthetic foundation was then removed with `rtk make foundation-down`, exit 0;
+the exact-project container and network inventories were empty afterward.
+This is the public-safe captured artifact for the required normal-hook attempt
+and cleanup. The strict gate remains unchanged; the authorized `--no-verify`
+commit path is used only because it cannot bind recovery evidence to a commit
+that does not yet exist. No final lock-fix SHA is claimed here.

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from contextlib import redirect_stderr
+import fcntl
 from io import StringIO
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -154,10 +156,53 @@ class E2EContractTests(unittest.TestCase):
     def test_service_check_wires_e2e_as_the_final_stage(self) -> None:
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         self.assertIn("scripts/phase3/e2e.py", makefile)
-        self.assertIn("service-check: phase3-deps phase3-test service-smoke e2e", makefile)
+        self.assertIn("_service-check: phase3-deps phase3-test service-smoke e2e", makefile)
         self.assertIn("e2e: service-smoke", makefile)
         self.assertIn("KAFKA_BOOTSTRAP := $$(docker inspect", makefile)
         self.assertIn('DCIM_KAFKA_BOOTSTRAP="$(KAFKA_BOOTSTRAP)"', makefile)
+
+    def test_service_check_serializes_before_running_prerequisites(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_directory:
+            # Given: the shared runtime lock is held by another service check.
+            directory = Path(raw_directory)
+            runtime_root = directory / "runtime"
+            lock_path = runtime_root / "dev-build/service-check.lock"
+            lock_path.parent.mkdir(parents=True)
+            environment = {
+                "DCIM_RUNTIME_ROOT": str(runtime_root),
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            }
+            with lock_path.open("a+", encoding="utf-8") as lock_file:
+                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+                # When: service-check is invoked through its real Make entry point.
+                result = subprocess.run(
+                    [
+                        "make",
+                        "--no-print-directory",
+                        "-o",
+                        "phase3-deps",
+                        "-o",
+                        "phase3-test",
+                        "-o",
+                        "service-smoke",
+                        "-o",
+                        "e2e",
+                        "service-check",
+                        "MAKE=/bin/true",
+                        "SERVICE_CHECK_LOCK_TIMEOUT=0",
+                    ],
+                    cwd=ROOT,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                )
+
+                # Then: no prerequisite can complete until the runtime lock is released.
+                self.assertNotEqual(0, result.returncode, result.stderr)
+                self.assertNotIn("service-check: PASS", result.stdout)
 
 
 if __name__ == "__main__":

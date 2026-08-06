@@ -1,5 +1,5 @@
 .PHONY: help bootstrap compile lint public-safety validate-json validate-fixtures markdown-links test phase0-check preflight foundation-bootstrap foundation-artifacts foundation-images-qualify foundation-policy foundation-up foundation-stop foundation-down foundation-reset foundation-smoke foundation-recovery foundation-grafana-url foundation-supply-chain foundation-evidence-summary foundation-clean-acceptance phase2-deps phase2-test phase2-check
-.PHONY: phase3-deps phase3-test service-smoke e2e service-check
+.PHONY: phase3-deps phase3-test service-smoke e2e service-check _service-check
 
 PYTHON ?= python3
 PHASE2_VENV ?= .venv
@@ -21,6 +21,7 @@ SERVICE_PROFILES := --profile data --profile observability --profile core --prof
 SERVICE_COMPOSE_CMD := env -u DCIM_COMPOSE_OVERRIDE COMPOSE_PROJECT_NAME='dcim-build' docker compose --env-file "$(FOUNDATION_ENV)" --env-file "$(FOUNDATION_IMAGE_ENV)" -f '$(FOUNDATION_COMPOSE)' $(SERVICE_PROFILES)
 SERVICE_SMOKE_EVIDENCE := $$DCIM_RUNTIME_ROOT/dev-build/evidence/service-smoke/evidence.json
 E2E_EVIDENCE := $$DCIM_RUNTIME_ROOT/dev-build/evidence/e2e/evidence-e2e.json
+SERVICE_CHECK_LOCK_TIMEOUT ?= 3600
 KAFKA_BOOTSTRAP := $$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dcim-build-kafka-1):9092
 
 help:
@@ -155,7 +156,11 @@ e2e: service-smoke
 	$(SERVICE_COMPOSE_CMD) stop --timeout 60 || status=$$?; \
 	exit $$status
 
-service-check: phase3-deps phase3-test service-smoke e2e
+service-check:
+	@mkdir -p "$$DCIM_RUNTIME_ROOT/dev-build"
+	@flock --exclusive --timeout "$(SERVICE_CHECK_LOCK_TIMEOUT)" "$$DCIM_RUNTIME_ROOT/dev-build/service-check.lock" $(MAKE) --no-print-directory _service-check
+
+_service-check: phase3-deps phase3-test service-smoke e2e
 	@printf '%s\n' 'service-check: PASS (phase3-deps, phase3-test, service-smoke, e2e)'
 
 phase0-check: compile public-safety validate-json validate-fixtures markdown-links test
