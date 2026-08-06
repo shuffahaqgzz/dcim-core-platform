@@ -116,6 +116,29 @@ class SmokeEnumerationTests(unittest.TestCase):
 
         self.assertIn("cmdb", str(raised.exception))
 
+    def test_connection_failure_fails_naming_the_service(self) -> None:
+        # Given: the real HTTP boundary cannot connect to CMDB.
+        class ConnectionFailureClient(FakeClient):
+            @override
+            def request(
+                self,
+                method: str,
+                url: str,
+                *,
+                internal_token: str | None = None,
+                payload: Mapping[str, object] | None = None,
+            ) -> tuple[int, bytes]:
+                if "cmdb.example.invalid:8000/health" in url:
+                    raise smoke.SmokeFailure("service connection failed")
+                return super().request(method, url, internal_token=internal_token, payload=payload)
+
+        # When: the full smoke reaches the stopped CMDB service.
+        with self.assertRaises(smoke.SmokeFailure) as raised:
+            smoke.run_smoke(ConnectionFailureClient(), fake_resolve, "token")
+
+        # Then: the smoke failure itself identifies CMDB.
+        self.assertEqual("cmdb: service connection failed", str(raised.exception))
+
     def test_unauthenticated_probe_must_return_403(self) -> None:
         class PermissiveClient(FakeClient):
             @override

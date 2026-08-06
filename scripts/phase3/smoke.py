@@ -81,18 +81,18 @@ def check_service(
     if status == 200:
         result["health"] = status
     else:
-        raise SmokeFailure(f"{service}: /health returned {status}")
+        raise SmokeFailure(f"/health returned {status}")
     status, _ = client.request("GET", f"{base_url}/ready")
     if status != 200:
-        raise SmokeFailure(f"{service}: /ready returned {status}")
+        raise SmokeFailure(f"/ready returned {status}")
     result["ready"] = status
     status, body = client.request("GET", f"{base_url}/metrics")
     if status != 200 or not body.strip():
-        raise SmokeFailure(f"{service}: /metrics empty or status {status}")
+        raise SmokeFailure(f"/metrics empty or status {status}")
     result["metrics_bytes"] = len(body)
     status, _ = client.request("GET", f"{base_url}{API_PROBES[service]}")
     if status != 403:
-        raise SmokeFailure(f"{service}: unauthenticated /api/* probe returned {status}")
+        raise SmokeFailure(f"unauthenticated /api/* probe returned {status}")
     result["auth_denial"] = status
     return result
 
@@ -182,7 +182,10 @@ def run_smoke(
     }
     services: dict[str, object] = {}
     for service in SERVICES:
-        services[service] = check_service(client, service, f"http://{addresses[service]}:8000")
+        try:
+            services[service] = check_service(client, service, f"http://{addresses[service]}:8000")
+        except SmokeFailure as error:
+            raise SmokeFailure(f"{service}: {error}") from error
     evidence["services"] = services
     evidence["healthy_services"] = sum(
         1 for result in services.values() if isinstance(result, dict) and result.get("health") == 200
