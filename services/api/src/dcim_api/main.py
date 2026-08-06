@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 from typing import Any, Protocol, TypeAlias
@@ -244,7 +245,13 @@ ORDER BY run_id, kind, subject_key
 """,
             priority,
         )
-        return [dict(row) for row in rows]
+        cards = []
+        for row in rows:
+            card = dict(row)
+            if isinstance(card.get("payload"), str):
+                card["payload"] = json.loads(card["payload"])
+            cards.append(card)
+        return cards
 
     @app.api_route(
         "/api/v1/assets",

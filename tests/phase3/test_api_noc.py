@@ -24,6 +24,7 @@ class FakePool:
         self.ready_error: OSError | None = None
         self.sql = ""
         self.params: tuple[str | None, ...] = ()
+        self.rows: list[dict[str, str]] = []
 
     async def fetchval(self, query: str) -> int:
         if self.ready_error is not None:
@@ -33,7 +34,7 @@ class FakePool:
     async def fetch(self, query: str, *params: str | None) -> list[dict[str, str]]:
         self.sql = query
         self.params = params
-        return []
+        return self.rows
 
     async def close(self) -> None:
         return None
@@ -153,6 +154,27 @@ class ApiNocTests(unittest.TestCase):
         self.assertEqual(self.pool.params, ("P1",))
         self.assertIn("SELECT", self.pool.sql)
         self.assertIn("FROM phase2.noc_cards", self.pool.sql)
+
+    def test_noc_cards_decodes_jsonb_text_from_asyncpg(self) -> None:
+        # Given: asyncpg returns the JSONB payload using its text representation.
+        self.pool.rows = [
+            {
+                "run_id": "synthetic-run",
+                "kind": "event",
+                "subject_key": "synthetic-subject",
+                "payload": '{"envelope":{"priority":"P1"}}',
+                "generated_at": "2026-08-06T00:00:00Z",
+            }
+        ]
+        app = create_app(pool_factory=self.pool_factory)
+
+        # When: the NOC-card read model is requested through the HTTP API.
+        with TestClient(app) as client:
+            response = client.get("/api/v1/dashboard/noc-cards?priority=P1")
+
+        # Then: the JSON response exposes payload as an object, not encoded text.
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["payload"], {"envelope": {"priority": "P1"}})
 
 
 if __name__ == "__main__":
