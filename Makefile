@@ -135,7 +135,7 @@ phase3-test:
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase3 -p 'test_*.py' -v
 
 phase2-check: foundation-up phase2-deps
-	$(PYTHON) scripts/phase2/kafka_host.py -- $(PHASE2_PYTHON) scripts/phase2/check.py
+	scripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase2/check.py
 
 service-smoke: foundation-up
 	@status=0; \
@@ -150,7 +150,7 @@ e2e: service-smoke
 	@status=0; \
 	$(SERVICE_COMPOSE_CMD) up -d --wait --wait-timeout 240 || status=$$?; \
 	if [ $$status -eq 0 ]; then \
-	  $(PYTHON) scripts/phase2/kafka_host.py -- $(PHASE2_PYTHON) scripts/phase3/e2e.py --output "$(E2E_EVIDENCE)" || status=$$?; \
+	  scripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase3/e2e.py --output "$(E2E_EVIDENCE)" || status=$$?; \
 	fi; \
 	$(SERVICE_COMPOSE_CMD) stop --timeout 60 || status=$$?; \
 	exit $$status

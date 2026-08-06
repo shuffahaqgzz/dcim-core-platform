@@ -161,8 +161,9 @@ class E2EContractTests(unittest.TestCase):
         self.assertNotIn("KAFKA_BOOTSTRAP :=", makefile)
         self.assertEqual(
             2,
-            makefile.count("scripts/phase2/kafka_host.py --"),
+            makefile.count("scripts/phase2/kafka_host.sh --"),
         )
+        self.assertNotIn("scripts/phase2/kafka_host.py --", makefile)
         self.assertNotIn("docker inspect --format", makefile)
 
     def test_service_check_serializes_before_running_prerequisites(self) -> None:

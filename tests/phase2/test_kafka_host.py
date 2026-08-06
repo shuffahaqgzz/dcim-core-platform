@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import ast
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 import subprocess
 import tempfile
-from unittest.mock import patch
 import unittest
 
 from scripts.phase2 import kafka_host
 
 
 ROOT = Path(__file__).resolve().parents[2]
+HELPER = ROOT / "scripts/phase2/kafka_host.py"
+WRAPPER = ROOT / "scripts/phase2/kafka_host.sh"
 MAPPING = b"192.0.2.7 kafka # dcim-build dev plane (host-side gate access)\n"
 
 
@@ -24,6 +28,16 @@ class HostsTransformationTests(unittest.TestCase):
         # Then: every original byte is preserved and the exact mapping is appended.
         self.assertEqual(original + b"\n" + MAPPING, updated)
 
+    def test_exact_mapping_is_idempotent(self) -> None:
+        # Given: the exact temporary mapping is already present.
+        original = b"127.0.0.1 localhost\n" + MAPPING
+
+        # When: the same mapping is requested again.
+        updated = kafka_host.add_kafka_mapping(original, "192.0.2.7")
+
+        # Then: no bytes are changed.
+        self.assertEqual(original, updated)
+
     def test_conflicting_kafka_mapping_fails_closed(self) -> None:
         # Given: an existing Kafka hostname bound to a different address.
         original = b"127.0.0.1 localhost\n192.0.2.8 kafka alias\n"
@@ -32,165 +46,126 @@ class HostsTransformationTests(unittest.TestCase):
         with self.assertRaises(kafka_host.HostsConflictError):
             kafka_host.add_kafka_mapping(original, "192.0.2.7")
 
+    def test_invalid_address_fails_without_echoing_input(self) -> None:
+        # Given: an invalid inspect result containing a private marker.
+        address = "private-invalid-address"
 
-class KafkaHostRunnerTests(unittest.TestCase):
-    def test_success_restores_original_bytes(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_directory:
-            # Given: a writable synthetic hosts file and a successful child.
-            hosts_path = Path(raw_directory) / "hosts"
+        # When/Then: validation fails with a stable public-safe error.
+        with self.assertRaises(kafka_host.InvalidAddressError) as caught:
+            kafka_host.add_kafka_mapping(b"127.0.0.1 localhost\n", address)
+        self.assertNotIn(address, str(caught.exception))
+
+    def test_transform_writes_only_the_transformed_hosts_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kafka-host-transform-") as temporary:
+            # Given: exact source and destination files from mktemp-style paths.
+            directory = Path(temporary)
+            source = directory / "original"
+            destination = directory / "updated"
             original = b"127.0.0.1 localhost\n"
-            hosts_path.write_bytes(original)
-            completed = subprocess.CompletedProcess(["synthetic-child"], 0)
+            source.write_bytes(original)
+            destination.write_bytes(b"")
 
-            with (
-                patch.object(kafka_host, "resolve_kafka_ip", return_value="192.0.2.7"),
-                patch.object(kafka_host.subprocess, "run", return_value=completed),
-            ):
-                # When: the child completes successfully.
-                status = kafka_host.run_with_kafka_host(
-                    ["synthetic-child"], hosts_path=hosts_path
+            # When: the helper transforms the hosts file.
+            kafka_host.transform_hosts(source, destination, "192.0.2.7")
+
+            # Then: the destination is the original bytes plus the exact mapping.
+            self.assertEqual(original + MAPPING, destination.read_bytes())
+
+    def test_cli_conflict_does_not_output_or_overwrite_raw_content(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kafka-host-conflict-") as temporary:
+            # Given: a conflict and an existing destination sentinel.
+            directory = Path(temporary)
+            source = directory / "original"
+            destination = directory / "updated"
+            source.write_bytes(b"private-host-entry\n192.0.2.8 kafka\n")
+            destination.write_bytes(b"sentinel")
+            stderr = StringIO()
+
+            # When: the CLI transformation fails closed.
+            with redirect_stderr(stderr):
+                status = kafka_host.main(
+                    ["192.0.2.7", str(source), str(destination)]
                 )
 
-            # Then: success is returned and the exact original is restored.
-            self.assertEqual(0, status)
-            self.assertEqual(original, hosts_path.read_bytes())
-
-    def test_child_exit_code_and_environment_are_returned_before_restore(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_directory:
-            # Given: a writable synthetic hosts file and a successful IP lookup.
-            hosts_path = Path(raw_directory) / "hosts"
-            original = b"127.0.0.1 localhost\n"
-            hosts_path.write_bytes(original)
-
-            def child_run(
-                argv: list[str], *, env: dict[str, str], check: bool
-            ) -> subprocess.CompletedProcess[str]:
-                self.assertEqual(["synthetic-child", "arg"], argv)
-                self.assertEqual(MAPPING, hosts_path.read_bytes()[len(original) :])
-                self.assertFalse(check)
-                self.assertEqual("kafka:9092", env["DCIM_KAFKA_BOOTSTRAP"])
-                return subprocess.CompletedProcess(argv, 23)
-
-            with (
-                patch.object(kafka_host, "resolve_kafka_ip", return_value="192.0.2.7"),
-                patch.object(kafka_host.subprocess, "run", side_effect=child_run),
-            ):
-                # When: the child exits unsuccessfully.
-                status = kafka_host.run_with_kafka_host(
-                    ["synthetic-child", "arg"], hosts_path=hosts_path
-                )
-
-            # Then: its exit status is returned and the exact original is restored.
-            self.assertEqual(23, status)
-            self.assertEqual(original, hosts_path.read_bytes())
-
-    def test_child_launch_error_restores_original_bytes(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_directory:
-            # Given: a hosts file that can be modified before child launch.
-            hosts_path = Path(raw_directory) / "hosts"
-            original = b"127.0.0.1 localhost\n"
-            hosts_path.write_bytes(original)
-
-            with (
-                patch.object(kafka_host, "resolve_kafka_ip", return_value="192.0.2.7"),
-                patch.object(kafka_host.subprocess, "run", side_effect=OSError("private detail")),
-            ):
-                # When/Then: a launch error is converted to a public-safe failure.
-                with self.assertRaises(kafka_host.ChildLaunchError) as caught:
-                    kafka_host.run_with_kafka_host(["missing-child"], hosts_path=hosts_path)
-
-            self.assertNotIn("private detail", str(caught.exception))
-            self.assertEqual(original, hosts_path.read_bytes())
-
-    def test_keyboard_interrupt_restores_original_bytes(self) -> None:
-        with tempfile.TemporaryDirectory() as raw_directory:
-            # Given: a child interrupted after the mapping is installed.
-            hosts_path = Path(raw_directory) / "hosts"
-            original = b"127.0.0.1 localhost\n"
-            hosts_path.write_bytes(original)
-
-            with (
-                patch.object(kafka_host, "resolve_kafka_ip", return_value="192.0.2.7"),
-                patch.object(kafka_host.subprocess, "run", side_effect=KeyboardInterrupt),
-            ):
-                # When/Then: the interrupt propagates only after restoration.
-                with self.assertRaises(KeyboardInterrupt):
-                    kafka_host.run_with_kafka_host(["synthetic-child"], hosts_path=hosts_path)
-
-            self.assertEqual(original, hosts_path.read_bytes())
-
-    def test_inspect_failure_never_exposes_captured_output(self) -> None:
-        # Given: docker inspect output containing text that must remain private.
-        completed = subprocess.CompletedProcess(
-            ["docker", "inspect"], 1, stdout=b"private stdout", stderr=b"private stderr"
-        )
-
-        with patch.object(kafka_host.subprocess, "run", return_value=completed):
-            # When/Then: failure reports only a stable public-safe message.
-            with self.assertRaises(kafka_host.KafkaInspectError) as caught:
-                kafka_host.resolve_kafka_ip()
-
-        self.assertNotIn("private", str(caught.exception))
-
-    def test_inspect_uses_bounded_argv_and_returns_validated_address(self) -> None:
-        # Given: docker inspect returns one synthetic container address.
-        completed = subprocess.CompletedProcess(
-            ["docker", "inspect"], 0, stdout=b"192.0.2.7\n", stderr=b""
-        )
-
-        with patch.object(
-            kafka_host.subprocess, "run", return_value=completed
-        ) as run:
-            # When: the current Kafka address is resolved.
-            address = kafka_host.resolve_kafka_ip()
-
-        # Then: inspect is bounded, silent, argv-based, and validated.
-        self.assertEqual("192.0.2.7", address)
-        run.assert_called_once_with(
-            [
-                "docker",
-                "inspect",
-                "--format",
-                "{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}",
-                "dcim-build-kafka-1",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=kafka_host.INSPECT_TIMEOUT_SECONDS,
-            check=False,
-        )
-
-    def test_read_only_hosts_uses_passwordless_sudo_without_output(self) -> None:
-        # Given: a hosts path the workspace user cannot write.
-        completed = subprocess.CompletedProcess(["sudo", "-n", "tee"], 0)
-
-        with (
-            patch.object(kafka_host.os, "access", return_value=False),
-            patch.object(kafka_host.subprocess, "run", return_value=completed) as run,
-        ):
-            # When: exact bytes are written through the privileged boundary.
-            kafka_host.write_hosts(Path("/etc/hosts"), MAPPING)
-
-        # Then: sudo is non-interactive and all helper output is suppressed.
-        run.assert_called_once_with(
-            ["sudo", "-n", "tee", "--", "/etc/hosts"],
-            input=MAPPING,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=kafka_host.SUDO_TIMEOUT_SECONDS,
-            check=False,
-        )
+            # Then: only a stable error is emitted and output remains untouched.
+            self.assertEqual(1, status)
+            self.assertEqual(b"sentinel", destination.read_bytes())
+            self.assertNotIn("private-host-entry", stderr.getvalue())
+            self.assertNotIn("192.0.2.8", stderr.getvalue())
 
 
 class KafkaHostStaticContractTests(unittest.TestCase):
-    def test_make_targets_use_helper_and_compose_keeps_kafka_internal(self) -> None:
+    def test_python_helper_has_no_process_or_privilege_orchestration(self) -> None:
+        # Given: the complete Python helper syntax tree.
+        source = HELPER.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(HELPER))
+
+        # When: imports and calls are inspected.
+        imported = {
+            alias.name.split(".", maxsplit=1)[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+        imported.update(
+            node.module.split(".", maxsplit=1)[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module is not None
+        )
+        calls = {
+            node.func.attr
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        }
+
+        # Then: Python remains a pure stdlib file transformer without subprocess.
+        self.assertNotIn("subprocess", imported)
+        self.assertNotIn("system", calls)
+        self.assertNotIn("popen", calls)
+
+    def test_shell_wrapper_has_bounded_silent_restoring_contract(self) -> None:
+        # Given: the host-side orchestration wrapper.
+        source = WRAPPER.read_text(encoding="utf-8")
+
+        # When/Then: orchestration is argv-based, bounded, silent, and trapped.
+        required = (
+            'mktemp "${TMPDIR:-/tmp}/dcim-kafka-host.original.XXXXXX"',
+            'mktemp "${TMPDIR:-/tmp}/dcim-kafka-host.updated.XXXXXX"',
+            'cp -- /etc/hosts "$original_hosts"',
+            'timeout 10 docker inspect --format "$inspect_format" dcim-build-kafka-1',
+            'python3 "$helper" "$kafka_ip" "$original_hosts" "$updated_hosts"',
+            'sudo -n tee -- /etc/hosts < "$updated_hosts"',
+            'sudo -n tee -- /etc/hosts < "$original_hosts"',
+            'DCIM_KAFKA_BOOTSTRAP="kafka:9092" "$@"',
+            "trap cleanup EXIT",
+            "trap 'exit 129' HUP",
+            "trap 'exit 130' INT",
+            "trap 'exit 143' TERM",
+            'rm -f -- "$original_hosts"',
+            'rm -f -- "$updated_hosts"',
+        )
+        for contract in required:
+            self.assertIn(contract, source)
+        self.assertNotIn("eval", source)
+        self.assertNotIn("sudo tee", source)
+
+        result = subprocess.run(
+            ["bash", "-n", str(WRAPPER)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_make_targets_use_wrapper_and_compose_keeps_kafka_internal(self) -> None:
         # Given: the Make gate and Development Compose contract.
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         compose = (ROOT / "deploy/compose/dev-build/compose.yaml").read_text(encoding="utf-8")
         kafka_block = compose.split("  kafka:\n", 1)[1].split("\n  postgres-exporter:\n", 1)[0]
 
-        # When/Then: both host-side gates use the helper without host exposure.
-        self.assertEqual(2, makefile.count("scripts/phase2/kafka_host.py --"))
+        # When/Then: both host-side gates use the wrapper without host exposure.
+        self.assertEqual(2, makefile.count("scripts/phase2/kafka_host.sh --"))
+        self.assertNotIn("scripts/phase2/kafka_host.py --", makefile)
         self.assertNotIn("docker inspect --format", makefile)
         self.assertIn("KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092", kafka_block)
         self.assertNotIn("ports:", kafka_block)
