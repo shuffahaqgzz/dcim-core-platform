@@ -53,16 +53,26 @@ updated_hosts=$(mktemp "${TMPDIR:-/tmp}/dcim-kafka-host.updated.XXXXXX") || fail
 
 cp -- /etc/hosts "$original_hosts" 2>/dev/null || fail "hosts file could not be copied"
 
-inspect_format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}'
-kafka_ip=$(timeout 10 docker inspect --format "$inspect_format" dcim-build-kafka-1 2>/dev/null) || fail "Kafka container address unavailable"
+kafka_state=$(timeout 10 docker inspect --format '{{.State.Status}}' dcim-build-kafka-1 2>/dev/null) || fail "Kafka container state unavailable"
+case "$kafka_state" in
+  running)
+    inspect_format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}'
+    kafka_ip=$(timeout 10 docker inspect --format "$inspect_format" dcim-build-kafka-1 2>/dev/null) || fail "Kafka container address unavailable"
 
-helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/kafka_host.py"
-python3 "$helper" "$kafka_ip" "$original_hosts" "$updated_hosts" >/dev/null 2>&1 || fail "hosts mapping validation failed"
+    helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/kafka_host.py"
+    python3 "$helper" "$kafka_ip" "$original_hosts" "$updated_hosts" >/dev/null 2>&1 || fail "hosts mapping validation failed"
 
-if ! cmp -s -- "$original_hosts" "$updated_hosts"; then
-  restore_required=1
-  sudo -n tee -- /etc/hosts < "$updated_hosts" >/dev/null 2>/dev/null || fail "temporary hosts mapping could not be installed"
-fi
+    if ! cmp -s -- "$original_hosts" "$updated_hosts"; then
+      restore_required=1
+      sudo -n tee -- /etc/hosts < "$updated_hosts" >/dev/null 2>/dev/null || fail "temporary hosts mapping could not be installed"
+    fi
+    ;;
+  stopped|exited|created|dead)
+    ;;
+  *)
+    fail "Kafka container state unavailable"
+    ;;
+esac
 
 DCIM_KAFKA_BOOTSTRAP="kafka:9092" "$@"
 exit $?
