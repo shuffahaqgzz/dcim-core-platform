@@ -46,9 +46,17 @@ Every row below names an artifact whose existence was verified with literal
 
 ## Status and non-claims
 
-Phase 2 is **complete-pending-owner-disposition only**; Phase 3 is in
-progress. No condition was CLOSED by this document. C-06, C-07, and C-09
-remain OPEN pending owner disposition, and DEV-APPROVED is not claimed.
+**As written on 2026-08-06:** this package recorded Phase 2 as
+**complete-pending-owner-disposition only**; no condition was CLOSED by this
+document; C-06, C-07, and C-09 remained OPEN; DEV-APPROVED was not claimed
+here.
+
+**Superseding owner disposition (2026-08-07):** the owner closed C-06, C-07,
+and C-09 and granted Phase 2 **DEV-APPROVED (bounded)**. See
+[2026-08-07-phase2-owner-disposition.md](2026-08-07-phase2-owner-disposition.md)
+and [CONDITIONS-REGISTER.md](../governance/CONDITIONS-REGISTER.md). This
+2026-08-06 package remains the evidence anchor; it does not itself perform
+those register updates.
 
 This package makes no Production/Staging, high-availability, or
 service-level-agreement claim. It records no live connector, runtime payload,

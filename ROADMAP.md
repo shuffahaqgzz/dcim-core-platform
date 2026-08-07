@@ -2,7 +2,7 @@
 
 1. **Phase 0 — Safety & Governance:** public-repo guardrails, runtime boundary design, synthetic controls, threat model, dan Dev Entry review.
 2. **Phase 1 — Foundation:** compact infrastructure profile, health, observability, pinned dependencies, dan reproducible build.
-3. **Phase 2 — First Vertical Slice:** satu P1 dan P2 synthetic flow dari simulator hingga NOC view.
+3. **Phase 2 — First Vertical Slice:** **DEV-APPROVED (bounded)** 2026-08-07 — satu P1 dan P2 synthetic flow dari simulator hingga NOC view, plus stream/p95/live NOC; lihat `docs/evidence/2026-08-07-phase2-owner-disposition.md`.
 4. **Phase 3 — Component Deployment:** in progress — first component slice delivered; deploy dan smoke-test major components pada Development profile.
 5. **Phase 4 — Development Evidence:** load/latency, recovery, migration, security, dan handover evidence.
 6. **Phase 5 — Multi-Team Staging:** named teams, environment approvals, masked-data review, dan Staging qualification.
