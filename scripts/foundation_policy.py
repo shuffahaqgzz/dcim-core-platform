@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import re
 import sys
+from typing import Any, cast
 
 try:
     from scripts.protected_runtime import (
@@ -16,10 +17,10 @@ try:
     )
     from scripts.strict_json import load_object, loads_object
 except ModuleNotFoundError:  # Direct script execution adds scripts/, not repository root.
-    from protected_runtime import (
+    from protected_runtime import (  # pyright: ignore[reportImplicitRelativeImport]
         external_runtime_root, protected_runtime_path, validate_compose_project_name,
     )
-    from strict_json import load_object, loads_object
+    from strict_json import load_object, loads_object  # pyright: ignore[reportImplicitRelativeImport]
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -182,6 +183,11 @@ EXPECTED_VOLUME_MOUNTS = {
     "kafka": {("kafka-data", "/var/lib/kafka/data", False)},
     "prometheus": {("prometheus-data", "/prometheus", False)},
 }
+EXPECTED_KAFKA_IPV4_ADDRESS = "192.0.2.2"
+EXPECTED_DATA_IPAM = {
+    "subnet": "192.0.2.0/24",
+    "ip_range": "192.0.2.128/25",
+}
 EXPECTED_KAFKA_ENVIRONMENT = {
     "KAFKA_NODE_ID": "1",
     "KAFKA_PROCESS_ROLES": "broker,controller",
@@ -266,14 +272,14 @@ EXPECTED_HEALTHCHECKS = {
 SECRET_PATTERN = re.compile(r"(PASSWORD|PASS|TOKEN|SECRET|KEY)", re.IGNORECASE)
 
 
-def network_names(service: dict[str, object]) -> set[str]:
+def network_names(service: dict[str, Any]) -> set[str]:
     networks = service.get("networks", {})
-    return set(networks if isinstance(networks, dict) else networks)
+    return set(networks) if isinstance(networks, dict) else set()
 
 
 def validate_model(
-    model: dict[str, object],
-    derived_lock: dict[str, object],
+    model: dict[str, Any],
+    derived_lock: dict[str, Any],
     license_dispositions_sha256: str,
     runtime_root: Path,
     project_name: str = "dcim-build",
@@ -286,8 +292,11 @@ def validate_model(
     if model.get("name") != project_name:
         errors.append(f"Compose project name must be {project_name}")
     try:
-        inventory = load_object(IMAGE_INVENTORY)
-        approved_images = {item["component"]: item["image"] for item in inventory["images"]}
+        inventory = cast(dict[str, Any], load_object(IMAGE_INVENTORY))
+        approved_images = {
+            item["component"]: item["image"]
+            for item in cast(list[dict[str, Any]], inventory["images"])
+        }
     except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
         return [f"image inventory invalid: {error}"]
     try:
@@ -298,7 +307,8 @@ def validate_model(
         if derived_lock.get("license_dispositions_sha256") != license_dispositions_sha256:
             raise ValueError("license disposition digest mismatch")
         derived_images = {
-            item["component"]: item["image_id"] for item in derived_lock["images"]
+            item["component"]: item["image_id"]
+            for item in cast(list[dict[str, Any]], derived_lock["images"])
         }
         if set(derived_images) != {
             "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
@@ -418,6 +428,12 @@ def validate_model(
 
         environment = value.get("environment", {}) or {}
         if name == "kafka":
+            data_network = (value.get("networks", {}) or {}).get("data")
+            if (
+                not isinstance(data_network, dict)
+                or str(data_network.get("ipv4_address")) != EXPECTED_KAFKA_IPV4_ADDRESS
+            ):
+                errors.append("kafka: fixed data-network address contract mismatch")
             fixed_environment = {
                 key: str(environment.get(key, "")) for key in EXPECTED_KAFKA_ENVIRONMENT
             }
@@ -488,6 +504,15 @@ def validate_model(
             errors.append(f"{name}: only approved internal networks permitted")
         if value.get("name") != expected_network_names.get(name):
             errors.append(f"{name}: network runtime name mismatch")
+    data_network = networks.get("data", {})
+    ipam_config = data_network.get("ipam", {}).get("config") if isinstance(data_network, dict) else None
+    if (
+        not isinstance(ipam_config, list)
+        or len(ipam_config) != 1
+        or not isinstance(ipam_config[0], dict)
+        or any(str(ipam_config[0].get(key)) != expected for key, expected in EXPECTED_DATA_IPAM.items())
+    ):
+        errors.append("data: fixed Kafka IPAM contract mismatch")
     expected_stateful_volumes = {
         f"{project_name}-postgres-data",
         f"{project_name}-kafka-data",

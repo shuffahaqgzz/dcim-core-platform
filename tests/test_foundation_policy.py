@@ -395,6 +395,24 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Kafka runtime contract", result.stderr)
 
+    def test_kafka_fixed_data_address_must_remain_reserved(self) -> None:
+        model = self.normalized_model()
+        model["services"]["kafka"]["networks"]["data"]["ipv4_address"] = "192.0.2.3"
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("fixed data-network address", result.stderr)
+
+    def test_kafka_ipam_range_must_remain_reserved(self) -> None:
+        model = self.normalized_model()
+        del model["networks"]["data"]["ipam"]["config"][0]["ip_range"]
+
+        result = self.validate(model)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("fixed Kafka IPAM", result.stderr)
+
     def test_service_namespace_and_network_membership_must_be_exact(self) -> None:
         model = self.normalized_model()
         model["services"]["postgres"]["network_mode"] = "container:outside"
