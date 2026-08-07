@@ -404,6 +404,19 @@ class FoundationPolicyTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("fixed data-network address", result.stderr)
 
+    def test_kafka_network_list_fails_closed_without_traceback(self) -> None:
+        # Given: a normalized synthetic model with malformed Kafka networks.
+        model = self.normalized_model()
+        model["services"]["kafka"]["networks"] = ["data"]
+
+        # When: the real policy CLI validates the model.
+        result = self.validate(model)
+
+        # Then: policy errors are reported cleanly instead of raising.
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("foundation-policy:", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_kafka_ipam_range_must_remain_reserved(self) -> None:
         model = self.normalized_model()
         del model["networks"]["data"]["ipam"]["config"][0]["ip_range"]
