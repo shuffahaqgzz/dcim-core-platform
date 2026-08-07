@@ -74,6 +74,26 @@ local documentation gates named below.
   and [Todo 19 E2E receipt](../../.omo/evidence/phase2-closure-phase3-start/task-19.md)
   provide the Docker-host five-of-five authentication-denial observations.
 
+## Owner-disposition verification
+
+The bounded first-slice closure was reverified on **2026-08-07** against
+`main` commit `423b063bf960850c1c1b9624a84305d34e071a7f`:
+
+| Gate | Command | Result |
+|---|---|---|
+| Phase 3 unit tests | `make phase3-test` | 64 tests OK |
+| Service smoke | `make service-smoke` | services=5/5, auth-denials=5/5 |
+| Bounded E2E | `make e2e` | zero-loss=True, dashboard=True, p95-ms≈1.6 s |
+| Service check | `make service-check` | PASS |
+
+Evidence artifacts:
+
+- `dev-build/evidence/service-smoke/evidence.json`
+- `dev-build/evidence/e2e/evidence-e2e.json`
+
+These are Docker-host receipts using synthetic fixtures only; no live connector
+or Production target was involved.
+
 ## Remaining scope and bounded status
 
 The larger P3-T1 through P3-T7 scope remains only partly represented by this
