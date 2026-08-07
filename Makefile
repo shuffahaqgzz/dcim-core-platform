@@ -116,6 +116,7 @@ phase2-test:
 	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }
 	@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec("pydantic") else (print("Pydantic unavailable; run make phase2-deps", file=sys.stderr), sys.exit(1))'
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v
+	PYTHONPATH=services/analytics/src:contracts/python $(PHASE2_PYTHON) -m unittest discover -s services/analytics/tests -p 'test_*.py' -v
 
 phase2-check: foundation-up phase2-deps
 	$(PHASE2_PYTHON) scripts/phase2/check.py
