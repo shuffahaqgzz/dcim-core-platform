@@ -102,6 +102,9 @@ jobs:
       - name: Install exact Phase 2 dependency
         run: make phase2-deps
 
+      - name: Run service-level Phase 2 tests
+        run: make phase2-test
+
       - name: Run sequential synthetic Phase 2 gate
         env:
           DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
