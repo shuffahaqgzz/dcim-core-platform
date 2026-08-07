@@ -1,6 +1,6 @@
 # Conditional-GO Register
 
-Last baseline review: 2026-07-20
+Last baseline review: 2026-08-07
 
 | ID | Priority | Condition | Development evidence required | Status |
 |---|---:|---|---|---|
@@ -9,10 +9,10 @@ Last baseline review: 2026-07-20
 | C-03 | P1 | Mutable DEV-BUILD separated from pinned DEV-INTEGRATION-RO | Separate projects/networks/volumes/env files; artifact promotion and rollback proof | OPEN |
 | C-04 | P1 | Dedicated read-only credentials and negative write tests | Private credential-control record plus public synthetic tests proving prohibited methods unavailable | OPEN |
 | C-05 | P1 | Demo uses synthetic or approved sanitized data only | Fixture provenance and sanitization/evidence checklist | OPEN |
-| C-06 | P2 | Identity aliases, validity, confidence, and collision tests | Asset/CI schemas, alias model, conflict fixtures and deterministic resolution tests | OPEN |
-| C-07 | P2 | Compose resource limits, retention, disk watermarks, and headroom | Versioned profile, capacity assumptions, alerts, load/smoke evidence | OPEN |
+| C-06 | P2 | Identity aliases, validity, confidence, and collision tests | Asset/CI schemas, alias model, conflict fixtures and deterministic resolution tests | CLOSED |
+| C-07 | P2 | Compose resource limits, retention, disk watermarks, and headroom | Versioned profile, capacity assumptions, alerts, load/smoke evidence | CLOSED |
 | C-08 | P2 | Hermes read-only allowlist, egress/memory policy, audit, limits, kill switch | Policy, threat model, test/eval evidence and disable procedure | DEFERRED |
-| C-09 | P2 | Connector polling/source-impact controls | Per-source ceilings, timeout/retry policy, metrics and stop test | OPEN |
+| C-09 | P2 | Connector polling/source-impact controls | Per-source ceilings, timeout/retry policy, metrics and stop test | CLOSED |
 | C-10 | P2 | Cost ceiling before any paid external service | Owner-approved budget, account/usage controls and exit plan | DEFERRED |
 
 ## Auto NO-GO
@@ -50,6 +50,56 @@ Stop and escalate on any of the following:
 - Reason: synthetic fixtures, provenance validation, and sanitizer controls pass, but no executable DEV-DEMO path has been deployed or accepted.
 - Phase 0 treatment: not blocking repository-safety completion.
 - Closure trigger: executable demo path uses synthetic or separately approved sanitized data and passes provenance, sanitization, and public-safety gates.
+
+### C-06
+
+- Disposition: `CLOSED`
+- Date: 2026-08-07
+- Owner: `shuffahaqgzz`
+- Basis: Phase 2 synthetic Development evidence for five deterministic
+  ADR-0020 collision cases (duplicate serial across sources, hostname reuse
+  after validity expiry, IP movement, confidence-tie quarantine, merge
+  lineage); [Phase 2 completion evidence](../evidence/2026-08-06-phase2-completion.md);
+  [Phase 2 vertical-slice evidence](../evidence/2026-08-02-phase2-vertical-slice.md);
+  [closure-request package](closure-requests/2026-08-phase2-c06-c07-c09.md);
+  owner disposition record
+  [2026-08-07-phase2-owner-disposition.md](../evidence/2026-08-07-phase2-owner-disposition.md).
+- Scope: Development synthetic identity, alias, validity, confidence, and
+  collision controls only.
+- Boundary: does not authorize Staging entry, Production operations, or live
+  source identity workflows.
+
+### C-07
+
+- Disposition: `CLOSED`
+- Date: 2026-08-07
+- Owner: `shuffahaqgzz`
+- Basis: ADR-0021 (including Phase 3 headroom addendum), owner retention and
+  watermark values, Compose/policy retention sync (Kafka 720h / Prometheus 30d),
+  declared Development resource caps, synthetic capacity admission, and Phase 2
+  completion evidence linked above.
+- Residual (explicit; does **not** reopen this row unless the owner reverses
+  the disposition): Phase 4 load/smoke usage evidence under the full Development
+  profile with application services running.
+- Scope: Development Compact Foundation and Phase 2 synthetic profile only.
+- Boundary: no HA, SLA, or Production capacity claim.
+
+### C-09
+
+- Disposition: `CLOSED` (bounded synthetic)
+- Date: 2026-08-07
+- Owner: `shuffahaqgzz`
+- Basis: ADR-0023 per-class defaults; connector ceiling negative tests; kill-switch
+  tier 1/2 behavior on synthetic replay adapters; retained read-only adapter
+  tests; closure-request package and Phase 2 completion evidence linked above.
+- Bound: synthetic fixture/replay adapters only — not live pollers.
+- Residual (explicit; integration-host gate before live activation, does **not**
+  keep this row `OPEN` for synthetic Phase 2 closure): tier-3 SIGTERM graceful
+  drain (≤ 10 s) and source-side observation before any `DEV-INTEGRATION-RO` or
+  live connector path. C-01 remains authoritative for office/Production source
+  activation.
+- Scope: Development synthetic connector ceiling and stop-control contracts.
+- Boundary: no live source authorization; no Production connector claim.
 
 ## Owner direction 2026-07-27
 
@@ -155,32 +205,38 @@ named authority may mark it `CLOSED`.
 
 ## Phase 2 vertical-slice impact — 2026-08-02
 
-This is a public Development evidence update and a set of owner closure
-requests. It changes no C-0x status.
+This section is a **historical** public Development evidence update and a set of
+owner closure requests as of 2026-08-02. It did **not** itself change C-0x
+status. Owner disposition on **2026-08-07** closed C-06, C-07, and C-09; see
+[Owner dispositions](#owner-dispositions) and
+[`2026-08-07-phase2-owner-disposition.md`](../evidence/2026-08-07-phase2-owner-disposition.md).
 
-### C-06 — closure request
+### C-06 — closure request (historical)
 
-- Status remains `OPEN`.
+- Status as of this section: `OPEN` (superseded: `CLOSED` 2026-08-07).
 - The evidence package [`2026-08-02-phase2-vertical-slice.md`](../evidence/2026-08-02-phase2-vertical-slice.md)
   records the five deterministic ADR-0020 collision tests: duplicate serial
   across sources, hostname reuse after validity expiry, IP movement, a
   confidence tie quarantine, and merge lineage.
 - Closure request: owner review and register-conformant disposition. This
-  record does not close C-06.
+  2026-08-02 record did not close C-06.
 
-### C-07 — impact only
+### C-07 — impact only (historical)
 
-- Status remains `OPEN`.
+- Status as of this section: `OPEN` (superseded: `CLOSED` 2026-08-07 with
+  Phase 4 load/smoke residual).
 - Planned Phase 2 caps are declared in
   [`phase2-resource-caps.md`](../architecture/phase2-resource-caps.md), and
   the synthetic capacity admission check passed.
 - The slice activates no long-running service and does not claim the complete
   cap, alert, and load/smoke evidence required for closure.
 
-### C-09 — impact only
+### C-09 — impact only (historical)
 
-- Status remains `OPEN`.
+- Status as of this section: `OPEN` (superseded: `CLOSED` 2026-08-07, bounded
+  synthetic).
 - Fixture adapters exercise configuration and stop kill-switch tiers, with
   read-only AST/behavioral tests retained by the Stage 1/2 gate.
-- The connector ceiling negative tests required by this register remain open;
-  no connected Runtime Plane is authorized by this evidence.
+- The connector ceiling negative tests required by this register remain open
+  in this historical note; no connected Runtime Plane is authorized by this
+  evidence.
