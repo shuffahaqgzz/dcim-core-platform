@@ -174,11 +174,12 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         ) / "dcim-core-platform/runtime"
         os.environ.setdefault("DCIM_RUNTIME_ROOT", str(default_root))
         os.environ.setdefault("COMPOSE_PROJECT_NAME", "dcim-build")
+        runtime_root = Path(os.environ["DCIM_RUNTIME_ROOT"])
         try:
             db.query_json("SELECT json_build_object('ready', true)::text;")
         except db.DatabaseCommandError as error:
             raise unittest.SkipTest(f"Compose PostgreSQL unavailable: {error}") from error
-        migrate.apply(default_root / "dev-build/secrets")
+        migrate.apply(runtime_root / "dev-build/secrets")
 
     def test_apply_when_repeated_reports_zero_and_exact_inventory(self) -> None:
         # Given / When

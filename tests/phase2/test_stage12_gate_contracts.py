@@ -164,7 +164,7 @@ class Stage12GateContractTests(unittest.TestCase):
             "PHASE2_PYTHON ?= $(PHASE2_VENV)/bin/python",
             'phase2-deps:\n\t@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"\n\t$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "confluent-kafka==2.15.0"',
             "phase2-test:\n\t@test -x \"$(PHASE2_PYTHON)\" || { printf '%s\\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }\n\t@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec(\"pydantic\") else (print(\"Pydantic unavailable; run make phase2-deps\", file=sys.stderr), sys.exit(1))'\n\t$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v",
-            "phase2-check: phase2-deps\n\tscripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase2/check.py",
+            "# foundation-up is required: kafka_host.sh fails closed unless dcim-build-kafka-1 exists.\nphase2-check: phase2-deps foundation-up\n\tscripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase2/check.py",
             "compile:\n\t$(PYTHON) -m compileall -q scripts tests contracts connectors",
         )
 
