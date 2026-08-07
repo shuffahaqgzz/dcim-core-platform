@@ -428,7 +428,8 @@ def validate_model(
 
         environment = value.get("environment", {}) or {}
         if name == "kafka":
-            data_network = (value.get("networks", {}) or {}).get("data")
+            networks = value.get("networks", {}) or {}
+            data_network = networks.get("data") if isinstance(networks, dict) else None
             if (
                 not isinstance(data_network, dict)
                 or str(data_network.get("ipv4_address")) != EXPECTED_KAFKA_IPV4_ADDRESS
