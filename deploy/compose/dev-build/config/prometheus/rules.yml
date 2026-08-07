@@ -2,7 +2,7 @@ groups:
   - name: foundation-health
     rules:
       - alert: FoundationTargetDown
-        expr: up == 0
+        expr: up{job=~"prometheus|postgres-exporter|kafka-jmx-exporter|grafana"} == 0
         for: 30s
         labels: {severity: critical}
         annotations: {summary: "Synthetic foundation target unavailable"}
