@@ -221,10 +221,10 @@ Your next move: hand the per-todo Executor prompts (in each todo below) to Codex
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
 > SUPERSEDED-PENDING (2026-08-03): F1–F4 coverage is provided by plan phase2-closure-phase3-start final verification wave; these rows are ticked by that plan's F1 audit upon APPROVED.
-- [ ] F1. Plan compliance audit
-- [ ] F2. Code quality review
-- [ ] F3. Real manual QA
-- [ ] F4. Scope fidelity
+- [x] F1. Plan compliance audit (ticked by approved phase2-closure-phase3-start F1 audit; see `.omo/evidence/phase2-closure-phase3-start/F1.md`)
+- [x] F2. Code quality review (ticked by approved phase2-closure-phase3-start F1 audit; see `.omo/evidence/phase2-closure-phase3-start/F1.md`)
+- [x] F3. Real manual QA (ticked by approved phase2-closure-phase3-start F1 audit; see `.omo/evidence/phase2-closure-phase3-start/F1.md`)
+- [x] F4. Scope fidelity (ticked by approved phase2-closure-phase3-start F1 audit; see `.omo/evidence/phase2-closure-phase3-start/F1.md`)
 
 ## Commit strategy
 - Branch: `feat/phase2-vertical-slice` from fresh `main` (post PR #28 merge, `b7ba6a8` or later). Do NOT reuse the unstable `feat/phase2-first-vertical-slice` branch (`docs/research/STATUS-SUMMARY.md:179` — 63 commits/1 day failure mode).
