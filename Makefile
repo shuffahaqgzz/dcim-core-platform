@@ -119,7 +119,7 @@ test:
 
 phase2-deps:
 	@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"
-	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2"
+	$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "confluent-kafka==2.15.0"
 
 phase2-test:
 	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }
