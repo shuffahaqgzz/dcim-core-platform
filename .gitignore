@@ -41,7 +41,6 @@ recordings/
 *.pcapng
 *.har
 *.dump
-*.sql
 *.sql.gz
 *.tar.gz
 *.zip
