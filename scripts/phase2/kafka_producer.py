@@ -9,9 +9,9 @@ synchronously and any broker-reported error raises ``KafkaPublishError``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 import os
-from typing import Any, Final, Protocol
+from typing import Final, Protocol, cast
 
 from .errors import KafkaPublishError
 
@@ -29,10 +29,12 @@ PRODUCER_CONFIG: Final = {
 class ProducerDriver(Protocol):
     """Minimal confluent_kafka.Producer surface used by this boundary."""
 
-    def produce(self, topic: str, **kwargs: Any) -> None: ...
+    produce: Callable[..., None]
+    flush: Callable[[float], int]
 
-    def flush(self, timeout: float) -> int: ...
 
+class DeliveryMessage(Protocol):
+    def error(self) -> object | None: ...
 
 def bootstrap_servers() -> str:
     """Return the configured Development broker, defaulting in Compose."""
@@ -50,11 +52,14 @@ class KafkaEnvelopeProducer:
         if driver is None:
             from confluent_kafka import Producer
 
-            driver = Producer(
-                {
-                    "bootstrap.servers": bootstrap or bootstrap_servers(),
-                    **PRODUCER_CONFIG,
-                }
+            driver = cast(
+                ProducerDriver,
+                Producer(
+                    {
+                        "bootstrap.servers": bootstrap or bootstrap_servers(),
+                        **PRODUCER_CONFIG,
+                    }
+                ),
             )
         self._driver = driver
 
@@ -66,14 +71,17 @@ class KafkaEnvelopeProducer:
         headers: Mapping[str, str],
     ) -> None:
         """Publish one message and raise on any delivery failure."""
-        failures: list[str] = []
+        failure_count = 0
 
-        def _on_delivery(error: object, message: object) -> None:
+        def _on_delivery(
+            error: object | None, message: DeliveryMessage | None
+        ) -> None:
+            nonlocal failure_count
             cause = error
             if cause is None and message is not None:
-                cause = message.error()  # type: ignore[attr-defined]
+                cause = message.error()
             if cause is not None:
-                failures.append(str(cause))
+                failure_count += 1
 
         try:
             self._driver.produce(
@@ -93,9 +101,10 @@ class KafkaEnvelopeProducer:
                 f"delivery to topic {topic} timed out with "
                 f"{remaining} message(s) pending"
             )
-        if failures:
+        if failure_count:
             raise KafkaPublishError(
-                f"delivery to topic {topic} failed: {'; '.join(failures)}"
+                f"delivery to topic {topic} failed with "
+                f"{failure_count} broker-reported error(s)"
             )
 
     def flush(self, timeout: float) -> None:

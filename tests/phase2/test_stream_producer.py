@@ -414,8 +414,14 @@ class KafkaEnvelopeProducerTests(unittest.TestCase):
         producer = kafka_producer.KafkaEnvelopeProducer(driver=driver)
 
         # When / Then
-        with self.assertRaisesRegex(KafkaPublishError, "synthetic broker failure"):
+        with self.assertRaises(KafkaPublishError) as raised:
             producer.produce_envelope("dcim.normalized.events", "k", b"v", {})
+        self.assertEqual(
+            str(raised.exception),
+            "delivery to topic dcim.normalized.events failed with "
+            "1 broker-reported error(s)",
+        )
+        self.assertNotIn("synthetic broker failure", str(raised.exception))
 
     def test_delivery_callback_message_error_raises_publish_error(self) -> None:
         # Given: a delivery callback whose message carries the error.
@@ -429,10 +435,14 @@ class KafkaEnvelopeProducerTests(unittest.TestCase):
         producer = kafka_producer.KafkaEnvelopeProducer(driver=driver)
 
         # When / Then
-        with self.assertRaisesRegex(
-            KafkaPublishError, "synthetic message failure"
-        ):
+        with self.assertRaises(KafkaPublishError) as raised:
             producer.produce_envelope("dcim.dlq.synthetic", None, b"v", {})
+        self.assertEqual(
+            str(raised.exception),
+            "delivery to topic dcim.dlq.synthetic failed with "
+            "1 broker-reported error(s)",
+        )
+        self.assertNotIn("synthetic message failure", str(raised.exception))
 
     def test_flush_timeout_with_pending_messages_raises(self) -> None:
         # Given: a driver that never drains its queue.
