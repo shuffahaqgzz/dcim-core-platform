@@ -307,6 +307,13 @@ def _run_json_command(arguments: list[str]) -> db.JsonObject:
     return value
 
 
+def topic_provision(_run_id: str) -> None:
+    from scripts.phase2 import kafka_topics
+
+    if kafka_topics.main([]) != 0:
+        raise CheckError("Kafka topic provisioning failed")
+
+
 def topic_verify(_run_id: str) -> None:
     from scripts.phase2 import kafka_topics
 
@@ -437,6 +444,7 @@ def latency_assert(run_id: str) -> None:
 
 
 STAGES: tuple[Stage, ...] = (
+    ("topic-provision", topic_provision),
     ("migrate-apply", migrate_apply),
     ("pipeline-run", pipeline_run),
     ("idempotency-replay", idempotency_replay),
