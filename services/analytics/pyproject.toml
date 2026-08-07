@@ -2,7 +2,7 @@
 name = "dcim-analytics"
 version = "0.1.0"
 description = "Health, capacity, freshness, completeness, and quality analytics service."
-requires-python = ">=3.12"
+requires-python = "==3.12"
 dependencies = [
   "asyncpg==0.30.0",
   "fastapi==0.141.1",
