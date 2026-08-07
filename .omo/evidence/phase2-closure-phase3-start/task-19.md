@@ -155,3 +155,37 @@ rtk .venv/bin/python -m unittest discover -s tests/phase3 -p 'test_e2e.py' -v
 ```
 
 Exit code: `0` (7 tests passed).
+
+## Exact-SHA post-fix receipt
+
+- Commit/ref: `7d1f9d8f8e8183425949f7ade81410f8bc743439`.
+- Scope: post-fix Phase 2 closure and Phase 3 start acceptance on the
+  synthetic local Development runtime only.
+- Timestamp (UTC): not supplied in the protected facts; not recorded.
+- `make phase2-check`: the initial cleanup command exited `1` because the
+  stack was down. After `foundation-up`, `make phase2-check` exited `0` with
+  all 11 stages PASS: `migrate-apply`, `pipeline-run`, `idempotency-replay`,
+  `rollback-reapply`, `recovery`, `capacity`, `noc-verify`, `unit-tests`,
+  `topic-verify`, `stream-roundtrip`, and `latency-assert`. Kafka host mapping
+  was observed and restored: `true`.
+- Targeted cleanup rerun: exit `0`; cleanup PASS.
+- `make service-check`: exit `0`; 64 Phase 3 tests; service-smoke health,
+  metrics, and auth-denial checks `5/5`; E2E required stages, zero-loss,
+  dashboard, p95, and cleanup assertions PASS; host mapping restored.
+- Kafka mutation: `foundation-up` exit `0`, `kafka-stop-only` exit `0`, and
+  stopped E2E exit `1` at stage 1 `topic-verify`; `kafka-start-wait` exit `0`.
+  The first restored attempt was interrupted and is not claimed.
+- Clean restore run: foundation/profile up, acceptance cleanup, E2E, and
+  explicit profile stop all exited `0`; final sanitized assertions for
+  zero-loss, dashboard, p95, cleanup, exact SHA, and host mapping PASS. One
+  sanitizer retry exited `1`, followed by a retry exit `0`; only the final
+  sanitized assertions are recorded here.
+- Acceptance criterion: the exact-SHA post-fix receipts provide the listed
+  Phase 2, cleanup, mutation/restore, service-check, and clean-restore
+  outcomes; no broader readiness or deployment claim is made.
+- Limitations: full raw transcripts remain under
+  `$DCIM_RUNTIME_ROOT/evidence-transcripts`, mode `0600`, and are not
+  committed. This evidence contains no credentials, tokens, endpoints, or
+  raw logs, and makes no readiness claim.
+- Reviewer/owner status: not supplied in the protected facts; no approval
+  claim is made.
