@@ -134,7 +134,7 @@ phase3-test:
 	@test -x "$(PHASE2_PYTHON)" || { printf '%s\n' 'Phase 3 environment unavailable; run make phase3-deps' >&2; exit 1; }
 	$(PHASE2_PYTHON) -m unittest discover -s tests/phase3 -p 'test_*.py' -v
 
-phase2-check: foundation-up phase2-deps
+phase2-check: phase2-deps
 	scripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase2/check.py
 
 service-smoke: foundation-up
