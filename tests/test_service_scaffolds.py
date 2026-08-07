@@ -56,7 +56,7 @@ class ServiceScaffoldTests(unittest.TestCase):
                     continue
                 project = tomllib.loads(path.read_text(encoding="utf-8"))["project"]
                 self.assertEqual(project["name"], f"dcim-{service}")
-                self.assertEqual(project["requires-python"], ">=3.12")
+                self.assertEqual(project["requires-python"], "==3.12")
 
     def test_service_package_files_exist(self) -> None:
         for service, package in SERVICES.items():
