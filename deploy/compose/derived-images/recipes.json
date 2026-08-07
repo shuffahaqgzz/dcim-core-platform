@@ -215,6 +215,35 @@
         {"finding": "CVE-2026-56852", "artifact": "golang.org/x/text", "from_version": "v0.38.0", "to_version": "0.39.0", "sha256": "c2e68286e1061496dcbb794cec0e40c20c744885b495ff6c7d40f3459699c6c0"}
       ],
       "publish": false
+    },
+    {
+      "component": "services",
+      "source": {
+        "repository": "https://github.com/docker-library/python",
+        "tag": "3.12-alpine3.24",
+        "commit": "bb96c631cdae148eec0aca3fd0cbe15f485a61c2",
+        "archive_sha256": "d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b"
+      },
+      "inputs": [
+        {"filename": "librdkafka-2.15.0.tar.gz", "url": "https://github.com/confluentinc/librdkafka/archive/refs/tags/v2.15.0.tar.gz", "sha256": "259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc", "context": true}
+      ],
+      "base_images": [
+        {"image": "python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df", "amd64_manifest": "sha256:aa679aa4eed6eb56c1dc6ad3f1b98b7d2d788fd961596779d188fdedad97fb38"}
+      ],
+      "build_tools": [
+        {"image": "python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df", "amd64_manifest": "sha256:aa679aa4eed6eb56c1dc6ad3f1b98b7d2d788fd961596779d188fdedad97fb38"}
+      ],
+      "dockerfile": "services/Dockerfile",
+      "output_repository": "dcim-development/services",
+      "output_tag": "3.12-r1",
+      "source_date_epoch": 1785772800,
+      "patches": [
+        {"finding": "CVE-2024-47874", "artifact": "FastAPI Starlette dependency", "from_version": "0.38.6", "to_version": "1.3.1", "sha256": "259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc"},
+        {"finding": "CVE-2025-62727", "artifact": "FastAPI Starlette dependency", "from_version": "0.46.2", "to_version": "1.3.1", "sha256": "259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc"},
+        {"finding": "CVE-2026-48818", "artifact": "FastAPI Starlette dependency", "from_version": "0.46.2", "to_version": "1.3.1", "sha256": "259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc"},
+        {"finding": "CVE-2026-54283", "artifact": "FastAPI Starlette dependency", "from_version": "0.46.2", "to_version": "1.3.1", "sha256": "259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc"}
+      ],
+      "publish": false
     }
   ]
 }

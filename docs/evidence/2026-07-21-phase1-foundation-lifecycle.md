@@ -1,5 +1,7 @@
 # Issue #11 Synthetic Foundation Lifecycle Regression — PASS
 
+> Historical evidence; OD-06 was accepted 2026-07-27 (ADR-0019, Apache-2.0).
+
 Date: 2026-07-21  
 Issue: #11; parent: #9  
 Scope: local synthetic `dcim-build` Development foundation only

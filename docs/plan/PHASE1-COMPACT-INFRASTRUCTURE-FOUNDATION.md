@@ -182,8 +182,9 @@ checksum-verified source provenance; Grafana OSS and PostgreSQL exporter remain
 full source builds. Each derivative must preserve the service version and every
 runtime contract, use immutable build inputs, carry only evidence-backed
 security remediation, and pass the unchanged vulnerability and lifecycle gates.
-It may not be published to a public or shared registry while OD-06 or applicable
-upstream redistribution/source obligations remain unresolved. A clean official
+It may not be published to a public or shared registry while applicable upstream
+redistribution/source obligations remain unresolved. OD-06 is accepted as
+Apache-2.0 per ADR-0019, but does not resolve those obligations. A clean official
 upstream image remains the preferred replacement.
 
 A versioned inventory must record image, exact version, digest, upstream source,
@@ -195,8 +196,8 @@ Every image must produce an SBOM, license inventory, and vulnerability report:
 - any Critical finding is NO-GO;
 - a High finding with a fix is NO-GO;
 - a High finding without a fix requires owner disposition and expiry;
-- unknown, restricted, or strong-copyleft license findings require review while
-  repository license decision OD-06 remains open;
+- unknown, restricted, or strong-copyleft license findings require review;
+  accepted repository licensing does not resolve runtime obligations;
 - GitHub Actions are pinned to full commit SHAs;
 - scanner containers are pinned to immutable image digests;
 - scanner/action versions and vulnerability database timestamps are evidence.
@@ -411,5 +412,6 @@ Phase 1 does not prove:
 - any office or Production source access.
 
 Development implementation now exists under `deploy/compose/dev-build` and is
-qualified by the repository gates. Issue review/merge, OD-06, official-image
-replacement, and every Staging/Production condition remain separate.
+qualified by the repository gates. Issue review/merge, runtime-obligation review,
+official-image replacement, and every Staging/Production condition remain
+separate; OD-06 is accepted as Apache-2.0 per ADR-0019.

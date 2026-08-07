@@ -48,7 +48,7 @@ except ModuleNotFoundError:  # Direct script execution adds scripts/, not reposi
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_COMPONENTS = {
-    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
+    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
 }
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 COMMIT = re.compile(r"[0-9a-f]{40}\Z")
@@ -63,6 +63,7 @@ ENVIRONMENT_KEYS = {
     "grafana": "DCIM_GRAFANA_IMAGE",
     "prometheus": "DCIM_PROMETHEUS_IMAGE",
     "postgres-exporter": "DCIM_POSTGRES_EXPORTER_IMAGE",
+    "services": "DCIM_SERVICES_IMAGE",
 }
 LICENSE_COMPONENTS = {
     "postgres": "postgresql",
@@ -70,6 +71,7 @@ LICENSE_COMPONENTS = {
     "grafana": "grafana-oss",
     "prometheus": "prometheus",
     "postgres-exporter": "postgresql-exporter",
+    "services": "dcim-services",
 }
 
 
@@ -118,7 +120,7 @@ def validate_manifest(value: object) -> list[str]:
     if len(components) != len(recipes) or set(components) != REQUIRED_COMPONENTS or len(components) != len(set(components)):
         errors.append(
             "recipes must contain exactly postgres, kafka, grafana, prometheus, "
-            "and postgres-exporter"
+            "postgres-exporter, and services"
         )
 
     for index, recipe in enumerate(recipes):
@@ -143,7 +145,7 @@ def validate_manifest(value: object) -> list[str]:
                 errors.append(f"{field}.source: archive SHA-256 required")
 
         inputs = recipe.get("inputs")
-        if not isinstance(inputs, list) or not inputs:
+        if not isinstance(inputs, list) or (not inputs and component != "services"):
             errors.append(f"{field}.inputs: nonempty locked input list required")
         else:
             filenames: set[str] = set()
@@ -195,7 +197,7 @@ def validate_manifest(value: object) -> list[str]:
             errors.append(f"{field}: publication must be disabled")
 
         patches = recipe.get("patches")
-        if not isinstance(patches, list) or not patches:
+        if not isinstance(patches, list) or (not patches and component != "services"):
             errors.append(f"{field}.patches: nonempty remediation allowlist required")
         else:
             for patch_index, patch in enumerate(patches):
@@ -272,6 +274,11 @@ def prepare_context(
     context.mkdir(parents=True, exist_ok=True, mode=0o700)
     dockerfile = ROOT / "deploy/compose/derived-images" / str(recipe["dockerfile"])
     shutil.copyfile(dockerfile, context / "Dockerfile")
+    if component == "services":
+        helper = dockerfile.parent / "fix_repro.py"
+        if not helper.is_file():
+            raise ValueError("services recipe requires fix_repro.py beside Dockerfile")
+        shutil.copyfile(helper, context / "fix_repro.py")
     for item in recipe["inputs"]:
         source = download_input(item, input_root)
         if item["context"]:
@@ -370,7 +377,7 @@ def scan_image(
     metadata = {
         "license_categories": license_categories,
         "license_disposition": reviewed_license_categories,
-        "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
+        "license_review": "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed",
         "sbom_components": sbom_components,
         "sha256": {
             "vulnerability": sha256_file(evidence / vulnerability),
@@ -381,10 +388,53 @@ def scan_image(
     return counts, metadata
 
 
+def recipe_identity(recipe: dict[str, object]) -> dict[str, object]:
+    return {
+        field: recipe[field]
+        for field in (
+            "source", "inputs", "dockerfile", "base_images", "build_tools",
+            "patches", "output_tag", "source_date_epoch",
+        )
+    }
+
+
+def reusable_record(
+    record: dict[str, object], recipe: dict[str, object],
+) -> dict[str, object] | None:
+    image_id = record.get("image_id")
+    counts = record.get("counts")
+    if (
+        not isinstance(image_id, str)
+        or not IMAGE_ID.fullmatch(image_id)
+        or not isinstance(counts, dict)
+        or any(counts.values())
+    ):
+        return None
+    stored_recipe = record.get("recipe")
+    if stored_recipe is None:
+        recipe_matches = (
+            record.get("source") == recipe["source"]
+            and record.get("build_inputs") == {
+                "base_images": recipe["base_images"],
+                "build_tools": recipe["build_tools"],
+            }
+            and record.get("local_tag") == f"{recipe['output_repository']}:{recipe['output_tag']}"
+        )
+    else:
+        recipe_matches = stored_recipe == recipe_identity(recipe)
+    if not recipe_matches:
+        return None
+    inspected_id, _ = inspect_image(image_id)
+    if inspected_id != image_id:
+        return None
+    return record
+
+
 def qualify(
     manifest: dict[str, object],
     runtime_root: Path,
     license_dispositions: dict[str, object],
+    existing_records: dict[str, dict[str, object]],
 ) -> list[dict[str, object]]:
     root = external_root(runtime_root)
     input_root = ensure_protected_directory(root, "dev-build", "derived-images", "inputs")
@@ -395,6 +445,14 @@ def qualify(
     records: list[dict[str, object]] = []
     for recipe in manifest["recipes"]:
         component = str(recipe["component"])
+        existing = existing_records.get(component)
+        if existing is not None:
+            reused = reusable_record(existing, recipe)
+            if reused is not None:
+                reused["recipe"] = recipe_identity(recipe)
+                print(f"foundation-images: reusing {component}", flush=True)
+                records.append(reused)
+                continue
         print(f"foundation-images: qualifying {component}", flush=True)
         context = prepare_context(recipe, input_root, context_root)
         first_id, first_labels = build_once(recipe, context, "verify-a", clean=False)
@@ -423,6 +481,7 @@ def qualify(
             "image_id": second_id,
             "local_tag": final_tag,
             "source": recipe["source"],
+            "recipe": recipe_identity(recipe),
             "build_inputs": {
                 "base_images": recipe["base_images"],
                 "build_tools": recipe["build_tools"],
@@ -574,7 +633,7 @@ def reusable_records(
                 evidence_metadata = {
                     "license_categories": actual_license_categories,
                     "license_disposition": reviewed_license_categories,
-                    "license_review": "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN",
+                    "license_review": "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed",
                     "sbom_components": actual_sbom_components,
                     "sha256": {name: sha256_file(path) for name, path in report_paths.items()},
                 }
@@ -582,7 +641,7 @@ def reusable_records(
                 lock_upgraded = True
             elif evidence_metadata.get("license_disposition") is None:
                 evidence_metadata["license_disposition"] = reviewed_license_categories
-                evidence_metadata["license_review"] = "Issue #10 owner disposition; local synthetic Development only; publication/distribution prohibited; OD-06 OPEN"
+                evidence_metadata["license_review"] = "Issue #10 owner disposition; repository license accepted Apache-2.0; local synthetic Development only; publication/distribution prohibited; runtime obligations remain independently reviewed"
                 lock_upgraded = True
             expected_hashes = evidence_metadata.get("sha256")
             if (
@@ -598,6 +657,27 @@ def reusable_records(
         return records
     except (OSError, KeyError, TypeError, ValueError, RuntimeError, json.JSONDecodeError):
         return None
+
+
+def partial_reusable_records(runtime_root: Path) -> dict[str, dict[str, object]]:
+    runtime = external_root(runtime_root)
+    lock_path = protected_runtime_path(runtime, "dev-build", "derived-images-lock.json")
+    if not lock_path.is_file():
+        return {}
+    try:
+        lock = load_object(lock_path)
+        records = lock.get("images")
+        if lock.get("schema_version") != 2 or lock.get("publication") is not False:
+            return {}
+        if not isinstance(records, list):
+            return {}
+        return {
+            str(record["component"]): record
+            for record in records
+            if isinstance(record, dict) and isinstance(record.get("component"), str)
+        }
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return {}
 
 
 def main() -> int:
@@ -634,7 +714,10 @@ def main() -> int:
             arguments.runtime_root,
         )
         if records is None:
-            records = qualify(manifest, arguments.runtime_root, license_dispositions)
+            candidates = {} if arguments.force else partial_reusable_records(arguments.runtime_root)
+            records = qualify(
+                manifest, arguments.runtime_root, license_dispositions, candidates,
+            )
             write_lock(
                 records, arguments.manifest, arguments.license_dispositions,
                 arguments.runtime_root,

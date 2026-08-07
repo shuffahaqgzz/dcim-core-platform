@@ -24,13 +24,14 @@ class RecoveryIntegrationTests(unittest.TestCase):
         ) / "dcim-core-platform/runtime"
         _ = os.environ.setdefault("DCIM_RUNTIME_ROOT", str(default_root))
         _ = os.environ.setdefault("COMPOSE_PROJECT_NAME", "dcim-build")
+        runtime_root = Path(os.environ["DCIM_RUNTIME_ROOT"])
         try:
             _ = db.query_json("SELECT json_build_object('ready', true)::text;")
         except db.DatabaseCommandError as error:
             raise unittest.SkipTest(
                 f"Compose PostgreSQL unavailable: {error}"
             ) from error
-        _ = migrate.apply()
+        _ = migrate.apply(runtime_root / "dev-build/secrets")
         command = [
             sys.executable,
             "scripts/phase2/run.py",

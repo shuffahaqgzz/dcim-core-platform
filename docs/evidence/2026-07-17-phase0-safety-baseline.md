@@ -1,5 +1,7 @@
 # Evidence — Phase 0 Safety Baseline
 
+> Historical evidence; OD-06 was accepted 2026-07-27 (ADR-0019, Apache-2.0).
+
 > Historical record, superseded for approval by corrective issue [#3](https://github.com/shuffahaqgzz/dcim-core-platform/issues/3). Independent review found scanner/sanitizer gaps, stale SHA binding, and an incorrect full-history interpretation. Preserve results below as historical evidence; do not use them to close C-02 or grant `DEV-APPROVED`.
 
 - UTC: `2026-07-17T05:42:08Z`

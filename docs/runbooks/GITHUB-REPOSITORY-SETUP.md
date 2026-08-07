@@ -81,7 +81,7 @@ In **Settings → Security & analysis** enable:
 - push protection for supported secrets;
 - private vulnerability reporting.
 
-Do not add a broad CodeQL workflow until OD-07 selects the service language/framework and the workflow can be scoped and tested. Add CodeQL in the first implementation PR for each supported language.
+OD-07 selected Python/FastAPI for backend services on 2026-07-28. Add a scoped, tested CodeQL workflow in the first implementation PR for each supported language; do not add a broad workflow before service code exists.
 
 Review the repository’s public commit history after the bootstrap. If suspected live data or a secret is found, rotate/revoke first, then follow the governed history-cleanup process in `DATA-HANDLING.md`.
 

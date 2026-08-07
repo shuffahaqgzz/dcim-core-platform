@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 import re
 import subprocess
@@ -13,6 +15,8 @@ from scripts.phase2.db import literal
 from scripts.phase2.migrations import (
     m0001_phase2_core,
     m0002_execution_reconciliation,
+    m0003_ci_relationships,
+    m0004_workflow_drafts,
 )
 
 
@@ -209,6 +213,49 @@ class DatabaseCommandTests(unittest.TestCase):
 
 
 class MigrationSqlTests(unittest.TestCase):
+    def test_m0004_up_defines_workflow_table_role_and_exact_grants(self) -> None:
+        # Given / When
+        sql = m0004_workflow_drafts.up(
+            {"role_passwords": {"dcim_workflow_rw": "synthetic-password"}}
+        )
+
+        # Then
+        self.assertIn("CREATE TABLE phase2.workflow_drafts", sql)
+        self.assertIn("event_id uuid NULL REFERENCES phase2.events(event_id)", sql)
+        self.assertIn("draft_type text NOT NULL CHECK (draft_type IN ('notification', 'ticket_draft', 'approval_request'))", sql)
+        self.assertIn("status text NOT NULL CHECK (status IN ('draft', 'simulated_approved', 'simulated_rejected'))", sql)
+        self.assertIn("CREATE ROLE dcim_workflow_rw LOGIN PASSWORD 'synthetic-password'", sql)
+        grants = tuple(line for line in sql.splitlines() if line.startswith("GRANT "))
+        self.assertEqual(
+            (
+                "GRANT USAGE ON SCHEMA phase2 TO dcim_workflow_rw;",
+                "GRANT SELECT, INSERT, UPDATE ON phase2.workflow_drafts TO dcim_workflow_rw;",
+                "GRANT SELECT ON phase2.events TO dcim_workflow_rw;",
+                "GRANT REFERENCES ON phase2.events TO dcim_workflow_rw;",
+            ),
+            grants,
+        )
+
+    def test_m0003_up_defines_schema_usage_and_exact_service_grants(self) -> None:
+        # Given / When
+        sql = m0003_ci_relationships.up(
+            {"role_passwords": {role: "synthetic" for role in migrate.ROLE_PASSWORD_FILES}}
+        )
+
+        # Then
+        grants = tuple(line for line in sql.splitlines() if line.startswith("GRANT "))
+        self.assertEqual(
+            (
+                "GRANT USAGE ON SCHEMA phase2 TO dcim_assets_rw, dcim_cmdb_rw, dcim_api_ro, dcim_analytics_ro;",
+                "GRANT SELECT, INSERT, UPDATE ON phase2.assets, phase2.aliases TO dcim_assets_rw;",
+                "GRANT SELECT, INSERT, UPDATE ON phase2.cis, phase2.ci_relationships, phase2.aliases TO dcim_cmdb_rw;",
+                "GRANT REFERENCES ON phase2.assets TO dcim_cmdb_rw;",
+                "GRANT SELECT ON phase2.noc_cards, phase2.events, phase2.dispositions TO dcim_api_ro;",
+                "GRANT SELECT ON phase2.events, phase2.dispositions, phase2.run_manifests, phase2.noc_cards TO dcim_analytics_ro;",
+            ),
+            grants,
+        )
+
     @staticmethod
     def _verified_schema_rows() -> list[list[dict[str, object]]]:
         return [
@@ -273,18 +320,19 @@ class MigrationSqlTests(unittest.TestCase):
     def test_apply_when_registry_is_empty_submits_each_migration_transactionally(self) -> None:
         # Given / When
         with (
-            patch.object(migrate, "_is_applied", side_effect=[False, False]),
+            patch.object(migrate, "_is_applied", side_effect=[False, False, False, False]),
+            patch.object(migrate, "role_password_context", return_value={"role_passwords": {role: "synthetic" for role in migrate.ROLE_PASSWORD_FILES}}),
             patch.object(migrate, "psql") as psql,
         ):
-            applied = migrate.apply()
+            applied = migrate.apply(Path("/synthetic/secrets"))
 
         # Then
-        self.assertEqual(2, applied)
-        self.assertEqual(2, psql.call_count)
+        self.assertEqual(4, applied)
+        self.assertEqual(4, psql.call_count)
         for call, migration_id, up_sql in zip(
             psql.call_args_list,
-            (migrate.MIGRATION_ID, migrate.LATEST_MIGRATION_ID),
-            (m0001_phase2_core.up(), m0002_execution_reconciliation.up()),
+            (migrate.MIGRATION_ID, m0002_execution_reconciliation.MIGRATION_ID, migrate.PREVIOUS_MIGRATION_ID, migrate.LATEST_MIGRATION_ID),
+            (m0001_phase2_core.up(), m0002_execution_reconciliation.up(), m0003_ci_relationships.up({"role_passwords": {role: "synthetic" for role in migrate.ROLE_PASSWORD_FILES}}), m0004_workflow_drafts.up({"role_passwords": {role: "synthetic" for role in migrate.ROLE_PASSWORD_FILES}})),
             strict=True,
         ):
             generated_sql = call.args[0]
@@ -296,7 +344,7 @@ class MigrationSqlTests(unittest.TestCase):
     def test_apply_when_migrations_are_recorded_submits_no_ddl(self) -> None:
         # Given / When
         with (
-            patch.object(migrate, "_is_applied", side_effect=[True, True]),
+            patch.object(migrate, "_is_applied", side_effect=[True, True, True, True]),
             patch.object(migrate, "psql") as psql,
         ):
             applied = migrate.apply()
@@ -304,6 +352,59 @@ class MigrationSqlTests(unittest.TestCase):
         # Then
         self.assertEqual(0, applied)
         psql.assert_not_called()
+
+    def test_role_password_context_when_mapped_file_is_missing_rejects_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in migrate.SECRET_NAMES:
+                if name != "workflow-db-password":
+                    (root / name).write_text("synthetic-value\n", encoding="utf-8")
+            with self.assertRaisesRegex(migrate.MigrationError, "missing"):
+                migrate.role_password_context(root)
+
+    def test_role_password_context_when_unknown_or_symlink_exists_rejects_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in migrate.SECRET_NAMES:
+                (root / name).write_text("synthetic-value\n", encoding="utf-8")
+            (root / "unknown").write_text("synthetic-value\n", encoding="utf-8")
+            with self.assertRaisesRegex(migrate.MigrationError, "invalid entry"):
+                migrate.role_password_context(root)
+
+    def test_role_password_context_when_symlink_exists_rejects_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in migrate.SECRET_NAMES:
+                (root / name).write_text("synthetic-value\n", encoding="utf-8")
+            (root / "link").symlink_to(root / "assets-db-password")
+            with self.assertRaisesRegex(migrate.MigrationError, "invalid entry"):
+                migrate.role_password_context(root)
+
+    def test_redact_when_error_contains_secret_replaces_value(self) -> None:
+        self.assertEqual("failed: ***", migrate.redact("failed: synthetic-secret", ("synthetic-secret",)))
+
+    def test_main_when_credential_aware_apply_raises_unexpected_error_redacts_secret(self) -> None:
+        # Given: a loaded role password and an unexpected error that exposes it.
+        fixture_value = "synthetic-value"
+        output = StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in migrate.SECRET_NAMES:
+                (root / name).write_text(f"{fixture_value}\n", encoding="utf-8")
+            arguments = ["migrate.py", "apply", "--role-password-dir", str(root)]
+
+            # When: the CLI boundary reports the unexpected credential-aware failure.
+            with (
+                patch("scripts.phase2.migrate.sys.argv", arguments),
+                patch.object(migrate, "run", side_effect=ValueError(f"invalid literal {fixture_value}")),
+                redirect_stderr(output),
+            ):
+                result = migrate.main()
+
+        # Then: the CLI fails without exposing the loaded password.
+        self.assertEqual(1, result)
+        self.assertIn("***", output.getvalue())
+        self.assertNotIn(fixture_value, output.getvalue())
 
     def test_verify_when_table_is_missing_rejects_inventory(self) -> None:
         rows = self._verified_schema_rows()
@@ -343,7 +444,7 @@ class MigrationSqlTests(unittest.TestCase):
         # Then
         generated_sql = psql.call_args.args[0]
         delete_sql = "DELETE FROM phase2.schema_migrations"
-        down_sql = m0002_execution_reconciliation.down()
+        down_sql = m0004_workflow_drafts.down()
         self.assertEqual(0, generated_sql.index("BEGIN;"))
         self.assertLess(generated_sql.index(delete_sql), generated_sql.index(down_sql))
         self.assertIn(
@@ -395,7 +496,7 @@ class MigrationSqlTests(unittest.TestCase):
             self.assertIs(False, migrate._is_applied(migration_id))
         with (
             patch.object(migrate, "MIGRATION_ID", migration_id),
-            patch.object(migrate, "_is_applied", side_effect=[False, True]),
+            patch.object(migrate, "_is_applied", side_effect=[False, True, True, True]),
             patch.object(migrate, "psql") as apply_psql,
         ):
             self.assertEqual(1, migrate.apply())

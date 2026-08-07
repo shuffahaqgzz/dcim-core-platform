@@ -16,27 +16,26 @@
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
+import inspect
 from pathlib import Path
 import sys
-from typing import assert_never, Final, override
+from typing import Callable, Mapping, assert_never, Final, override
 
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.phase2.db import (  # noqa: E402
-    DatabaseCommandError,
-    JsonExtractionError,
-    literal,
-    psql,
-    query_json,
-)
+from scripts.phase2.db import literal, psql, query_json  # noqa: E402
 from scripts.phase2.migrations import (  # noqa: E402
     m0001_phase2_core,
     m0002_execution_reconciliation,
+    m0003_ci_relationships,
+    m0004_workflow_drafts,
 )
+from scripts.foundation_bootstrap import SECRET_NAMES  # noqa: E402
 
 
 EXPECTED_TABLES: Final = (
@@ -48,6 +47,8 @@ EXPECTED_TABLES: Final = (
     "cis",
     "aliases",
     "noc_cards",
+    "ci_relationships",
+    "workflow_drafts",
 )
 EXPECTED_M0002_COLUMNS: Final = (
     ("dispositions", "execution_sequence", "bigint", "NO"),
@@ -76,7 +77,15 @@ EXPECTED_M0002_CONSTRAINTS: Final = (
     ),
 )
 MIGRATION_ID: Final = m0001_phase2_core.MIGRATION_ID
-LATEST_MIGRATION_ID: Final = m0002_execution_reconciliation.MIGRATION_ID
+LATEST_MIGRATION_ID: Final = m0004_workflow_drafts.MIGRATION_ID
+PREVIOUS_MIGRATION_ID: Final = m0003_ci_relationships.MIGRATION_ID
+ROLE_PASSWORD_FILES: Final = {
+    "dcim_assets_rw": "assets-db-password",
+    "dcim_cmdb_rw": "cmdb-db-password",
+    "dcim_api_ro": "api-db-password",
+    "dcim_analytics_ro": "analytics-db-password",
+    "dcim_workflow_rw": "workflow-db-password",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +97,46 @@ class MigrationError(RuntimeError):
     @override
     def __str__(self) -> str:
         return self.reason
+
+def redact(text: str, secrets: tuple[str, ...]) -> str:
+    """Remove credential values from text that can reach the terminal."""
+    for secret in secrets:
+        text = text.replace(secret, "***")
+    return text
+
+
+def role_password_context(directory: Path) -> dict[str, dict[str, str]]:
+    """Read the bootstrap role passwords after validating its complete inventory."""
+    try:
+        entries = tuple(directory.iterdir())
+    except OSError as error:
+        raise MigrationError("role-password directory is unavailable") from error
+    for entry in entries:
+        if entry.name not in SECRET_NAMES or entry.is_symlink() or not entry.is_file():
+            raise MigrationError("role-password directory contains an invalid entry")
+    try:
+        values = {
+            role: (directory / filename).read_text(encoding="utf-8").strip()
+            for role, filename in ROLE_PASSWORD_FILES.items()
+        }
+    except FileNotFoundError as error:
+        raise MigrationError("required role password file is missing") from error
+    except OSError as error:
+        raise MigrationError("required role password file is unavailable") from error
+    if not all(values.values()):
+        raise MigrationError("required role password file is empty")
+    return {"role_passwords": values}
+
+
+MigrationUp = Callable[..., str]
+
+
+def _migration_sql(migration: MigrationUp, context: dict[str, dict[str, str]] | None) -> str:
+    if not inspect.signature(migration).parameters:
+        return migration()
+    if context is None:
+        raise MigrationError("--role-password-dir is required for credential-aware migrations")
+    return migration(context)
 
 
 def _registry_exists() -> bool:
@@ -127,38 +176,56 @@ WHERE migration_id = {migration};
     return True
 
 
-def apply() -> int:
+def apply(role_password_dir: Path | None = None) -> int:
     """Apply every unrecorded migration transactionally."""
     applied = 0
+    context = role_password_context(role_password_dir) if role_password_dir else None
     migrations = (
         (MIGRATION_ID, m0001_phase2_core.up),
-        (LATEST_MIGRATION_ID, m0002_execution_reconciliation.up),
+        (m0002_execution_reconciliation.MIGRATION_ID, m0002_execution_reconciliation.up),
     )
     for migration_id, migration_up in migrations:
         if _is_applied(migration_id):
             continue
         migration = literal(migration_id)
         sql = (
-            f"BEGIN;\n{migration_up()}"
+            f"BEGIN;\n{_migration_sql(migration_up, context)}"
             "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
             f"VALUES ({migration}, CURRENT_TIMESTAMP);\nCOMMIT;\n"
         )
         _ = psql(sql)
         applied += 1
+    if role_password_dir is not None:
+        for migration_id, migration_up in (
+            (PREVIOUS_MIGRATION_ID, m0003_ci_relationships.up),
+            (LATEST_MIGRATION_ID, m0004_workflow_drafts.up),
+        ):
+            if _is_applied(migration_id):
+                continue
+            migration = literal(migration_id)
+            sql = (
+                f"BEGIN;\n{_migration_sql(migration_up, context)}"
+                "INSERT INTO phase2.schema_migrations (migration_id, applied_at)\n"
+                f"VALUES ({migration}, CURRENT_TIMESTAMP);\nCOMMIT;\n"
+            )
+            _ = psql(sql)
+            applied += 1
     return applied
 
 
 def rollback(migration_id: str) -> None:
     """Delete one known record and run its down migration atomically."""
-    if migration_id not in (MIGRATION_ID, LATEST_MIGRATION_ID):
+    down_migrations = {
+        MIGRATION_ID: m0001_phase2_core.down,
+        m0002_execution_reconciliation.MIGRATION_ID: m0002_execution_reconciliation.down,
+        PREVIOUS_MIGRATION_ID: m0003_ci_relationships.down,
+        LATEST_MIGRATION_ID: m0004_workflow_drafts.down,
+    }
+    if migration_id not in down_migrations:
         raise MigrationError("unknown migration ID")
     if not _is_applied(migration_id):
         raise MigrationError("migration is not applied")
-    migration_down = (
-        m0001_phase2_core.down
-        if migration_id == MIGRATION_ID
-        else m0002_execution_reconciliation.down
-    )
+    migration_down = down_migrations[migration_id]
     migration = literal(migration_id)
     sql = (
         "BEGIN;\nDELETE FROM phase2.schema_migrations\n"
@@ -279,28 +346,41 @@ ORDER BY constraint_item.table_name, constraint_item.constraint_name;
 
 def run(argv: list[str] | None = None) -> int:
     """Run one migration CLI command."""
-    arguments = sys.argv[1:] if argv is None else argv
-    if arguments == ["--verify"]:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("command", nargs="?")
+    parser.add_argument("migration_id", nargs="?")
+    parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--role-password-dir", type=Path)
+    arguments = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if arguments.verify:
         for table_name in verify():
             print(table_name)
         return 0
-    if arguments == ["apply"]:
-        print(f"{apply()} applied")
+    if arguments.command == "apply" and arguments.migration_id is None:
+        print(f"{apply(arguments.role_password_dir)} applied")
         return 0
-    if len(arguments) == 2 and arguments[0] == "rollback":
-        migration_id = arguments[1]
+    if arguments.command == "rollback" and arguments.migration_id is not None:
+        migration_id = arguments.migration_id
         rollback(migration_id)
         print(f"rolled back {migration_id}")
         return 0
-    raise MigrationError("expected apply, rollback <migration_id>, or --verify")
+    raise MigrationError("expected apply [--role-password-dir PATH], rollback <migration_id>, or --verify")
 
 
-def main() -> int:
+def main() -> int:  # noqa: BROAD_EXCEPT_OK
     """Translate expected migration failures into a clean nonzero result."""
+    secrets: tuple[str, ...] = ()
     try:
+        arguments = sys.argv[1:]
+        if "--role-password-dir" in arguments:
+            index = arguments.index("--role-password-dir")
+            if index + 1 < len(arguments):
+                secrets = tuple(
+                    role_password_context(Path(arguments[index + 1]))["role_passwords"].values()
+                )
         return run()
-    except (DatabaseCommandError, JsonExtractionError, MigrationError) as error:
-        print(f"phase2 migration failed: {error}", file=sys.stderr)
+    except Exception as error:
+        print(f"phase2 migration failed: {redact(str(error), secrets)}", file=sys.stderr)
         return 1
 
 

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class Stage12GateContractTests(unittest.TestCase):
-    def test_phase2_deps_creates_venv_and_uses_its_python_for_pydantic(self) -> None:
+    def test_phase2_deps_creates_venv_and_uses_its_python_for_pinned_dependencies(self) -> None:
         # Given: a fake externally-managed system Python that rejects pip and can
         # create an isolated venv whose interpreter records its invocations.
         with tempfile.TemporaryDirectory(prefix="task12-phase2-deps-") as temporary:
@@ -55,8 +55,8 @@ class Stage12GateContractTests(unittest.TestCase):
                 check=False,
             )
 
-            # Then: only venv creation uses the system interpreter; Pydantic is
-            # installed with the created venv interpreter at the exact pin.
+            # Then: only venv creation uses the system interpreter; both
+            # dependencies are installed with the created venv interpreter at exact pins.
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertTrue((phase2_venv / "bin" / "python").is_file())
             self.assertEqual(
@@ -65,7 +65,7 @@ class Stage12GateContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 venv_log.read_text(encoding="utf-8").splitlines(),
-                ["-m pip install pydantic==2.9.2"],
+                ["-m pip install pydantic==2.9.2 confluent-kafka==2.15.0"],
             )
 
     def test_phase2_test_fails_cleanly_when_venv_is_absent(self) -> None:
@@ -162,9 +162,9 @@ class Stage12GateContractTests(unittest.TestCase):
         expected = (
             "PHASE2_VENV ?= .venv",
             "PHASE2_PYTHON ?= $(PHASE2_VENV)/bin/python",
-            'phase2-deps:\n\t@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"\n\t$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2"',
+            'phase2-deps:\n\t@test -x "$(PHASE2_PYTHON)" || $(PYTHON) -m venv "$(PHASE2_VENV)"\n\t$(PHASE2_PYTHON) -m pip install "pydantic==2.9.2" "confluent-kafka==2.15.0"',
             "phase2-test:\n\t@test -x \"$(PHASE2_PYTHON)\" || { printf '%s\\n' 'Phase 2 environment unavailable; run make phase2-deps' >&2; exit 1; }\n\t@$(PHASE2_PYTHON) -c 'import importlib.util,sys; sys.exit(0) if importlib.util.find_spec(\"pydantic\") else (print(\"Pydantic unavailable; run make phase2-deps\", file=sys.stderr), sys.exit(1))'\n\t$(PHASE2_PYTHON) -m unittest discover -s tests/phase2 -p 'test_*.py' -v",
-            "phase2-check: foundation-up phase2-deps\n\t$(PHASE2_PYTHON) scripts/phase2/check.py",
+            "# foundation-up is required: kafka_host.sh fails closed unless dcim-build-kafka-1 exists.\nphase2-check: phase2-deps foundation-up\n\tscripts/phase2/kafka_host.sh -- $(PHASE2_PYTHON) scripts/phase2/check.py",
             "compile:\n\t$(PYTHON) -m compileall -q scripts tests contracts connectors",
         )
 

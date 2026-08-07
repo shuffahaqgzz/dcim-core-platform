@@ -52,7 +52,8 @@ The recipe must:
 
 No feature patch, source fork, scanner suppression, registry publication,
 Staging, Production, connected-source, or handover distribution is authorized.
-OD-06 remains OPEN.
+OD-06 is accepted as Apache-2.0 (ADR-0019), but that does not authorize derived
+image distribution.
 
 ## Options considered
 
@@ -95,8 +96,9 @@ fresh vulnerability scan constrain new supply-chain risk.
 
 The full-source binary can change the detected license inventory. Every
 category, count, and fingerprint must be revalidated comprehensively and must
-fail closed on any unreviewed change. This ADR is not legal advice, does not
-resolve OD-06, and permits neither publication nor distribution.
+fail closed on any unreviewed change. This ADR is not legal advice; OD-06's
+accepted Apache-2.0 repository license does not resolve runtime obligations or
+permit image publication or distribution.
 
 ## Migration and rollback
 
@@ -115,4 +117,5 @@ the named Prometheus volume, and reruns policy, smoke, and recovery checks.
 - official upstream publishes a clean compatible replacement;
 - publication, distribution, handover, Staging, Production, or connected-source
   use is requested;
-- OD-06 changes or a newer owner decision supersedes this ADR.
+- repository-license or runtime-obligation status changes, or a newer owner
+  decision supersedes this ADR.

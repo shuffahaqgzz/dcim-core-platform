@@ -36,7 +36,8 @@ subject to every build, test, evidence, and license constraint in this ADR.
 - Make every build input and output reproducible, attributable, reviewable, and
   public-safe.
 - Avoid claiming official upstream status for project-built artifacts.
-- Avoid silently resolving repository license decision OD-06.
+- Respect the accepted OD-06 Apache-2.0 repository license without conflating it
+  with independently reviewed runtime-image obligations.
 
 ## Decision
 
@@ -83,9 +84,10 @@ Each derived image must:
     public-safety gates as the official image it replaces.
 
 No derived image may use an upstream image name or imply upstream endorsement.
-No derived image may be pushed to a public or shared registry while OD-06 or the
-applicable upstream redistribution/source obligations remain unresolved. Local
-and ephemeral CI builds must not publish image layers or raw scan evidence.
+No derived image may be pushed to a public or shared registry while applicable
+upstream redistribution/source obligations remain unresolved. OD-06 was accepted
+as Apache-2.0 on 2026-07-27 (ADR-0019), but does not resolve those obligations.
+Local and ephemeral CI builds must not publish image layers or raw scan evidence.
 
 ### Patch boundary
 
@@ -144,11 +146,12 @@ Controls:
 
 ## License impact
 
-OD-06 remains OPEN. Upstream application, base-image, build-tool, and transitive
-license obligations apply independently of the repository license. Grafana OSS
-requires explicit AGPL review, including modified-source and distribution
-obligations. No derived image publication, handover distribution, or release
-claim is permitted until those obligations are reviewed and recorded.
+OD-06 is accepted as Apache-2.0 (ADR-0019). Upstream application, base-image,
+build-tool, and transitive license obligations apply independently of the
+repository license. Grafana OSS requires explicit AGPL review, including
+modified-source and distribution obligations. No derived image publication,
+handover distribution, or release claim is permitted until those obligations are
+reviewed and recorded.
 
 ## Resource and operational impact
 
@@ -186,4 +189,4 @@ Before implementation may close #10:
 - Trivy scanner or vulnerability DB changes materially;
 - a new Critical or fixable High finding appears;
 - image publication, Staging, Production, or handover distribution is requested;
-- OD-06 is resolved or a license obligation changes.
+- repository-license or runtime-obligation status changes.

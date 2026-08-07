@@ -35,6 +35,9 @@ except ModuleNotFoundError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DERIVED_IMAGE_COMPONENTS = {
+    "postgres", "kafka", "grafana", "prometheus", "postgres-exporter", "services",
+}
 COMPOSE_FILE = ROOT / "deploy/compose/dev-build/compose.yaml"
 ACCEPTANCE_OVERRIDE_NAME = "acceptance-compose.override.yaml"
 IMAGE_INVENTORY = ROOT / "deploy/compose/images.json"
@@ -46,6 +49,16 @@ LONG_RUNNING = (
 )
 MODE_LIMIT_SECONDS = {"fast": 300.0, "recovery": 900.0}
 ACTIVE_DEADLINE: float | None = None
+SMOKE_KAFKA_TOPIC = "dcim.synthetic.smoke.v1"
+ALLOWED_EXTERNAL_KAFKA_TOPICS = frozenset(
+    {
+        SMOKE_KAFKA_TOPIC,
+        "dcim.raw.synthetic",
+        "dcim.normalized.events",
+        "dcim.enriched.events",
+        "dcim.dlq.synthetic",
+    }
+)
 
 
 class SmokeFailure(RuntimeError):
@@ -181,16 +194,17 @@ def foundation_image_digests(root: Path) -> dict[str, str]:
         ).hexdigest():
             raise ValueError("derived image lock license disposition digest mismatch")
         locked_images = lock["images"]
-        if not isinstance(locked_images, list) or len(locked_images) != 5:
+        if (
+            not isinstance(locked_images, list)
+            or len(locked_images) != len(DERIVED_IMAGE_COMPONENTS)
+        ):
             raise ValueError("derived image lock inventory mismatch")
         derived = {
             str(item["component"]): str(item["image_id"])
             for item in locked_images
             if isinstance(item, dict)
         }
-        if set(derived) != {
-            "postgres", "kafka", "grafana", "prometheus", "postgres-exporter",
-        }:
+        if set(derived) != DERIVED_IMAGE_COMPONENTS:
             raise ValueError("derived image digest allowlist mismatch")
         if any(not re.fullmatch(r"sha256:[0-9a-f]{64}", value) for value in derived.values()):
             raise ValueError("derived image digest invalid")
@@ -329,8 +343,12 @@ def kafka_topic_inventory() -> None:
     internal = sorted(topic for topic in topics if topic.startswith("__"))
     non_internal = sorted(topic for topic in topics if topic and not topic.startswith("__"))
     print(f"foundation-kafka: managed_internal_topics={len(internal)}")
-    if non_internal != ["dcim.synthetic.smoke.v1"]:
-        raise SmokeFailure(f"unexpected non-internal Kafka topics: {non_internal}")
+    external = set(non_internal)
+    unexpected = external - ALLOWED_EXTERNAL_KAFKA_TOPICS
+    if unexpected:
+        raise SmokeFailure(f"unexpected non-internal Kafka topics: {sorted(unexpected)}")
+    if SMOKE_KAFKA_TOPIC not in external:
+        raise SmokeFailure("Kafka smoke topic missing")
 
 
 def kafka_next_offset() -> int:

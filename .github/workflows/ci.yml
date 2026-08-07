@@ -105,6 +105,7 @@ jobs:
       - name: Run sequential synthetic Phase 2 gate
         env:
           DCIM_RUNTIME_ROOT: ${{ runner.temp }}/dcim-runtime
+        # phase2-check depends on foundation-up (Kafka must exist for kafka_host.sh).
         run: make phase2-check
 
       - name: Stop synthetic foundation and preserve evidence for job lifetime

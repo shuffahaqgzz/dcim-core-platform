@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "recipes_sha256": "9b95013ce6e21e8b140ef7198e39f04557689e5164ef919970ce52b561fa5af9",
+  "recipes_sha256": "ff66477c9cf7a426b1968cc693d0ae0d3bd500bb4affc7ba9f4ac1f55d7c5a78",
   "decision": {
     "owner": "shuffahaqgzz",
     "date": "2026-07-22",
@@ -8,7 +8,8 @@
     "scope": "synthetic dcim-build local Development only",
     "publication": false,
     "distribution": false,
-    "od_06": "OPEN"
+    "od_06": "ACCEPTED-APACHE-2.0",
+    "od_06_accepted_date": "2026-07-27"
   },
   "dispositions": [
     {
@@ -107,6 +108,27 @@
       "category": "unknown",
       "reviewed_count": 266,
       "inventory_sha256": "da31a4708e12989c10af85dcad4f1ba056b24ea83eaf89466c64d825c3236a47",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "dcim-services",
+      "category": "reciprocal",
+      "reviewed_count": 3,
+      "inventory_sha256": "e417dc1987f008fbffa84eafbad26733606c308b645cfcdfcfb2dd78c837818f",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "dcim-services",
+      "category": "restricted",
+      "reviewed_count": 19,
+      "inventory_sha256": "be79de288af506e37538803f10ef41f403cc869c8cd2d4c0f92545a16557af4d",
+      "disposition": "accepted-local-development-only"
+    },
+    {
+      "component": "dcim-services",
+      "category": "unknown",
+      "reviewed_count": 8,
+      "inventory_sha256": "cde6f1f8a7991c705cdfc8339cf7637dd133600ca0256623269b024303c9a370",
       "disposition": "accepted-local-development-only"
     }
   ],

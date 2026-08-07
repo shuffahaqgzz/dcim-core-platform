@@ -5,14 +5,18 @@ Public development repository untuk DCIM Core Platform: fondasi ingestion, Asset
 ## Status saat ini
 
 - Phase: **Phase 0 COMPLETE / DEV-APPROVED — Repository Safety, Governance, dan Dev Entry Readiness**.
-- Overall Development: **CONDITIONAL GO**; open conditions tetap authoritative.
-- Maturity: **Prototype/Alpha**; bukan Production-ready.
+- Phase 1: **DEV-APPROVED (bersyarat)** — Compact Infrastructure Foundation sintetis `dcim-build` (2026-08-03); issue #9 closure gates terpisah.
+- Phase 2: **DEV-APPROVED (bounded)** — 2026-08-07; synthetic P1/P2 vertical slice, Kafka stream, p95 latency, live NOC; lihat [owner disposition](docs/evidence/2026-08-07-phase2-owner-disposition.md).
+- Phase 3: **in progress** — first component slice delivered (bukan Phase 3 complete).
+- Conditions: **C-02, C-06, C-07, C-09 CLOSED**; C-01, C-03, C-04, C-05 OPEN; C-08, C-10 DEFERRED — [CONDITIONS-REGISTER](docs/governance/CONDITIONS-REGISTER.md) tetap otoritatif.
+- Overall Development: **CONDITIONAL GO**; open conditions yang tersisa tetap authoritative.
+- Maturity: **Prototype/Alpha**; belum siap untuk rilis Production.
 - Owner: `shuffahaqgzz`.
 - Operating model: Solo Development, controlled handover, multi-team Staging, governed Production.
-- Current milestone: **Phase 2 first synthetic P1/P2 vertical slice — Development
-  evidence**. The batch path and `phase2-check` gate are recorded in the public
-  evidence package; issue #21, open conditions, remote checks, and owner
-  disposition remain authoritative and pending.
+- Current milestone: Phase 2 is DEV-APPROVED (bounded); Phase 3 first slice is
+  in progress. Issue #21 is authorized for close per the 2026-08-07 disposition
+  (GitHub close is a separate mutation). Remaining open conditions and any
+  remote/merge checks stay authoritative for their own scopes.
 
 ## Public code, private runtime
 
@@ -61,4 +65,6 @@ docs/phase0/          preflight, gate, evidence, dan handover
 - [Phase 0 Checklist](docs/phase0/phase0-checklist.md), [Dev Entry Gate](docs/phase0/dev-entry-gate.md), dan [Evidence Index](docs/phase0/evidence-index.md)
 - [Staging Handover Contract](docs/phase0/staging-handover-contract.md)
 
-No open-source license telah dipilih. Public visibility tidak memberikan reuse rights; OD-06 tetap OPEN.
+Repository ini dilisensikan di bawah [Apache-2.0](LICENSE); lihat juga
+[NOTICE](NOTICE). Komponen runtime tetap memiliki lisensi dan kewajiban
+independen yang harus ditinjau sebelum deployment atau distribution.

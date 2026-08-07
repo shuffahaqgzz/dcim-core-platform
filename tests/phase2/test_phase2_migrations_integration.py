@@ -37,6 +37,19 @@ EXPECTED_COLUMNS = [
         ],
     },
     {
+        "table_name": "ci_relationships",
+        "columns": [
+            "relationship_id",
+            "from_ci",
+            "to_ci",
+            "relationship_type",
+            "valid_from",
+            "valid_to",
+            "source",
+            "created_at",
+        ],
+    },
+    {
         "table_name": "cis",
         "columns": [
             "ci_id",
@@ -96,6 +109,10 @@ EXPECTED_COLUMNS = [
     {
         "table_name": "schema_migrations",
         "columns": ["migration_id", "applied_at"],
+    },
+    {
+        "table_name": "workflow_drafts",
+        "columns": ["draft_id", "created_at", "event_id", "draft_type", "payload", "status", "audit"],
     },
 ]
 
@@ -157,33 +174,35 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
         ) / "dcim-core-platform/runtime"
         os.environ.setdefault("DCIM_RUNTIME_ROOT", str(default_root))
         os.environ.setdefault("COMPOSE_PROJECT_NAME", "dcim-build")
+        runtime_root = Path(os.environ["DCIM_RUNTIME_ROOT"])
         try:
             db.query_json("SELECT json_build_object('ready', true)::text;")
         except db.DatabaseCommandError as error:
             raise unittest.SkipTest(f"Compose PostgreSQL unavailable: {error}") from error
-        migrate.apply()
+        migrate.apply(runtime_root / "dev-build/secrets")
 
     def test_apply_when_repeated_reports_zero_and_exact_inventory(self) -> None:
         # Given / When
-        applied = migrate.apply()
+        applied = migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets")
         inventory = migrate.verify()
 
         # Then
         self.assertEqual(0, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, inventory)
 
-    def test_fresh_apply_when_schema_is_empty_applies_two_then_none(self) -> None:
+    def test_fresh_apply_when_schema_is_empty_applies_four_then_none(self) -> None:
         # Given
         if business_row_counts() != [EMPTY_BUSINESS_ROWS]:
             self.skipTest("shared Phase 2 data exists; destructive fresh apply not safe")
         migrate.rollback(migrate.MIGRATION_ID)
 
         # When
-        first_applied = migrate.apply()
-        second_applied = migrate.apply()
+        secrets = Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets"
+        first_applied = migrate.apply(secrets)
+        second_applied = migrate.apply(secrets)
 
         # Then
-        self.assertEqual(2, first_applied)
+        self.assertEqual(4, first_applied)
         self.assertEqual(0, second_applied)
         self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
@@ -233,7 +252,7 @@ class PostgreSqlMigrationIntegrationTests(unittest.TestCase):
             self.assertIn("phase2 migration failed:", stderr.getvalue())
             self.assertEqual(before, migration_registry())
         finally:
-            self.assertEqual(2, migrate.apply())
+            self.assertEqual(4, migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets"))
             self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
     def test_verify_when_schema_is_fully_migrated_passes(self) -> None:
@@ -287,6 +306,18 @@ ORDER BY source.table_name, source.column_name;
         self.assertEqual(
             [
                 {
+                    "table_name": "ci_relationships",
+                    "column_name": "from_ci",
+                    "foreign_table": "cis",
+                    "foreign_column": "ci_id",
+                },
+                {
+                    "table_name": "ci_relationships",
+                    "column_name": "to_ci",
+                    "foreign_table": "cis",
+                    "foreign_column": "ci_id",
+                },
+                {
                     "table_name": "cis",
                     "column_name": "asset_id",
                     "foreign_table": "assets",
@@ -309,6 +340,12 @@ ORDER BY source.table_name, source.column_name;
                     "column_name": "run_id",
                     "foreign_table": "run_manifests",
                     "foreign_column": "run_id",
+                },
+                {
+                    "table_name": "workflow_drafts",
+                    "column_name": "event_id",
+                    "foreign_table": "events",
+                    "foreign_column": "event_id",
                 },
             ],
             rows,
@@ -357,6 +394,10 @@ ORDER BY relation.relname, item.conname;
                     ),
                 },
                 {
+                    "table_name": "ci_relationships",
+                    "definition": "CHECK ((relationship_type = ANY (ARRAY['depends_on', 'runs_on', 'connected_to', 'contains', 'hosted_on', 'part_of', 'monitors'])))",
+                },
+                {
                     "table_name": "dispositions",
                     "definition": "CHECK ((execution_sequence >= 0))",
                 },
@@ -374,6 +415,14 @@ ORDER BY relation.relname, item.conname;
                 {
                     "table_name": "run_manifests",
                     "definition": "CHECK ((last_execution_sequence >= 0))",
+                },
+                {
+                    "table_name": "workflow_drafts",
+                    "definition": "CHECK ((draft_type = ANY (ARRAY['notification', 'ticket_draft', 'approval_request'])))",
+                },
+                {
+                    "table_name": "workflow_drafts",
+                    "definition": "CHECK ((status = ANY (ARRAY['draft', 'simulated_approved', 'simulated_rejected'])))",
                 },
             ],
             rows,

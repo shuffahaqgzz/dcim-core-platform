@@ -13,7 +13,7 @@ Nomor ADR existing dipertahankan agar accepted history dan ADR 0007 milik owner 
 | Hermes read-only shadow after gate | [ADR-0009](0009-hermes-read-only-shadow-after-gate.md) |
 | No direct device/OT action | [ADR-0005](0005-dry-run-automation.md) |
 | Solo Dev to multi-team handover | [ADR-0010](0010-solo-dev-to-multiteam-handover.md) |
-| Repository license pending | [ADR-0011](0011-public-repository-license-decision-pending.md) (superseded by ADR-0019) |
+| Repository license (OD-06 accepted — Apache-2.0) | [ADR-0019](0019-apache-2-0-repository-license.md) (supersedes [ADR-0011](0011-public-repository-license-decision-pending.md)) |
 | Internal Grafana Development access | [ADR-0012](0012-internal-grafana-development-access.md) |
 | Derived hardened foundation images | [ADR-0013](0013-derived-hardened-foundation-images.md) |
 | Official release binary and source provenance | [ADR-0014](0014-official-release-binary-source-provenance.md) |

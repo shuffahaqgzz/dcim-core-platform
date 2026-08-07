@@ -55,7 +55,7 @@ services:
       KAFKA_NODE_ID: "1"
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.0.2.2:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -66,7 +66,7 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_MESSAGE_MAX_BYTES: "1048576"
       KAFKA_REPLICA_FETCH_MAX_BYTES: "1048576"
-      KAFKA_LOG_RETENTION_HOURS: "24"
+      KAFKA_LOG_RETENTION_HOURS: "720"
       KAFKA_LOG_SEGMENT_BYTES: "268435456"
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_JMX_HOSTNAME: kafka
@@ -77,7 +77,9 @@ services:
       - /tmp:size=128m,mode=1777
       - /opt/kafka/config:size=32m,uid=1000,gid=1000,mode=0750
       - /opt/kafka/logs:size=256m,uid=1000,gid=1000,mode=0750
-    networks: [data]
+    networks:
+      data:
+        ipv4_address: 192.0.2.2
     healthcheck:
       <<: *healthcheck
       test: [CMD-SHELL, "/opt/kafka/bin/kafka-metadata-quorum.sh --bootstrap-server localhost:9092 describe --status >/dev/null"]
@@ -142,7 +144,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.time=30d
       - --storage.tsdb.retention.size=20GB
       - --web.enable-lifecycle
     volumes:
@@ -190,6 +192,173 @@ services:
     deploy:
       resources:
         limits: {cpus: "1", memory: 2G}
+
+  asset-repository:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [core]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_asset_repository.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_assets_rw
+      PGPASSWORD_FILE: /run/secrets/assets-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/asset-repository/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [assets-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  cmdb:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [core]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_cmdb.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_cmdb_rw
+      PGPASSWORD_FILE: /run/secrets/cmdb-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/cmdb/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [cmdb-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  api:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [dashboard]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_api.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      ASSET_REPOSITORY_URL: http://asset-repository:8000
+      CMDB_URL: http://cmdb:8000
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_api_ro
+      PGPASSWORD_FILE: /run/secrets/api-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/api/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [api-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  analytics:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [core]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_analytics.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_analytics_ro
+      PGPASSWORD_FILE: /run/secrets/analytics-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/analytics/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [analytics-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  workflow:
+    <<: *long-running
+    image: ${DCIM_SERVICES_IMAGE:?run make foundation-images-qualify}
+    profiles: [workflow]
+    user: "10001:10001"
+    command: ["python3","-m","uvicorn","--factory","dcim_workflow.main:create_app","--host","0.0.0.0","--port","8000"]
+    environment:
+      DCIM_AUTH_REQUIRED: "true"
+      INTERNAL_API_TOKEN_FILE: /run/secrets/internal-api-token
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: dcim_foundation
+      PGUSER: dcim_workflow_rw
+      PGPASSWORD_FILE: /run/secrets/workflow-db-password
+      PORT: "8000"
+      PYTHONPATH: /opt/dcim/services/workflow/src:/opt/dcim/contracts/python:/opt/dcim/scripts
+    secrets: [workflow-db-password, internal-api-token]
+    volumes:
+      - ../../../services:/opt/dcim/services:ro
+      - ../../../contracts:/opt/dcim/contracts:ro
+      - ../../../scripts:/opt/dcim/scripts:ro
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [data, observability]
+    sysctls: {net.ipv4.ip_forward: "0"}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').close()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
 
   postgres-smoke:
     image: ${DCIM_POSTGRES_IMAGE:?run make foundation-images-qualify}
@@ -267,6 +436,10 @@ networks:
   data:
     name: dcim-build-data
     internal: true
+    ipam:
+      config:
+        - subnet: 192.0.2.0/24
+          ip_range: 192.0.2.128/25
   observability:
     name: dcim-build-observability
     internal: true
@@ -290,3 +463,15 @@ secrets:
     file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/grafana-admin-user
   grafana-admin-password:
     file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/grafana-admin-password
+  assets-db-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/assets-db-password
+  cmdb-db-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/cmdb-db-password
+  api-db-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/api-db-password
+  analytics-db-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/analytics-db-password
+  workflow-db-password:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/workflow-db-password
+  internal-api-token:
+    file: ${DCIM_RUNTIME_ROOT:?set external runtime root}/dev-build/secrets/internal-api-token

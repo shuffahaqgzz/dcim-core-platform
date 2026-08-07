@@ -89,6 +89,12 @@ class FoundationLifecycleTests(unittest.TestCase):
                 "dev-build/secrets/postgres-smoke-password",
                 "dev-build/secrets/grafana-admin-user",
                 "dev-build/secrets/grafana-admin-password",
+                "dev-build/secrets/assets-db-password",
+                "dev-build/secrets/cmdb-db-password",
+                "dev-build/secrets/api-db-password",
+                "dev-build/secrets/analytics-db-password",
+                "dev-build/secrets/workflow-db-password",
+                "dev-build/secrets/internal-api-token",
                 "dev-build/runtime.env",
             }
             actual = {
@@ -222,6 +228,7 @@ class FoundationLifecycleTests(unittest.TestCase):
                     f"DCIM_GRAFANA_IMAGE={image_id}",
                     f"DCIM_PROMETHEUS_IMAGE={image_id}",
                     f"DCIM_POSTGRES_EXPORTER_IMAGE={image_id}",
+                    f"DCIM_SERVICES_IMAGE={image_id}",
                 ]) + "\n",
                 encoding="utf-8",
             )

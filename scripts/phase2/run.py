@@ -17,10 +17,11 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import json
 from pathlib import Path
 import sys
-from typing import Final
+from typing import Final, Protocol
 
 from pydantic import ValidationError
 
@@ -66,6 +67,23 @@ DURABILITY_GUARANTEE: Final = (
     "manifest source_count against persisted dispositions per execution "
     "(scripts/phase2/reconcile.py)"
 )
+NORMALIZED_TOPIC: Final = "dcim.normalized.events"
+DLQ_TOPIC: Final = "dcim.dlq.synthetic"
+STREAM_FLUSH_TIMEOUT_SECONDS: Final = 30.0
+
+
+class StreamProducer(Protocol):
+    """Producer surface the stream branch needs from its Kafka boundary."""
+
+    def produce_envelope(
+        self,
+        topic: str,
+        key: str | None,
+        value: bytes,
+        headers: Mapping[str, str],
+    ) -> None: ...
+
+    def flush(self, timeout: float) -> None: ...
 
 
 def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, JsonValue]:
@@ -159,18 +177,150 @@ def execute(run_id: str, fixtures_dir: Path, fixed_clock: str) -> dict[str, Json
     }
 
 
+def _publish_stream_dlq(
+    producer: StreamProducer,
+    path: Path,
+    run_id: str,
+    reason: str,
+    detail: str,
+) -> None:
+    """Publish one rejected raw input to the synthetic DLQ with its reason."""
+    producer.produce_envelope(
+        topic=DLQ_TOPIC,
+        key=None,
+        value=path.read_bytes(),
+        headers={
+            "reason": reason,
+            "detail": detail,
+            "source_fixture": path.name,
+            "source_run_id": run_id,
+        },
+    )
+
+
+def execute_stream(
+    run_id: str, fixtures_dir: Path, fixed_clock: str
+) -> dict[str, int]:
+    """Validate fixtures and publish them; the consumer owns persistence.
+
+    The manifest is built in memory only: stream mode performs no
+    ``begin_execution`` and no database writes at all. Valid envelopes go to
+    ``dcim.normalized.events``; every adaptation or validation failure goes to
+    ``dcim.dlq.synthetic`` with the batch quarantine reason vocabulary.
+    ``confluent_kafka`` is imported lazily by this branch only.
+    """
+    from contracts.python.dcim_contracts.envelope import Envelope  # noqa: PLC0415
+    from scripts.phase2.kafka_producer import (  # noqa: PLC0415
+        KafkaEnvelopeProducer,
+    )
+
+    manifest = build_manifest(run_id, fixtures_dir, fixed_clock, ROOT)
+    producer: StreamProducer = KafkaEnvelopeProducer()
+    ledger = DispositionLedger()
+
+    for input_ordinal, path in enumerate(input_paths(manifest, fixtures_dir)):
+        ledger.record("received")
+        candidate: dict[str, JsonValue] = {}
+        try:
+            candidate = dict(adapt_input(path, fixtures_dir, fixed_clock))
+            envelope = Envelope.model_validate(candidate, strict=True)
+        except KillSwitchEngaged:
+            _publish_stream_dlq(
+                producer,
+                path,
+                run_id,
+                "kill_switch_engaged",
+                "kill_switch_engaged before fixture processing",
+            )
+            ledger.record("quarantined")
+            raise
+        except RunnerInputError as error:
+            _publish_stream_dlq(
+                producer,
+                path,
+                run_id,
+                "schema_invalid",
+                f"{error.error_type}:{error.detail}",
+            )
+            ledger.record("quarantined")
+            continue
+        except ValidationError as error:
+            validation_types = sorted(
+                {str(item["type"]) for item in error.errors(include_url=False)}
+            )
+            reason = (
+                "payload_invalid"
+                if "payload_invalid" in validation_types
+                else "schema_invalid"
+            )
+            _publish_stream_dlq(
+                producer, path, run_id, reason, ",".join(validation_types)
+            )
+            ledger.record("quarantined")
+            continue
+        except Exception as error:  # noqa: BROAD_EXCEPT_OK
+            _publish_stream_dlq(
+                producer,
+                path,
+                run_id,
+                "unexpected_input_error",
+                type(error).__name__,
+            )
+            ledger.record("quarantined")
+            continue
+        canonical = envelope.model_dump(mode="json", round_trip=True)
+        producer.produce_envelope(
+            topic=NORMALIZED_TOPIC,
+            key=envelope.event_id,
+            value=json.dumps(
+                canonical,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode("utf-8"),
+            headers={
+                "schema_version": envelope.schema_version,
+                "source_run_id": run_id,
+                "input_ordinal": str(input_ordinal),
+            },
+        )
+        ledger.record("accepted")
+
+    producer.flush(STREAM_FLUSH_TIMEOUT_SECONDS)
+    ledger.assert_balanced()
+    return {
+        "received": ledger.received,
+        "published": ledger.accepted,
+        "dlq": ledger.quarantined,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--fixtures-dir", required=True, type=Path)
     parser.add_argument("--fixed-clock", required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("batch", "stream"),
+        default="batch",
+        help="batch persists via the frozen claim path; stream only publishes",
+    )
     return parser
 
 
 def run(argv: list[str] | None = None) -> int:
     """Parse the exact CLI contract, execute, and print success JSON."""
     arguments = _parser().parse_args(argv)
-    summary = execute(arguments.run_id, arguments.fixtures_dir, arguments.fixed_clock)
+    if arguments.mode == "stream":
+        summary: dict[str, JsonValue] = execute_stream(
+            arguments.run_id, arguments.fixtures_dir, arguments.fixed_clock
+        )
+    else:
+        summary = execute(
+            arguments.run_id, arguments.fixtures_dir, arguments.fixed_clock
+        )
     print(
         json.dumps(
             summary,

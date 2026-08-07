@@ -51,6 +51,12 @@ PROTECTED_SECRET_NAMES = (
     "postgres-smoke-password",
     "grafana-admin-user",
     "grafana-admin-password",
+    "assets-db-password",
+    "cmdb-db-password",
+    "api-db-password",
+    "analytics-db-password",
+    "workflow-db-password",
+    "internal-api-token",
 )
 
 REQUIRED_BLOCKS = (

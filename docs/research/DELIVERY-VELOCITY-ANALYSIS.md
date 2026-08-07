@@ -40,12 +40,12 @@ Core platform repo dibuat 2026-07-16. Dalam 12 hari, 16 mainline commits diisi o
 
 ### 3.2 Open Decisions Block Service Implementation
 
-Dua keputusan strategis masih open:
+Dua keputusan strategis telah diterima pada 2026-07-28:
 
-- **OD-01 CMDB implementation:** Apakah custom PostgreSQL, iTop, atau NetBox? Service code `services/cmdb/README.md` masih placeholder.
-- **OD-07 Long-term service language/framework:** Python, Go, atau TypeScript? Tanpa ini, semua service (Asset, CMDB, API, Analytics, Workflow, Web) tidak bisa mulai.
+- **OD-01 CMDB implementation:** custom PostgreSQL CMDB baseline is selected in ADR-0007. Service code `services/cmdb/README.md` remains a placeholder.
+- **OD-07 Long-term service language/framework:** Python/FastAPI with Pydantic v2 is selected for backend services in ADR-0024; React + TypeScript + Vite remains the frontend stack.
 
-**Impact:** Meskipun wiki dan ingestion sudah matang, core platform tidak bisa melanjutkan dari fondasi ke service layer karena keputusan arsitektur belum final. Ini adalah **analysis paralysis** di level owner decision.
+**Impact:** The owner-decision blocker is removed. Remaining delivery delay is execution of the service backlog and preserving the accepted boundaries, rather than analysis paralysis.
 
 ### 3.3 Documentation vs Code Chasm
 
@@ -108,14 +108,14 @@ Data ingestion repo menyimpan hardcoded password untuk SNMP, ES, PostgreSQL, iTo
 ### Phase 1 (Foundation)
 - **Durasi:** ~10 hari (2026-07-20 → 2026-07-27, masih open).
 - **Karakter:** 4 foundation fix commits, 13 review branches, 7 backup branches.
-- **Hasil:** Conditional GO; remediation #20 dan #21 masih open.
+- **Hasil:** Conditional GO; remediation #20 remains open, while issue #21 has delivered synthetic vertical-slice evidence pending owner disposition.
 
 ### Phase 2 (First Vertical Slice)
-- **Durasi:** Belum dimulai dengan stabil.
-- **Karakter:** 63 commit dalam 1 hari di branch unstable.
-- **Hasil:** Issue #21 open.
+- **Durasi:** Synthetic Development vertical slice delivered 2026-08-02; owner disposition for issue #21 remains pending.
+- **Karakter:** P1/P2 evidence package and `phase2-check` gate are recorded on `feat/phase2-vertical-slice`; the earlier unstable branch is historical.
+- **Hasil:** Evidence delivered; issue #21 remains open for owner disposition.
 
-**Kesimpulan:** Phase 1 memakan waktu lebih dari 3x estimasi karena gate remediation; Phase 2 belum stabil.
+**Kesimpulan:** Phase 1 memakan waktu lebih dari 3x estimasi karena gate remediation; the Phase 2 synthetic vertical slice is delivered, with issue closure pending owner disposition.
 
 ---
 
@@ -146,8 +146,8 @@ Data ingestion repo menyimpan hardcoded password untuk SNMP, ES, PostgreSQL, iTo
 ## 7. Recommendations to Accelerate
 
 ### 7.1 Immediate (Week 1)
-1. **Lock OD-01 and OD-07.** Tanpa ini, semua service code tertahan.
-2. **Freeze Phase 2 scope.** Hanya P1 server health → dashboard; jangan menambahkan use case.
+1. ~~**Lock OD-01 and OD-07.** Tanpa ini, semua service code tertahan.~~ **[COMPLETED]** Both decisions were accepted 2026-07-28; implement against ADR-0007 and ADR-0024.
+2. ~~**Freeze Phase 2 scope.** Hanya P1 server health → dashboard; jangan menambahkan use case.~~ **[COMPLETED]** Synthetic P1/P2 vertical-slice evidence was delivered 2026-08-02; retain that bounded scope pending owner disposition for #21.
 3. **Tutup PR #22 dan issue #20.** Terima “good enough” foundation; jangan chase latest image findings.
 
 ### 7.2 Short-Term (Weeks 2–4)
@@ -164,7 +164,7 @@ Data ingestion repo menyimpan hardcoded password untuk SNMP, ES, PostgreSQL, iTo
 ### 7.4 Process Changes
 11. **Stop “AI agent handoff” model for critical decisions.** Keputusan arsitektur (CMDB, language, SOAR) harus oleh human owner.
 12. **Use evidence, not aspiration.** Setiap “production ready” claim harus diverifikasi oleh CI + test + safety scan.
-13. **Limit WIP.** Jangan buka Phase 2 branch sebelum Phase 1 evidence accepted.
+13. **Limit WIP.** Do not broaden the delivered Phase 2 vertical slice until #21 receives owner disposition and remaining foundation remediation is resolved.
 
 ---
 
@@ -172,8 +172,8 @@ Data ingestion repo menyimpan hardcoded password untuk SNMP, ES, PostgreSQL, iTo
 
 Jika rekomendasi di atas dijalankan:
 
-- **Foundation closure:** 1–2 minggu.
-- **First vertical slice stabil:** 2–4 minggu.
+- **Foundation closure:** dependent on remediation #20 and owner disposition for #21.
+- **First vertical slice stabil:** **[COMPLETED]** synthetic Development evidence delivered 2026-08-02; no Production-readiness claim is implied.
 - **CI/CD + credential cleanup:** 2–3 minggu.
 - **Integration velocity:** meningkat 2–3x karena rework loop berkurang.
 

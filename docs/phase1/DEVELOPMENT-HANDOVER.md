@@ -25,7 +25,7 @@ pending at publication time.
 | 3 | Code review confirms standards and security boundary | Candidate review evidence; exact final issue #9 diff/head review pending | No connector, control, privileged, or bridge paths identified in the candidate; final pushed-head review remains required |
 | 4 | Public-safe evidence records allowlisted fields only | `scripts/foundation_evidence_summary.py`; `tests/test_foundation_evidence_summary.py` | 13 tests validate allowlist enforcement |
 | 5 | Runbooks document lifecycle, recovery, failure, Grafana, limitations | `docs/phase1/FOUNDATION-RUNBOOK.md` | Covers all required sections |
-| 6 | Handover PR-ready candidate; C-03, C-05, C-07, OD-06 unchanged | This document; conditions register unchanged | No condition status modified; owner disposition remains pending |
+| 6 | Handover PR-ready candidate; C-03, C-05, and C-07 unchanged | This document; conditions register unchanged | No condition status modified; OD-06 is accepted separately by ADR-0019 |
 
 ## Changed files
 
@@ -48,7 +48,7 @@ pending at publication time.
 | C-03 | OPEN | Structural separation advanced by foundation design; not closed |
 | C-05 | OPEN | Demo plane remains non-executable; not affected |
 | C-07 | OPEN | Resource/retention evidence advanced by smoke and recovery; not closed |
-| OD-06 | OPEN | Repository license decision unchanged |
+| OD-06 | ACCEPTED 2026-07-27 | Apache-2.0 per ADR-0019; runtime obligations remain independently reviewed |
 
 No condition status was changed by this work. Only the owner may change
 condition status.
@@ -104,8 +104,8 @@ This handover does not claim:
 
 1. Derived hardened images (ADR-0013/0014) remain local Development artifacts.
    Clean official upstream images are preferred replacements.
-2. OD-06 (repository license) remains OPEN. No publication, distribution, or
-   release claim is permitted.
+2. OD-06 (repository license) is accepted as Apache-2.0 per ADR-0019. This does
+   not authorize derived-image publication, distribution, or a release claim.
 3. Grafana OSS AGPL obligations require explicit review before any distribution.
 4. Docker Desktop and remote-daemon behavior are not claimed.
 

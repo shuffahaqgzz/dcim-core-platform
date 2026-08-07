@@ -37,7 +37,10 @@ def write_image_lock(plane: Path) -> None:
             "images": [
                 {"component": component, "image_id": f"sha256:{index:064x}"}
                 for index, component in enumerate(
-                    ("postgres", "kafka", "grafana", "prometheus", "postgres-exporter"),
+                    (
+                        "postgres", "kafka", "grafana", "prometheus",
+                        "postgres-exporter", "services",
+                    ),
                     start=1,
                 )
             ],
@@ -83,6 +86,35 @@ def write_inspection_only_docker(path: Path) -> None:
 
 
 class FoundationSmokeContractTests(unittest.TestCase):
+    def test_kafka_inventory_allows_phase2_topics_with_smoke_topic(self) -> None:
+        topics = "\n".join(sorted(FOUNDATION_SMOKE.ALLOWED_EXTERNAL_KAFKA_TOPICS))
+
+        with mock.patch.object(FOUNDATION_SMOKE, "compose", return_value=topics):
+            FOUNDATION_SMOKE.kafka_topic_inventory()
+
+    def test_kafka_inventory_rejects_unexpected_external_topic(self) -> None:
+        topics = "\n".join(
+            (*FOUNDATION_SMOKE.ALLOWED_EXTERNAL_KAFKA_TOPICS, "dcim.unexpected")
+        )
+
+        with (
+            mock.patch.object(FOUNDATION_SMOKE, "compose", return_value=topics),
+            self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "unexpected"),
+        ):
+            FOUNDATION_SMOKE.kafka_topic_inventory()
+
+    def test_kafka_inventory_requires_smoke_topic(self) -> None:
+        topics = "\n".join(
+            FOUNDATION_SMOKE.ALLOWED_EXTERNAL_KAFKA_TOPICS
+            - {FOUNDATION_SMOKE.SMOKE_KAFKA_TOPIC}
+        )
+
+        with (
+            mock.patch.object(FOUNDATION_SMOKE, "compose", return_value=topics),
+            self.assertRaisesRegex(FOUNDATION_SMOKE.SmokeFailure, "smoke topic missing"),
+        ):
+            FOUNDATION_SMOKE.kafka_topic_inventory()
+
     def test_normal_compose_prefix_rejects_override(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             runtime_root = Path(directory) / "runtime"
@@ -287,7 +319,7 @@ class FoundationSmokeContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 {"grafana", "jmx-exporter-java-runtime", "kafka", "postgres",
-                 "postgres-exporter", "prometheus"},
+                 "postgres-exporter", "prometheus", "services"},
                 set(evidence["image_digests"]),
             )
             serialized = output.read_text(encoding="utf-8")

@@ -28,7 +28,8 @@ def license_disposition_manifest() -> dict[str, object]:
             "scope": "synthetic dcim-build local Development only",
             "publication": False,
             "distribution": False,
-            "od_06": "OPEN",
+            "od_06": "ACCEPTED-APACHE-2.0",
+            "od_06_accepted_date": "2026-07-27",
         },
         "dispositions": [
             {
@@ -40,7 +41,7 @@ def license_disposition_manifest() -> dict[str, object]:
             }
             for component in (
                 "postgresql", "apache-kafka", "grafana-oss", "postgresql-exporter",
-                "prometheus", "jmx-exporter-java-runtime",
+                "prometheus", "jmx-exporter-java-runtime", "dcim-services",
             )
         ],
         "revalidation_triggers": [
@@ -71,6 +72,16 @@ class FoundationSupplyChainTests(unittest.TestCase):
             foundation_supply_chain.validate_license_disposition_manifest(
                 unknown_field, "a" * 64,
             )
+
+        for invalid_status in ("OPEN", "ACCEPTED-MIT"):
+            mismatched_status = copy.deepcopy(manifest)
+            decision = mismatched_status["decision"]
+            self.assertIsInstance(decision, dict)
+            decision["od_06"] = invalid_status
+            with self.subTest(od_06=invalid_status), self.assertRaisesRegex(ValueError, "OD-06"):
+                foundation_supply_chain.validate_license_disposition_manifest(
+                    mismatched_status, "a" * 64,
+                )
 
     def test_reviewed_license_categories_require_exact_component_category_counts(self) -> None:
         dispositions = {
@@ -111,6 +122,7 @@ class FoundationSupplyChainTests(unittest.TestCase):
         inventory = {"images": [
             {"component": "PostgreSQL", "image": "official-postgres"},
             {"component": "Prometheus", "image": "official-prometheus"},
+            {"component": "DCIM services", "image": "official-python"},
         ]}
         lock = {"schema_version": 2, "publication": False, "images": [
             {"component": "postgres", "image_id": "sha256:" + "a" * 64},
@@ -118,10 +130,16 @@ class FoundationSupplyChainTests(unittest.TestCase):
             {"component": "grafana", "image_id": "sha256:" + "c" * 64},
             {"component": "postgres-exporter", "image_id": "sha256:" + "d" * 64},
             {"component": "prometheus", "image_id": "sha256:" + "e" * 64},
+            {"component": "services", "image_id": "sha256:" + "f" * 64},
         ]}
         images = foundation_supply_chain.effective_images(inventory, lock)
         self.assertEqual("sha256:" + "a" * 64, images[0]["image"])
         self.assertEqual("sha256:" + "e" * 64, images[1]["image"])
+        self.assertEqual("sha256:" + "f" * 64, images[2]["image"])
+        self.assertEqual("services", images[2]["derived_component"])
+        self.assertEqual("dcim-services", foundation_supply_chain.safe_name(
+            str(images[2]["component"])
+        ))
 
     def test_license_and_sbom_reports_fail_closed(self) -> None:
         with self.assertRaisesRegex(ValueError, "license"):

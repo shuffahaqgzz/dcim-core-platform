@@ -16,13 +16,14 @@ class PostgreSqlMigrationRollbackTests(unittest.TestCase):
         ) / "dcim-core-platform/runtime"
         os.environ.setdefault("DCIM_RUNTIME_ROOT", str(default_root))
         os.environ.setdefault("COMPOSE_PROJECT_NAME", "dcim-build")
+        runtime_root = Path(os.environ["DCIM_RUNTIME_ROOT"])
         try:
             db.query_json("SELECT json_build_object('ready', true)::text;")
         except db.DatabaseCommandError as error:
             raise unittest.SkipTest(
                 f"Compose PostgreSQL unavailable: {error}"
             ) from error
-        migrate.apply()
+        migrate.apply(runtime_root / "dev-build/secrets")
 
     def test_rollback_when_schema_is_empty_reapplies_cleanly(self) -> None:
         rows = db.query_json(
@@ -51,9 +52,9 @@ SELECT json_build_object(
             self.skipTest("shared Phase 2 data exists; destructive rollback not safe")
 
         migrate.rollback(migrate.MIGRATION_ID)
-        applied = migrate.apply()
+        applied = migrate.apply(Path(os.environ["DCIM_RUNTIME_ROOT"]) / "dev-build/secrets")
 
-        self.assertEqual(2, applied)
+        self.assertEqual(4, applied)
         self.assertEqual(migrate.EXPECTED_TABLES, migrate.verify())
 
 

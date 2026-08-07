@@ -1,5 +1,7 @@
 # Phase 1 Derived Image Qualification — PASS, Governance Decisions Recorded
 
+> Historical evidence; OD-06 was accepted 2026-07-27 (ADR-0019, Apache-2.0).
+
 Verified UTC: 2026-07-20T17:02:08Z  
 Implementation commit: `3f80efd8466258b584e7ad7a663b5e7fbfa2c9d1`  
 Security follow-up commit: `ad8ca4e63c2e4f8ffc7f21c257c78caf979450d4`  
